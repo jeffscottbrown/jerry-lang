@@ -8,29 +8,29 @@ build:
 # ── Run examples ──────────────────────────────────────────────────────────────
 
 run-hello:
-	$(JERRY) run examples/hello.alt
+	$(JERRY) run examples/hello.jer
 
 run-fibonacci:
-	$(JERRY) run examples/fibonacci.alt
+	$(JERRY) run examples/fibonacci.jer
 
 run-arrays:
-	$(JERRY) run examples/arrays.alt
+	$(JERRY) run examples/arrays.jer
 
 run-classes:
-	$(JERRY) run examples/classes.alt
+	$(JERRY) run examples/classes.jer
 
 # Dump LLVM IR (useful for debugging codegen)
 ir-hello:
-	$(JERRY) ir examples/hello.alt
+	$(JERRY) ir examples/hello.jer
 
 ir-fibonacci:
-	$(JERRY) ir examples/fibonacci.alt
+	$(JERRY) ir examples/fibonacci.jer
 
 ir-arrays:
-	$(JERRY) ir examples/arrays.alt
+	$(JERRY) ir examples/arrays.jer
 
 ir-classes:
-	$(JERRY) ir examples/classes.alt
+	$(JERRY) ir examples/classes.jer
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 

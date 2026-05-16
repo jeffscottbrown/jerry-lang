@@ -46,6 +46,15 @@ func (c *Checker) installBuiltins() {
 	// float_to_string(f): string
 	c.scope.Define(&Symbol{Name: "float_to_string", Kind: SymFunc,
 		Type: FuncType([]*Type{Float}, String)})
+	// char_at(s, i): int  — returns Unicode code point at index i
+	c.scope.Define(&Symbol{Name: "char_at", Kind: SymFunc,
+		Type: FuncType([]*Type{String, Int}, Int)})
+	// string_slice(s, start, end): string  — s[start:end]
+	c.scope.Define(&Symbol{Name: "string_slice", Kind: SymFunc,
+		Type: FuncType([]*Type{String, Int, Int}, String)})
+	// char_to_string(code): string  — single character from code point
+	c.scope.Define(&Symbol{Name: "char_to_string", Kind: SymFunc,
+		Type: FuncType([]*Type{Int}, String)})
 	// read_file(path): string
 	c.scope.Define(&Symbol{Name: "read_file", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, String)})
@@ -245,7 +254,11 @@ func (c *Checker) checkVarDecl(vd *ast.VarDecl) {
 	var declTy *Type
 	if vd.Ann != nil {
 		declTy = c.resolveTypeExpr(vd.Ann)
-		if !declTy.Equal(valTy) {
+		// Allow [] (void[]) to satisfy any array annotation, and
+		// allow "" (void, from empty string literal) to satisfy string.
+		emptyArray := valTy.Kind == KindArray && valTy.Elem.Kind == KindVoid &&
+			declTy.Kind == KindArray
+		if !emptyArray && !declTy.Equal(valTy) {
 			c.errorf(nil, "variable %q: declared type %s but got %s",
 				vd.Name, declTy, valTy)
 		}
@@ -559,6 +572,24 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(call.Args[0])
 			}
 			return String
+		case "char_at":
+			if len(call.Args) == 2 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Int
+		case "string_slice":
+			if len(call.Args) == 3 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+				c.checkExpr(call.Args[2])
+			}
+			return String
+		case "char_to_string":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return String
 		case "read_file":
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])
@@ -626,7 +657,7 @@ func (c *Checker) checkPrimary(p *ast.PrimaryExpr) *Type {
 		return Float
 	case p.Bool != "":
 		return Bool
-	case p.String != "":
+	case p.String != nil:
 		return String
 	case p.Null:
 		return Null

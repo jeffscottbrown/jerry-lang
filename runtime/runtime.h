@@ -39,6 +39,9 @@ JerryStr* jerry_string_concat(JerryStr* a, JerryStr* b);
 int8_t     jerry_string_eq(JerryStr* a, JerryStr* b);
 int8_t     jerry_string_ne(JerryStr* a, JerryStr* b);
 int64_t    jerry_string_len(JerryStr* s);
+int64_t    jerry_char_at(JerryStr* s, int64_t i);        /* char code at index   */
+JerryStr*  jerry_string_slice(JerryStr* s, int64_t start, int64_t end); /* s[start:end] */
+JerryStr*  jerry_char_to_string(int64_t code);            /* char code → 1-char string */
 JerryStr* jerry_int_to_string(int64_t n);
 JerryStr* jerry_float_to_string(double f);
 

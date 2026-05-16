@@ -1,0 +1,35 @@
+// examples/strings.jer — exercises char_at, string_slice, char_to_string,
+// and the string stdlib functions.
+
+fn main() {
+    let s: string = "Hello, Jerry!";
+
+    // Builtins
+    print("len = " + int_to_string(len(s)));
+    print("char_at(0) = " + int_to_string(char_at(s, 0)));   // 72 = 'H'
+    print("char_to_string(72) = " + char_to_string(72));      // "H"
+    print("string_slice(0,5) = " + string_slice(s, 0, 5));    // "Hello"
+
+    // starts_with / ends_with
+    print("starts_with Hello = " + int_to_string(starts_with(s, "Hello")));
+    print("ends_with Jerry! = "  + int_to_string(ends_with(s, "Jerry!")));
+
+    // index_of
+    print("index_of Jerry = " + int_to_string(index_of(s, "Jerry")));
+
+    // trim
+    let padded: string = "   trimmed   ";
+    print("trim = '" + trim(padded) + "'");
+
+    // split / join
+    let csv: string = "one,two,three,four";
+    let parts: string[] = split(csv, ",");
+    print("split count = " + int_to_string(len(parts)));
+    print("parts[2] = " + parts[2]);
+    print("join = " + join(parts, " | "));
+
+    // split_whitespace
+    let words: string[] = split_whitespace("  the  quick brown  fox  ");
+    print("words count = " + int_to_string(len(words)));
+    print("words[1] = " + words[1]);
+}

@@ -40,6 +40,9 @@ type Generator struct {
 
 	// Tracks whether current basic block has a terminator
 	terminated bool
+
+	// Name of the current basic block (without %)
+	curBlock string
 }
 
 type localVar struct {
@@ -139,6 +142,9 @@ declare i8   @jerry_string_ne(ptr, ptr)
 declare i64  @jerry_string_len(ptr)
 declare ptr  @jerry_int_to_string(i64)
 declare ptr  @jerry_float_to_string(double)
+declare i64  @jerry_char_at(ptr, i64)
+declare ptr  @jerry_string_slice(ptr, i64, i64)
+declare ptr  @jerry_char_to_string(i64)
 declare void @jerry_print_int(i64)
 declare void @jerry_print_float(double)
 declare void @jerry_print_bool(i8)
@@ -237,6 +243,7 @@ func (g *Generator) genFnDecl(fn *ast.FnDecl, out *strings.Builder) error {
 	// Set up generator context for this function.
 	saved := g.saveContext()
 	g.curFnName = llvmName
+	g.curBlock = "entry"
 	g.retType = ft.Return
 	g.locals = make(map[string]*localVar)
 	g.terminated = false
@@ -304,6 +311,7 @@ func (g *Generator) genClassDecl(cl *ast.ClassDecl, out *strings.Builder) error 
 
 		saved := g.saveContext()
 		g.curFnName = llvmName
+		g.curBlock = "entry"
 		g.retType = mt.Return
 		g.locals = make(map[string]*localVar)
 		g.terminated = false
@@ -436,8 +444,7 @@ func (g *Generator) genIf(s *ast.IfStmt, out *strings.Builder) error {
 	fmt.Fprintf(out, "  br i1 %s, label %%%s, label %%%s\n", cond, thenLbl, elseLbl)
 
 	// then
-	fmt.Fprintf(out, "%s:\n", thenLbl)
-	g.terminated = false
+	g.emitBlockLabel(thenLbl, out)
 	if err := g.genBlock(s.Then, out); err != nil {
 		return err
 	}
@@ -447,8 +454,7 @@ func (g *Generator) genIf(s *ast.IfStmt, out *strings.Builder) error {
 	thenTerminated := g.terminated
 
 	// else / else-if
-	fmt.Fprintf(out, "%s:\n", elseLbl)
-	g.terminated = false
+	g.emitBlockLabel(elseLbl, out)
 	if s.Else != nil {
 		if s.Else.ElseIf != nil {
 			if err := g.genIf(s.Else.ElseIf, out); err != nil {
@@ -466,7 +472,7 @@ func (g *Generator) genIf(s *ast.IfStmt, out *strings.Builder) error {
 	elseTerminated := g.terminated
 
 	// merge
-	fmt.Fprintf(out, "%s:\n", mergeLbl)
+	g.emitBlockLabel(mergeLbl, out)
 	g.terminated = thenTerminated && elseTerminated
 	return nil
 }
@@ -477,8 +483,7 @@ func (g *Generator) genWhile(s *ast.WhileStmt, out *strings.Builder) error {
 	endLbl := g.newLabel("while.end")
 
 	fmt.Fprintf(out, "  br label %%%s\n", condLbl)
-	fmt.Fprintf(out, "%s:\n", condLbl)
-	g.terminated = false
+	g.emitBlockLabel(condLbl, out)
 
 	cond, err := g.genExpr(s.Cond, out)
 	if err != nil {
@@ -486,8 +491,7 @@ func (g *Generator) genWhile(s *ast.WhileStmt, out *strings.Builder) error {
 	}
 	fmt.Fprintf(out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLbl, endLbl)
 
-	fmt.Fprintf(out, "%s:\n", bodyLbl)
-	g.terminated = false
+	g.emitBlockLabel(bodyLbl, out)
 	g.labelStack = append(g.labelStack, loopLabels{condLbl, endLbl})
 	if err := g.genBlock(s.Body, out); err != nil {
 		return err
@@ -497,8 +501,7 @@ func (g *Generator) genWhile(s *ast.WhileStmt, out *strings.Builder) error {
 		fmt.Fprintf(out, "  br label %%%s\n", condLbl)
 	}
 
-	fmt.Fprintf(out, "%s:\n", endLbl)
-	g.terminated = false
+	g.emitBlockLabel(endLbl, out)
 	return nil
 }
 
@@ -531,8 +534,7 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	}
 
 	fmt.Fprintf(out, "  br label %%%s\n", condLbl)
-	fmt.Fprintf(out, "%s:\n", condLbl)
-	g.terminated = false
+	g.emitBlockLabel(condLbl, out)
 
 	// Condition
 	if s.Cond != nil {
@@ -546,8 +548,7 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	}
 
 	// Body
-	fmt.Fprintf(out, "%s:\n", bodyLbl)
-	g.terminated = false
+	g.emitBlockLabel(bodyLbl, out)
 	g.labelStack = append(g.labelStack, loopLabels{postLbl, endLbl})
 	if err := g.genBlock(s.Body, out); err != nil {
 		return err
@@ -558,8 +559,7 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	}
 
 	// Post
-	fmt.Fprintf(out, "%s:\n", postLbl)
-	g.terminated = false
+	g.emitBlockLabel(postLbl, out)
 	if s.Post != nil {
 		if _, err := g.genExpr(s.Post, out); err != nil {
 			return err
@@ -567,8 +567,7 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	}
 	fmt.Fprintf(out, "  br label %%%s\n", condLbl)
 
-	fmt.Fprintf(out, "%s:\n", endLbl)
-	g.terminated = false
+	g.emitBlockLabel(endLbl, out)
 	g.locals = savedLocals
 	return nil
 }
@@ -685,34 +684,62 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 }
 
 func (g *Generator) genOr(a *ast.OrExpr, out *strings.Builder) (string, error) {
+	// Short-circuit: if left is true, skip right.
 	val, err := g.genAnd(a.Left, out)
 	if err != nil {
 		return "", err
 	}
 	for _, r := range a.Rest {
+		lhsBlock := g.curBlock // block where lhs was last defined
+		trueLabel := g.newLabel("or.true")
+		rightLabel := g.newLabel("or.rhs")
+		mergeLabel := g.newLabel("or.merge")
+		// If left is true, jump straight to merge (with true); otherwise evaluate right.
+		fmt.Fprintf(out, "  br i1 %s, label %%%s, label %%%s\n", val, trueLabel, rightLabel)
+		g.emitBlockLabel(rightLabel, out)
 		rval, err := g.genAnd(r.Right, out)
 		if err != nil {
 			return "", err
 		}
+		rhsEndBlock := g.curBlock // actual block rval is defined in
+		fmt.Fprintf(out, "  br label %%%s\n", mergeLabel)
+		g.emitBlockLabel(trueLabel, out)
+		fmt.Fprintf(out, "  br label %%%s\n", mergeLabel)
+		g.emitBlockLabel(mergeLabel, out)
 		res := g.newTmp()
-		fmt.Fprintf(out, "  %s = or i1 %s, %s\n", res, val, rval)
+		// lhsBlock may not be the direct predecessor of trueLabel if we had nested &&/||;
+		// trueLabel is always the direct predecessor of mergeLabel for the true path.
+		_ = lhsBlock
+		fmt.Fprintf(out, "  %s = phi i1 [ true, %%%s ], [ %s, %%%s ]\n", res, trueLabel, rval, rhsEndBlock)
 		val = res
 	}
 	return val, nil
 }
 
 func (g *Generator) genAnd(a *ast.AndExpr, out *strings.Builder) (string, error) {
+	// Short-circuit: if left is false, skip right.
 	val, err := g.genEq(a.Left, out)
 	if err != nil {
 		return "", err
 	}
 	for _, r := range a.Rest {
+		falseLabel := g.newLabel("and.false")
+		rightLabel := g.newLabel("and.rhs")
+		mergeLabel := g.newLabel("and.merge")
+		// If left is true, evaluate right; otherwise jump to false.
+		fmt.Fprintf(out, "  br i1 %s, label %%%s, label %%%s\n", val, rightLabel, falseLabel)
+		g.emitBlockLabel(rightLabel, out)
 		rval, err := g.genEq(r.Right, out)
 		if err != nil {
 			return "", err
 		}
+		rhsEndBlock := g.curBlock // actual block rval is defined in
+		fmt.Fprintf(out, "  br label %%%s\n", mergeLabel)
+		g.emitBlockLabel(falseLabel, out)
+		fmt.Fprintf(out, "  br label %%%s\n", mergeLabel)
+		g.emitBlockLabel(mergeLabel, out)
 		res := g.newTmp()
-		fmt.Fprintf(out, "  %s = and i1 %s, %s\n", res, val, rval)
+		fmt.Fprintf(out, "  %s = phi i1 [ %s, %%%s ], [ false, %%%s ]\n", res, rval, rhsEndBlock, falseLabel)
 		val = res
 	}
 	return val, nil
@@ -731,9 +758,12 @@ func (g *Generator) genEq(a *ast.EqExpr, out *strings.Builder) (string, error) {
 		}
 		res := g.newTmp()
 		switch lty.Kind {
-		case checker.KindInt, checker.KindBool:
+		case checker.KindInt:
 			pred := map[string]string{"==": "eq", "!=": "ne"}[r.Op]
 			fmt.Fprintf(out, "  %s = icmp %s i64 %s, %s\n", res, pred, val, rval)
+		case checker.KindBool:
+			pred := map[string]string{"==": "eq", "!=": "ne"}[r.Op]
+			fmt.Fprintf(out, "  %s = icmp %s i1 %s, %s\n", res, pred, val, rval)
 		case checker.KindFloat:
 			pred := map[string]string{"==": "oeq", "!=": "one"}[r.Op]
 			fmt.Fprintf(out, "  %s = fcmp %s double %s, %s\n", res, pred, val, rval)
@@ -1036,6 +1066,7 @@ func (g *Generator) genCall(
 			if err != nil {
 				return "", nil, err
 			}
+			argVal = g.coerceToI64(argVal, g.exprType(call.Args[0]), out)
 			res := g.newTmp()
 			fmt.Fprintf(out, "  %s = call ptr @jerry_int_to_string(i64 %s)\n", res, argVal)
 			return res, checker.String, nil
@@ -1047,6 +1078,50 @@ func (g *Generator) genCall(
 			}
 			res := g.newTmp()
 			fmt.Fprintf(out, "  %s = call ptr @jerry_float_to_string(double %s)\n", res, argVal)
+			return res, checker.String, nil
+
+		case "char_at":
+			sVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			iVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			iVal = g.coerceToI64(iVal, g.exprType(call.Args[1]), out)
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_char_at(ptr %s, i64 %s)\n", res, sVal, iVal)
+			return res, checker.Int, nil
+
+		case "string_slice":
+			sVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			startVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			startVal = g.coerceToI64(startVal, g.exprType(call.Args[1]), out)
+			endVal, err := g.genExpr(call.Args[2], out)
+			if err != nil {
+				return "", nil, err
+			}
+			endVal = g.coerceToI64(endVal, g.exprType(call.Args[2]), out)
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_string_slice(ptr %s, i64 %s, i64 %s)\n",
+				res, sVal, startVal, endVal)
+			return res, checker.String, nil
+
+		case "char_to_string":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			argVal = g.coerceToI64(argVal, g.exprType(call.Args[0]), out)
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_char_to_string(i64 %s)\n", res, argVal)
 			return res, checker.String, nil
 
 		case "read_file":
@@ -1226,8 +1301,8 @@ func (g *Generator) genPrimary(p *ast.PrimaryExpr, out *strings.Builder) (string
 		return "false", nil
 	case p.Null:
 		return "null", nil
-	case p.String != "":
-		return g.genStringLit(p.String, out), nil
+	case p.String != nil:
+		return g.genStringLit(*p.String, out), nil
 	case p.This:
 		lvar, ok := g.locals["this"]
 		if !ok {
@@ -1325,6 +1400,7 @@ func (g *Generator) genFnExpr(fn *ast.FnExpr, out *strings.Builder) (string, err
 
 	savedCtx := g.saveContext()
 	g.curFnName = fnName
+	g.curBlock = "entry"
 	g.retType = retTy
 	g.locals = make(map[string]*localVar)
 	g.terminated = false
@@ -1634,7 +1710,7 @@ func (g *Generator) primaryType(p *ast.PrimaryExpr) *checker.Type {
 		return checker.Float
 	case p.Bool != "":
 		return checker.Bool
-	case p.String != "":
+	case p.String != nil:
 		return checker.String
 	case p.Null:
 		return checker.Null
@@ -1649,6 +1725,11 @@ func (g *Generator) primaryType(p *ast.PrimaryExpr) *checker.Type {
 		}
 		if ft, ok := g.info.Funcs[p.Ident]; ok {
 			return ft
+		}
+		// Builtin functions: return a FuncType so the Call op case in
+		// postfixType can correctly derive the return type via ty.Return.
+		if rt, ok := builtinReturnType[p.Ident]; ok {
+			return checker.FuncType(nil, rt)
 		}
 		return checker.Void
 	case p.Array != nil:
@@ -1677,9 +1758,26 @@ func (g *Generator) newTmp() string {
 	return fmt.Sprintf("%%t%d", g.tmp)
 }
 
+// coerceToI64 emits a zext if val is i1 (bool) and returns the i64 register.
+func (g *Generator) coerceToI64(val string, ty *checker.Type, out *strings.Builder) string {
+	if ty != nil && ty.Kind == checker.KindBool {
+		res := g.newTmp()
+		fmt.Fprintf(out, "  %s = zext i1 %s to i64\n", res, val)
+		return res
+	}
+	return val
+}
+
 func (g *Generator) newLabel(prefix string) string {
 	g.lbl++
 	return fmt.Sprintf("%s.%d", prefix, g.lbl)
+}
+
+// emitBlockLabel emits a basic block label, updates curBlock, and resets terminated.
+func (g *Generator) emitBlockLabel(name string, out *strings.Builder) {
+	fmt.Fprintf(out, "%s:\n", name)
+	g.curBlock = name
+	g.terminated = false
 }
 
 func (g *Generator) allocaInto(out *strings.Builder, name, llvmTy string) string {
@@ -1731,6 +1829,26 @@ func (g *Generator) cloneLocals() map[string]*localVar {
 		m[k] = v
 	}
 	return m
+}
+
+// builtinReturnType maps builtin function names to their return types.
+// Used by the codegen's type-inference helpers (primaryType etc.) which
+// don't have access to the checker's scope.
+var builtinReturnType = map[string]*checker.Type{
+	"print":            checker.Void,
+	"write":            checker.Void,
+	"println":          checker.Void,
+	"len":              checker.Int,
+	"push":             checker.Void,
+	"int_to_string":    checker.String,
+	"float_to_string":  checker.String,
+	"char_at":          checker.Int,
+	"string_slice":     checker.String,
+	"char_to_string":   checker.String,
+	"read_file":        checker.String,
+	"write_file":       checker.Void,
+	"exit":             checker.Void,
+	"panic":            checker.Void,
 }
 
 // llvmEscapeString escapes a Go string for LLVM IR constant syntax.

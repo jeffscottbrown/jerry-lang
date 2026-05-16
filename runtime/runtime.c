@@ -52,6 +52,28 @@ int64_t jerry_string_len(JerryStr* s) {
     return s->len;
 }
 
+int64_t jerry_char_at(JerryStr* s, int64_t i) {
+    if (i < 0 || i >= s->len) {
+        fprintf(stderr, "jerry: char_at: index %lld out of bounds (len %lld)\n",
+                (long long)i, (long long)s->len);
+        exit(1);
+    }
+    return (int64_t)(unsigned char)s->data[i];
+}
+
+JerryStr* jerry_string_slice(JerryStr* s, int64_t start, int64_t end) {
+    if (start < 0) start = 0;
+    if (end > s->len) end = s->len;
+    if (start > end) start = end;
+    return jerry_string_new(s->data + start, end - start);
+}
+
+JerryStr* jerry_char_to_string(int64_t code) {
+    char buf[1];
+    buf[0] = (char)(code & 0xFF);
+    return jerry_string_new(buf, 1);
+}
+
 JerryStr* jerry_int_to_string(int64_t n) {
     char buf[32];
     int  len = snprintf(buf, sizeof(buf), "%lld", (long long)n);

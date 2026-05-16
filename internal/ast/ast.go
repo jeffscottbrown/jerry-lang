@@ -300,17 +300,17 @@ type CallArgs struct {
 type PrimaryExpr struct {
 	Pos    lexer.Position
 	// Ordered: most specific first to avoid ambiguity
-	FnExpr  *FnExpr  `( @@`
-	NewExpr *NewExpr `| @@`
+	FnExpr  *FnExpr   `( @@`
+	NewExpr *NewExpr  `| @@`
 	Array   *ArrayLit `| @@`
-	Paren   *Expr    `| "(" @@ ")"`
-	This    bool     `| @"this"`
-	Null    bool     `| @"null"`
-	Bool    string   `| @( "true" | "false" )`
-	Float   string   `| @Float`
-	Int     string   `| @Int`
-	String  string   `| @String`
-	Ident   string   `| @Ident )`
+	Paren   *Expr     `| "(" @@ ")"`
+	This    bool      `| @"this"`
+	Null    bool      `| @"null"`
+	Bool    string    `| @( "true" | "false" )`
+	Float   string    `| @Float`
+	Int     string    `| @Int`
+	String  *string   `| @String`
+	Ident   string    `| @Ident )`
 }
 
 type FnExpr struct {
