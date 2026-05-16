@@ -2,7 +2,7 @@
 package parser
 
 import (
-	"jerry/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -19,14 +19,18 @@ var jerryLexer = lexer.MustSimple([]lexer.SimpleRule{
 	{Name: "Int", Pattern: `[0-9]+`},
 	{Name: "String", Pattern: `"(?:[^"\\]|\\.)*"`},
 
-	// Keywords and bool literals — matched before Ident
-	{Name: "Keyword", Pattern: `\b(?:let|fn|class|extends|if|else|while|for|return|new|this|null|true|false|break|continue)\b`},
+	// Bool literals matched as their own token type so that string literals
+	// containing "true" or "false" are never mis-classified as Bool.
+	{Name: "BoolLit", Pattern: `\b(?:true|false)\b`},
+
+	// Keywords — matched before Ident, after BoolLit so true/false stay separate
+	{Name: "Keyword", Pattern: `\b(?:let|fn|class|extends|if|else|while|for|return|new|this|null|break|continue|include)\b`},
 
 	// Identifier
 	{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
 
 	// Multi-character operators (longest match first)
-	{Name: "Op", Pattern: `&&|\|\||==|!=|<=|>=|\+\+|--|[+\-*/%=!<>.,;:(){}\[\]]`},
+	{Name: "Op", Pattern: `&&|\|\||==|!=|<=|>=|\+\+|--|[+\-*/%=!<>.,;:(){}\[\]@]`},
 })
 
 var parser = participle.MustBuild[ast.Program](

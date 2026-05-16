@@ -1,36 +1,49 @@
-.PHONY: build test run-hello run-fibonacci run-arrays run-classes clean ir-hello
+.PHONY: build test run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+
+# Inject version from the most recent git tag if available, else "dev".
+VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+LDFLAGS = -X main.Version=$(VERSION)
 
 JERRY = go run ./cmd/jerry
 
 build:
-	go build -o bin/jerry ./cmd/jerry
+	go build -ldflags "$(LDFLAGS)" -o bin/jerry ./cmd/jerry
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 
 run-hello:
-	$(JERRY) run examples/hello.alt
+	$(JERRY) run examples/hello.jer
 
 run-fibonacci:
-	$(JERRY) run examples/fibonacci.alt
+	$(JERRY) run examples/fibonacci.jer
 
 run-arrays:
-	$(JERRY) run examples/arrays.alt
+	$(JERRY) run examples/arrays.jer
 
 run-classes:
-	$(JERRY) run examples/classes.alt
+	$(JERRY) run examples/classes.jer
+
+run-closures:
+	$(JERRY) run examples/closures.jer
+
+run-strings:
+	$(JERRY) run examples/strings.jer
 
 # Dump LLVM IR (useful for debugging codegen)
 ir-hello:
-	$(JERRY) ir examples/hello.alt
+	$(JERRY) ir examples/hello.jer
 
 ir-fibonacci:
-	$(JERRY) ir examples/fibonacci.alt
+	$(JERRY) ir examples/fibonacci.jer
 
 ir-arrays:
-	$(JERRY) ir examples/arrays.alt
+	$(JERRY) ir examples/arrays.jer
 
 ir-classes:
-	$(JERRY) ir examples/classes.alt
+	$(JERRY) ir examples/classes.jer
+
+ir-strings:
+	$(JERRY) ir examples/strings.jer
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 

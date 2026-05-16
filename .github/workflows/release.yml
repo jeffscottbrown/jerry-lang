@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # needed to create GitHub Releases and upload assets
+
+jobs:
+  # ── Build one binary per platform ──────────────────────────────────────────
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            asset_name: jerry-linux-x86_64
+
+          - name: macos-x86_64
+            os: macos-15          # GitHub's Intel Mac runner (x86_64)
+            goos: darwin
+            goarch: amd64
+            asset_name: jerry-macos-x86_64
+
+          - name: macos-arm64
+            os: macos-latest      # GitHub's Apple Silicon runner
+            goos: darwin
+            goarch: arm64
+            asset_name: jerry-macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang
+
+      - name: Build jerry
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          go build \
+            -ldflags "-X main.Version=${{ github.ref_name }}" \
+            -o ${{ matrix.asset_name }} \
+            ./cmd/jerry
+
+      - name: Verify version string
+        # Only run on native (not cross-compiled) targets
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        run: ./${{ matrix.asset_name }} --version
+
+      - name: Smoke-test binary (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        run: |
+          ./${{ matrix.asset_name }} run examples/hello.jer
+          ./${{ matrix.asset_name }} run examples/fibonacci.jer
+          ./${{ matrix.asset_name }} run examples/strings.jer
+
+      - name: Create archive
+        # Both stdlib and the C runtime are embedded in the binary.
+        # The archive contains only the binary itself.
+        run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.tar.gz
+          retention-days: 1
+
+  # ── Create GitHub Release with all platform archives ───────────────────────
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum *.tar.gz > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Jerry ${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt

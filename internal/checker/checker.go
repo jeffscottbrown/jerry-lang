@@ -1,7 +1,7 @@
 package checker
 
 import (
-	"jerry/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,44 +19,61 @@ type Checker struct {
 
 func New() *Checker {
 	c := &Checker{info: NewInfo()}
-	c.scope = NewScope(nil) // global scope
-	c.installBuiltins()
+	c.scope = newBuiltinScope()
 	return c
 }
 
-func (c *Checker) installBuiltins() {
+// newBuiltinScope returns a fresh scope containing all compiler-primitive builtins.
+// It is the root of every scope chain in the system.
+func newBuiltinScope() *Scope {
+	s := NewScope(nil)
+	installBuiltins(s)
+	return s
+}
+
+// installBuiltins registers all compiler-primitive builtin functions into s.
+func installBuiltins(s *Scope) {
 	// print(x): void — polymorphic; resolved per-call in codegen
-	c.scope.Define(&Symbol{Name: "print", Kind: SymFunc,
+	s.Define(&Symbol{Name: "print", Kind: SymFunc,
 		Type: FuncType([]*Type{Void}, Void)}) // placeholder; handled specially
 	// write(x): void — like print but no newline
-	c.scope.Define(&Symbol{Name: "write", Kind: SymFunc,
+	s.Define(&Symbol{Name: "write", Kind: SymFunc,
 		Type: FuncType([]*Type{Void}, Void)})
 	// println(): void
-	c.scope.Define(&Symbol{Name: "println", Kind: SymFunc,
+	s.Define(&Symbol{Name: "println", Kind: SymFunc,
 		Type: FuncType([]*Type{}, Void)})
 	// len(arr): int
-	c.scope.Define(&Symbol{Name: "len", Kind: SymFunc,
+	s.Define(&Symbol{Name: "len", Kind: SymFunc,
 		Type: FuncType([]*Type{ArrayOf(Void)}, Int)})
 	// push(arr, elem): void
-	c.scope.Define(&Symbol{Name: "push", Kind: SymFunc,
+	s.Define(&Symbol{Name: "push", Kind: SymFunc,
 		Type: FuncType([]*Type{ArrayOf(Void), Void}, Void)})
 	// int_to_string(n): string
-	c.scope.Define(&Symbol{Name: "int_to_string", Kind: SymFunc,
+	s.Define(&Symbol{Name: "int_to_string", Kind: SymFunc,
 		Type: FuncType([]*Type{Int}, String)})
 	// float_to_string(f): string
-	c.scope.Define(&Symbol{Name: "float_to_string", Kind: SymFunc,
+	s.Define(&Symbol{Name: "float_to_string", Kind: SymFunc,
 		Type: FuncType([]*Type{Float}, String)})
+	// char_at(s, i): int  — returns Unicode code point at index i
+	s.Define(&Symbol{Name: "char_at", Kind: SymFunc,
+		Type: FuncType([]*Type{String, Int}, Int)})
+	// string_slice(s, start, end): string  — s[start:end]
+	s.Define(&Symbol{Name: "string_slice", Kind: SymFunc,
+		Type: FuncType([]*Type{String, Int, Int}, String)})
+	// char_to_string(code): string  — single character from code point
+	s.Define(&Symbol{Name: "char_to_string", Kind: SymFunc,
+		Type: FuncType([]*Type{Int}, String)})
 	// read_file(path): string
-	c.scope.Define(&Symbol{Name: "read_file", Kind: SymFunc,
+	s.Define(&Symbol{Name: "read_file", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, String)})
 	// write_file(path, content): void
-	c.scope.Define(&Symbol{Name: "write_file", Kind: SymFunc,
+	s.Define(&Symbol{Name: "write_file", Kind: SymFunc,
 		Type: FuncType([]*Type{String, String}, Void)})
 	// exit(code): void
-	c.scope.Define(&Symbol{Name: "exit", Kind: SymFunc,
+	s.Define(&Symbol{Name: "exit", Kind: SymFunc,
 		Type: FuncType([]*Type{Int}, Void)})
 	// panic(msg): void
-	c.scope.Define(&Symbol{Name: "panic", Kind: SymFunc,
+	s.Define(&Symbol{Name: "panic", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, Void)})
 }
 
@@ -92,6 +109,156 @@ func Check(prog *ast.Program) (*Info, []error) {
 		errs = append(errs, fmt.Errorf("%s", msg))
 	}
 	return c.info, errs
+}
+
+// CheckAll is the multi-file compilation entry point.
+//
+//   - projectProgs: one *ast.Program per project source file (may contain IncludeDecls)
+//   - coreAST:      parsed stdlib/core.jer, always in scope for every file
+//   - stdlibASTs:   map from stdlib module name → parsed AST, for explicit includes
+//
+// Per-file scoping rules:
+//   - Compiler primitives (print, len, etc.) are always in scope.
+//   - core.jer functions are always in scope.
+//   - All project-defined functions/classes are always in scope for each other.
+//   - Functions from a stdlib module (e.g. @string) are only in scope for files
+//     that explicitly include it.
+func CheckAll(projectProgs []*ast.Program, coreAST *ast.Program, stdlibASTs map[string]*ast.Program) (*Info, []error) {
+	info := NewInfo()
+
+	// ── Build scope layers ────────────────────────────────────────────────────
+
+	builtinScope := newBuiltinScope()
+
+	// core scope: child of builtins; core.jer symbols land here.
+	coreChecker := &Checker{info: info, scope: NewScope(builtinScope)}
+	if coreAST != nil {
+		for _, tl := range coreAST.Stmts {
+			if tl.FnDecl != nil {
+				coreChecker.registerFn(tl.FnDecl)
+			}
+			if tl.Class != nil {
+				coreChecker.registerClass(tl.Class)
+			}
+		}
+	}
+	coreScope := coreChecker.scope
+
+	// project scope: child of core; all project-defined names land here.
+	projectChecker := &Checker{info: info, scope: NewScope(coreScope)}
+	for _, prog := range projectProgs {
+		for _, tl := range prog.Stmts {
+			if tl.FnDecl != nil {
+				projectChecker.registerFn(tl.FnDecl)
+			}
+			if tl.Class != nil {
+				projectChecker.registerClass(tl.Class)
+			}
+		}
+	}
+	projectScope := projectChecker.scope
+
+	var allErrors []error
+
+	// ── Check core.jer bodies ─────────────────────────────────────────────────
+	if coreAST != nil {
+		for _, tl := range coreAST.Stmts {
+			switch {
+			case tl.FnDecl != nil:
+				coreChecker.checkFnDecl(tl.FnDecl)
+			case tl.Class != nil:
+				coreChecker.checkClassDecl(tl.Class)
+			}
+		}
+		for _, msg := range coreChecker.errors {
+			allErrors = append(allErrors, fmt.Errorf("stdlib/core: %s", msg))
+		}
+	}
+
+	// ── Check each required stdlib module (once) ──────────────────────────────
+	checked := map[string]bool{}
+	for _, prog := range projectProgs {
+		for _, tl := range prog.Stmts {
+			if tl.Include == nil {
+				continue
+			}
+			name := tl.Include.Stdlib
+			if checked[name] {
+				continue
+			}
+			checked[name] = true
+			stdAST, ok := stdlibASTs[name]
+			if !ok {
+				// Error reported during include resolution in main; skip body check.
+				continue
+			}
+			// Stdlib sees: core scope + its own forward-declared names.
+			sc := &Checker{info: info, scope: NewScope(coreScope)}
+			for _, stl := range stdAST.Stmts {
+				if stl.FnDecl != nil {
+					sc.registerFn(stl.FnDecl)
+				}
+				if stl.Class != nil {
+					sc.registerClass(stl.Class)
+				}
+			}
+			for _, stl := range stdAST.Stmts {
+				switch {
+				case stl.FnDecl != nil:
+					sc.checkFnDecl(stl.FnDecl)
+				case stl.Class != nil:
+					sc.checkClassDecl(stl.Class)
+				}
+			}
+			for _, msg := range sc.errors {
+				allErrors = append(allErrors, fmt.Errorf("stdlib/%s: %s", name, msg))
+			}
+		}
+	}
+
+	// ── Check each project file with its own per-file scope ───────────────────
+	for _, prog := range projectProgs {
+		// File scope is a child of the project scope.
+		fc := &Checker{info: info, scope: NewScope(projectScope)}
+
+		// Bring explicitly included stdlib symbols into this file's scope.
+		for _, tl := range prog.Stmts {
+			if tl.Include == nil {
+				continue
+			}
+			stdAST, ok := stdlibASTs[tl.Include.Stdlib]
+			if !ok {
+				fc.errors = append(fc.errors, fmt.Sprintf("unknown stdlib module @%s", tl.Include.Stdlib))
+				continue
+			}
+			for _, stl := range stdAST.Stmts {
+				if stl.FnDecl != nil {
+					fc.registerFn(stl.FnDecl)
+				}
+				if stl.Class != nil {
+					fc.registerClass(stl.Class)
+				}
+			}
+		}
+
+		// Check this file's top-level declaration bodies.
+		for _, tl := range prog.Stmts {
+			switch {
+			case tl.FnDecl != nil:
+				fc.checkFnDecl(tl.FnDecl)
+			case tl.Class != nil:
+				fc.checkClassDecl(tl.Class)
+			case tl.VarDecl != nil:
+				fc.checkVarDecl(tl.VarDecl)
+			// tl.Include: no body to check
+			}
+		}
+		for _, msg := range fc.errors {
+			allErrors = append(allErrors, fmt.Errorf("%s", msg))
+		}
+	}
+
+	return info, allErrors
 }
 
 func (c *Checker) errorf(pos interface{}, format string, args ...any) {
@@ -245,7 +412,11 @@ func (c *Checker) checkVarDecl(vd *ast.VarDecl) {
 	var declTy *Type
 	if vd.Ann != nil {
 		declTy = c.resolveTypeExpr(vd.Ann)
-		if !declTy.Equal(valTy) {
+		// Allow [] (void[]) to satisfy any array annotation, and
+		// allow "" (void, from empty string literal) to satisfy string.
+		emptyArray := valTy.Kind == KindArray && valTy.Elem.Kind == KindVoid &&
+			declTy.Kind == KindArray
+		if !emptyArray && !declTy.Equal(valTy) {
 			c.errorf(nil, "variable %q: declared type %s but got %s",
 				vd.Name, declTy, valTy)
 		}
@@ -559,6 +730,24 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(call.Args[0])
 			}
 			return String
+		case "char_at":
+			if len(call.Args) == 2 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Int
+		case "string_slice":
+			if len(call.Args) == 3 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+				c.checkExpr(call.Args[2])
+			}
+			return String
+		case "char_to_string":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return String
 		case "read_file":
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])
@@ -626,7 +815,7 @@ func (c *Checker) checkPrimary(p *ast.PrimaryExpr) *Type {
 		return Float
 	case p.Bool != "":
 		return Bool
-	case p.String != "":
+	case p.String != nil:
 		return String
 	case p.Null:
 		return Null

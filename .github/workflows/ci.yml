@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    tags-ignore: ["**"]   # release.yml handles tag pushes
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-15]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang
+
+      - name: go vet
+        # Participle uses non-standard struct tag syntax in internal/ast, which
+        # triggers false positives from the structtag analyzer. All other packages
+        # use normal tags, so we vet them normally and skip structtag for ast.
+        run: |
+          go vet $(go list ./... | grep -v 'jerry-lang/internal/ast')
+          go vet -structtag=false github.com/jeffscottbrown/jerry-lang/internal/ast
+
+      - name: go test
+        run: go test ./...
+
+      - name: Build jerry
+        run: go build -o jerry-bin ./cmd/jerry
+
+      - name: Smoke-test compiled binary
+        run: |
+          ./jerry-bin --version
+          ./jerry-bin run examples/hello.jer
+          ./jerry-bin run examples/fibonacci.jer
+          ./jerry-bin run examples/arrays.jer
+          ./jerry-bin run examples/classes.jer
+          ./jerry-bin run examples/closures.jer
+          ./jerry-bin run examples/strings.jer
