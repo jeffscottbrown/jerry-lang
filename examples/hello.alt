@@ -1,0 +1,6 @@
+// examples/hello.alt — simplest Jerry program
+
+fn main() {
+    print("Hello, Jerry!");
+    print("2 + 2 = " + int_to_string(2 + 2));
+}

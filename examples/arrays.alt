@@ -1,0 +1,25 @@
+// examples/arrays.alt — arrays and for loops
+
+fn sum(nums: int[]): int {
+    let total: int = 0;
+    let i: int = 0;
+    while i < len(nums) {
+        total = total + nums[i];
+        i = i + 1;
+    }
+    return total;
+}
+
+fn main() {
+    let nums: int[] = [10, 20, 30, 40, 50];
+    print("sum = " + int_to_string(sum(nums)));
+
+    // for loop
+    for (let i: int = 0; i < len(nums); i++) {
+        print("  nums[" + int_to_string(i) + "] = " + int_to_string(nums[i]));
+    }
+
+    // push
+    push(nums, 60);
+    print("after push, sum = " + int_to_string(sum(nums)));
+}

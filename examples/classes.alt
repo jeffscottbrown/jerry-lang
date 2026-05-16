@@ -1,0 +1,30 @@
+// examples/classes.alt — class definition and usage
+
+class Point {
+    x: int;
+    y: int;
+
+    fn new(px: int, py: int) {
+        this.x = px;
+        this.y = py;
+    }
+
+    fn to_string(): string {
+        return "(" + int_to_string(this.x) + ", " + int_to_string(this.y) + ")";
+    }
+
+    fn distance_sq(other: Point): int {
+        let dx: int = this.x - other.x;
+        let dy: int = this.y - other.y;
+        return dx * dx + dy * dy;
+    }
+}
+
+fn main() {
+    let a: Point = new Point(3, 4);
+    let b: Point = new Point(0, 0);
+
+    print("a = " + a.to_string());
+    print("b = " + b.to_string());
+    print("distance squared = " + int_to_string(a.distance_sq(b)));
+}

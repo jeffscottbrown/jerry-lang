@@ -1,0 +1,16 @@
+// examples/fibonacci.alt — recursive fibonacci
+
+fn fib(n: int): int {
+    if n <= 1 {
+        return n;
+    }
+    return fib(n - 1) + fib(n - 2);
+}
+
+fn main() {
+    let i: int = 0;
+    while i <= 10 {
+        print("fib(" + int_to_string(i) + ") = " + int_to_string(fib(i)));
+        i = i + 1;
+    }
+}
