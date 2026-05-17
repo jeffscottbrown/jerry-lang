@@ -1,5 +1,5 @@
 // tests/closures_test.jer — function literals, higher-order functions, void callbacks
-include @testing
+include "github.com/jeffscottbrown/jerry-testing"
 
 // Global used as accumulator for void-closure tests (closures don't capture locals).
 let _acc: int = 0;

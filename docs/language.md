@@ -429,13 +429,13 @@ library. No external tools or frameworks are required.
 
 - Test files are named `*_test.jer`.
 - Test functions are named `fn test_*()` — no parameters, no return value.
-- Every test file that uses assertions must `include @testing`.
+- Every test file that uses assertions must `include "github.com/jeffscottbrown/jerry-testing"`.
 
 ### Writing tests
 
 ```jerry
 // math_test.jer
-include @testing
+include "github.com/jeffscottbrown/jerry-testing"
 
 fn test_addition() {
     assert_eq_int(2 + 2, 4, "addition");

@@ -1,5 +1,5 @@
 // tests/functions_test.jer — functions, recursion, multiple return paths
-include @testing
+include "github.com/jeffscottbrown/jerry-testing"
 
 fn add(a: int, b: int): int {
     return a + b;

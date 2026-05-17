@@ -1,5 +1,5 @@
 // tests/stdlib_test.jer — core stdlib functions (always available, no include needed)
-include @testing
+include "github.com/jeffscottbrown/jerry-testing"
 
 fn test_int_abs() {
     assert_eq_int(int_abs(5), 5, "abs positive");

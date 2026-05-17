@@ -421,8 +421,11 @@ func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[strin
 		return map[string][]*ast.Program{}, nil
 	}
 
-	// Resolve jerry.remotes and jerry.sum relative to the source files.
-	projectDir := filepath.Dir(srcs[0])
+	// Resolve jerry.remotes and jerry.sum from the working directory.
+	projectDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting working directory: %w", err)
+	}
 
 	// Load jerry.remotes for version info.
 	mf, err := modfile.Parse(filepath.Join(projectDir, modfile.RemotesFileName))
@@ -590,7 +593,7 @@ func cmdTest(args []string) error {
 	// Collect files: explicit .jer args, directory args, or cwd fallback.
 	// Directories contribute both source files and test files; the two sets
 	// are tracked separately.
-	var testFiles []string  // *_test.jer
+	var testFiles []string   // *_test.jer
 	var sourceFiles []string // other .jer files (code under test)
 
 	scanDir := func(dir string) error {
@@ -691,7 +694,7 @@ func cmdTest(args []string) error {
 
 	// Generate the test main file.
 	var sb strings.Builder
-	sb.WriteString("include @testing\n\nfn main(): void {\n")
+	sb.WriteString("include \"github.com/jeffscottbrown/jerry-testing\"\n\nfn main(): void {\n")
 	for _, ft := range allTests {
 		fmt.Fprintf(&sb, "    print(\"--- %s ---\");\n", ft.path)
 		for _, name := range ft.names {
