@@ -248,17 +248,19 @@ func CheckAll(
 	}
 
 	// ── Check each required remote module (once) ──────────────────────────────
-	checkedRemote := map[string]bool{}
+	// checkedRemote maps a remote import path to the checker scope produced when
+	// that module was checked. Storing the scope lets project-file checkers
+	// import module-level `let` symbols (not just functions and classes).
+	checkedRemote := map[string]*Scope{}
 	for _, prog := range projectProgs {
 		for _, tl := range prog.Stmts {
 			if tl.Include == nil || tl.Include.Remote == "" {
 				continue
 			}
 			path := tl.Include.Remote
-			if checkedRemote[path] {
+			if _, already := checkedRemote[path]; already {
 				continue
 			}
-			checkedRemote[path] = true
 			progs, ok := remoteASTs[path]
 			if !ok {
 				continue
@@ -282,9 +284,12 @@ func CheckAll(
 						rc.checkFnDecl(stl.FnDecl)
 					case stl.Class != nil:
 						rc.checkClassDecl(stl.Class)
+					case stl.VarDecl != nil:
+						rc.checkVarDecl(stl.VarDecl)
 					}
 				}
 			}
+			checkedRemote[path] = rc.scope
 			for _, ce := range rc.errors {
 				allErrors = append(allErrors, CheckError{Msg: fmt.Sprintf("%s: %s", path, ce.Msg), Pos: ce.Pos})
 			}
@@ -341,6 +346,13 @@ func CheckAll(
 						}
 						if stl.Class != nil {
 							fc.registerClass(stl.Class)
+						}
+						if stl.VarDecl != nil {
+							if remoteScope, ok := checkedRemote[tl.Include.Remote]; ok {
+								if sym, found := remoteScope.Lookup(stl.VarDecl.Name); found {
+									_ = fc.scope.Define(sym)
+								}
+							}
 						}
 					}
 				}
