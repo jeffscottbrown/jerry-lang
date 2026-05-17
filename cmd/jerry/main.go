@@ -15,10 +15,13 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"jerry/internal/ast"
 	"jerry/internal/checker"
 	"jerry/internal/codegen"
 	"jerry/internal/parser"
+	jerryruntime "jerry/runtime"
+	"jerry/stdlib"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -141,10 +144,11 @@ func compile(srcs []string, outBin string) error {
 	}
 	tmp.Close()
 
-	runtimeLib, err := findRuntime()
+	runtimeLib, cleanupRuntime, err := extractRuntime()
 	if err != nil {
 		return err
 	}
+	defer cleanupRuntime()
 
 	sysroot, _ := exec.Command("xcrun", "--show-sdk-path").Output()
 	args := []string{"-O1", tmp.Name(), runtimeLib, "-o", outBin, "-lm"}
@@ -165,13 +169,10 @@ func compile(srcs []string, outBin string) error {
 //  4. Type-check all files with per-file scoping via checker.CheckAll.
 //  5. Generate LLVM IR from all ASTs together.
 func compileToIR(srcs []string) (string, error) {
-	stdlibDir, err := findStdlib()
-	if err != nil {
-		return "", err
-	}
+	fsys := stdlibFS()
 
 	// Always load core.jer.
-	coreAST, err := parseStdlibFile(stdlibDir, "core")
+	coreAST, err := parseStdlibFile(fsys, "core")
 	if err != nil {
 		return "", fmt.Errorf("failed to load stdlib/core.jer: %w", err)
 	}
@@ -204,10 +205,9 @@ func compileToIR(srcs []string) (string, error) {
 			if _, already := stdlibASTs[name]; already {
 				continue
 			}
-			stdAST, err := parseStdlibFile(stdlibDir, name)
+			stdAST, err := parseStdlibFile(fsys, name)
 			if err != nil {
-				return "", fmt.Errorf("%s: unknown stdlib module @%s (no file %s/%s.jer)",
-					srcs[i], name, stdlibDir, name)
+				return "", fmt.Errorf("%s: unknown stdlib module @%s", srcs[i], name)
 			}
 			stdlibASTs[name] = stdAST
 		}
@@ -243,46 +243,48 @@ func compileToIR(srcs []string) (string, error) {
 	return ir, nil
 }
 
-func parseStdlibFile(stdlibDir, name string) (*ast.Program, error) {
-	path := filepath.Join(stdlibDir, name+".jer")
-	data, err := os.ReadFile(path)
+func parseStdlibFile(fsys fs.FS, name string) (*ast.Program, error) {
+	filename := name + ".jer"
+	data, err := fs.ReadFile(fsys, filename)
 	if err != nil {
 		return nil, err
 	}
-	return parser.Parse(path, string(data))
+	return parser.Parse("stdlib/"+filename, string(data))
 }
 
-func findStdlib() (string, error) {
-	exe, err := os.Executable()
-	if err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "..", "..", "stdlib")
-		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Abs(candidate)
-		}
+// stdlibFS returns the filesystem to use for stdlib lookups.
+// If the JERRY_STDLIB environment variable points to a directory, an OS-based
+// FS rooted there is returned — useful when developing the stdlib itself.
+// Otherwise the embedded FS baked into the binary is used.
+func stdlibFS() fs.FS {
+	if dir := os.Getenv("JERRY_STDLIB"); dir != "" {
+		return os.DirFS(dir)
 	}
-	for _, rel := range []string{"stdlib", "../stdlib"} {
-		if _, err := os.Stat(rel); err == nil {
-			return filepath.Abs(rel)
-		}
-	}
-	return "", fmt.Errorf("cannot find stdlib directory — run jerry from the project root")
+	return stdlib.Files
 }
 
-func findRuntime() (string, error) {
-	exe, err := os.Executable()
-	if err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "..", "..", "runtime", "runtime.c")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
+// extractRuntime writes the embedded runtime C sources to a temp directory
+// and returns the path to runtime.c. The caller is responsible for removing
+// the directory when done.
+func extractRuntime() (runtimeC string, cleanup func(), err error) {
+	dir, err := os.MkdirTemp("", "jerry-runtime-*")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create runtime temp dir: %w", err)
+	}
+	cleanup = func() { os.RemoveAll(dir) }
+
+	for _, name := range []string{"runtime.c", "runtime.h"} {
+		data, err := fs.ReadFile(jerryruntime.Files, "src/"+name)
+		if err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("embedded runtime missing %s: %w", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), data, 0644); err != nil {
+			cleanup()
+			return "", nil, fmt.Errorf("failed to write runtime %s: %w", name, err)
 		}
 	}
-	for _, rel := range []string{"runtime/runtime.c", "../runtime/runtime.c"} {
-		if _, err := os.Stat(rel); err == nil {
-			abs, _ := filepath.Abs(rel)
-			return abs, nil
-		}
-	}
-	return "", fmt.Errorf("cannot find runtime/runtime.c — run jerry from the project root")
+	return filepath.Join(dir, "runtime.c"), cleanup, nil
 }
 
 func fatalf(format string, args ...any) {

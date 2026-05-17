@@ -76,12 +76,9 @@ jobs:
           ./${{ matrix.asset_name }} run examples/strings.jer
 
       - name: Create archive
-        run: |
-          tar -czf ${{ matrix.asset_name }}.tar.gz \
-            ${{ matrix.asset_name }} \
-            stdlib/ \
-            runtime/runtime.c \
-            runtime/runtime.h
+        # Both stdlib and the C runtime are embedded in the binary.
+        # The archive contains only the binary itself.
+        run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
