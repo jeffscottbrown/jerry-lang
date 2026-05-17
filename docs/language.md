@@ -458,30 +458,47 @@ assertion failed, the process exits with code 1.
 # Run all *_test.jer files in the current directory
 jerry test
 
-# Run all tests in a specific directory
+# Run all tests in a directory
 jerry test tests/
+jerry test src/
 
 # Run specific test files
 jerry test math_test.jer string_test.jer
 ```
 
+When a directory is given, `jerry test` compiles **all** `.jer` files in that
+directory together — not just the test files. This means test files can call
+functions defined in the source files alongside them without any extra
+configuration. Files that define `fn main()` are automatically excluded to
+avoid conflicting with the generated test entry point.
+
+This makes `jerry test src/` the natural way to test a project where source
+and tests live together:
+
+```text
+src/
+├── grep.jer          ← compiled as code under test
+├── grep_test.jer     ← test functions discovered and run
+└── main.jer          ← excluded (defines fn main)
+```
+
 Output on success:
 
 ```text
---- math_test.jer ---
-  test_addition
-  test_signs
-3 passed
+--- src/grep_test.jer ---
+  test_no_match
+  test_single_match
+2 passed
 ```
 
 Output when a test fails:
 
 ```text
---- math_test.jer ---
-  test_addition
-  FAIL: addition (expected 5, got 4)
-  test_signs
-2 passed, 1 failed
+--- src/grep_test.jer ---
+  test_no_match
+  FAIL: expected 0, got 1
+  test_single_match
+1 passed, 1 failed
 ```
 
 ### Assertion reference
@@ -505,6 +522,8 @@ yourself.
 
 - A test function that calls `panic` will bring down the whole run; there is no
   per-test isolation. Keep panics out of test code.
+- When running against a directory, any source file that defines `fn main()` is
+  silently skipped — it would conflict with the generated test entry point.
 - Closures cannot capture local variables. If a void callback needs to
   accumulate a result, use a module-level global as a shared accumulator (see
   [`tests/closures_test.jer`](../tests/closures_test.jer) for an example).

@@ -581,35 +581,49 @@ func extractRuntime() (runtimeC string, cleanup func(), err error) {
 // cmdTest discovers *_test.jer files, finds all fn test_*() functions in them,
 // generates a temporary main file that calls each one, compiles everything
 // together, and runs the resulting binary.
+//
+// When a directory is given, all .jer files in that directory are included in
+// the build so that test files can reference the source under test. Source
+// files that define fn main() are excluded to avoid conflicting with the
+// generated test main.
 func cmdTest(args []string) error {
-	// Collect test files: explicit .jer args, directory args (scanned for
-	// *_test.jer), or fall back to globbing *_test.jer in cwd.
-	var testFiles []string
+	// Collect files: explicit .jer args, directory args, or cwd fallback.
+	// Directories contribute both source files and test files; the two sets
+	// are tracked separately.
+	var testFiles []string  // *_test.jer
+	var sourceFiles []string // other .jer files (code under test)
+
+	scanDir := func(dir string) error {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return fmt.Errorf("jerry test: %w", err)
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".jer") {
+				continue
+			}
+			p := filepath.Join(dir, e.Name())
+			if strings.HasSuffix(e.Name(), "_test.jer") {
+				testFiles = append(testFiles, p)
+			} else {
+				sourceFiles = append(sourceFiles, p)
+			}
+		}
+		return nil
+	}
+
 	for _, a := range args {
 		if strings.HasSuffix(a, ".jer") {
 			testFiles = append(testFiles, a)
 		} else {
-			// Treat as a directory — scan it for *_test.jer files.
-			entries, err := os.ReadDir(a)
-			if err != nil {
-				return fmt.Errorf("jerry test: %w", err)
-			}
-			for _, e := range entries {
-				if !e.IsDir() && strings.HasSuffix(e.Name(), "_test.jer") {
-					testFiles = append(testFiles, filepath.Join(a, e.Name()))
-				}
+			if err := scanDir(a); err != nil {
+				return err
 			}
 		}
 	}
-	if len(testFiles) == 0 {
-		entries, err := os.ReadDir(".")
-		if err != nil {
+	if len(testFiles) == 0 && len(sourceFiles) == 0 {
+		if err := scanDir("."); err != nil {
 			return err
-		}
-		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(e.Name(), "_test.jer") {
-				testFiles = append(testFiles, e.Name())
-			}
 		}
 	}
 	if len(testFiles) == 0 {
@@ -651,6 +665,30 @@ func cmdTest(args []string) error {
 		return nil
 	}
 
+	// Exclude source files that define fn main() — the generated test main
+	// provides main(), so including another would cause a duplicate error.
+	var filteredSources []string
+	for _, path := range sourceFiles {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("cannot read %s: %w", path, err)
+		}
+		prog, err := parser.Parse(path, string(data))
+		if err != nil {
+			return fmt.Errorf("parse error in %s: %w", path, err)
+		}
+		hasMain := false
+		for _, tl := range prog.Stmts {
+			if tl.FnDecl != nil && tl.FnDecl.Name == "main" {
+				hasMain = true
+				break
+			}
+		}
+		if !hasMain {
+			filteredSources = append(filteredSources, path)
+		}
+	}
+
 	// Generate the test main file.
 	var sb strings.Builder
 	sb.WriteString("include @testing\n\nfn main(): void {\n")
@@ -674,8 +712,9 @@ func cmdTest(args []string) error {
 	}
 	tmp.Close()
 
-	// Compile test files + generated main.
-	srcs := append(testFiles, tmp.Name())
+	// Compile: source files (sans main) + test files + generated main.
+	srcs := append(filteredSources, testFiles...)
+	srcs = append(srcs, tmp.Name())
 	tmpDir, err := os.MkdirTemp("", "jerry-test-bin-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %w", err)
