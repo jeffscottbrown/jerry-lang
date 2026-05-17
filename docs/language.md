@@ -32,15 +32,16 @@ jerry run foo.jer
 8. [Arrays](#arrays)
 9. [Strings](#strings)
 10. [Classes](#classes)
-11. [Built-in functions](#built-in-functions)
-12. [The always-available core library](#the-always-available-core-library)
-13. [Time and the `Timer` class](#time-and-the-timer-class)
-14. [Modules and remote packages](#modules-and-remote-packages)
-15. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-16. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-17. [Working program: end-to-end example](#working-program-end-to-end-example)
-18. [Showcase: gdgrep](#showcase-gdgrep)
-19. [CLI reference](#cli-reference)
+11. [Memory model](#memory-model)
+12. [Built-in functions](#built-in-functions)
+13. [The always-available core library](#the-always-available-core-library)
+14. [Time and the `Timer` class](#time-and-the-timer-class)
+15. [Modules and remote packages](#modules-and-remote-packages)
+16. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+17. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+18. [Working program: end-to-end example](#working-program-end-to-end-example)
+19. [Showcase: gdgrep](#showcase-gdgrep)
+20. [CLI reference](#cli-reference)
 
 ---
 
@@ -342,6 +343,79 @@ fn main() {
 ```
 
 See [`examples/classes.jer`](../examples/classes.jer).
+
+---
+
+## Memory model
+
+Jerry compiles to native code via LLVM IR. Understanding where values live
+helps explain why some assignments behave like copies and others behave like
+shared references.
+
+### Stack vs heap
+
+| Type | Allocated on |
+|------|-------------|
+| `int`, `float`, `bool` | **Stack** — cheap, freed automatically when the function returns |
+| `string` | **Heap** — a pointer to a runtime-managed buffer |
+| `T[]` (arrays) | **Heap** — a pointer to a growable runtime array |
+| Class instances (`new Foo(...)`) | **Heap** — allocated with `jerry_alloc` |
+| Function values / closures | **Heap** — a small struct holding a function pointer |
+
+There is no garbage collector. Heap memory is not freed during a program's
+lifetime. This is a deliberate trade-off: Jerry programs are expected to be
+short-lived CLI tools and scripts where the OS reclaims memory on exit.
+
+### Pass by value vs pass by reference
+
+Jerry passes all values as copies of what the variable actually holds.
+
+- **Primitives** (`int`, `float`, `bool`) hold their value directly, so
+  passing one to a function copies the value. The caller's variable is
+  unaffected.
+
+  ```jerry
+  fn double(n: int): int {
+      n = n * 2;   // local copy only
+      return n;
+  }
+
+  fn main() {
+      let x: int = 5;
+      print(int_to_string(double(x)));  // 10
+      print(int_to_string(x));          // 5  — unchanged
+  }
+  ```
+
+- **Strings, arrays, and class instances** hold a *pointer* to heap memory.
+  Passing one to a function copies the pointer — both the caller and the
+  callee refer to the same underlying data. Mutations inside the function
+  (such as `push` on an array or writing a field on an object) are visible
+  to the caller.
+
+  ```jerry
+  fn add_item(nums: int[]) {
+      push(nums, 99);
+  }
+
+  fn main() {
+      let xs: int[] = [1, 2, 3];
+      add_item(xs);
+      print(int_to_string(len(xs)));   // 4 — push was visible to caller
+  }
+  ```
+
+  Strings are the exception: they are immutable. Every string operation
+  (`+`, `string_slice`, etc.) returns a new string rather than mutating
+  the original.
+
+### Practical rules of thumb
+
+- Reassigning a variable (`x = ...`) never affects the caller — you're
+  changing what the local variable points to, not the data it pointed to.
+- Mutating the *contents* of an array or object through a parameter does
+  affect the caller's copy.
+- Strings are safe to pass freely — they cannot be mutated through any API.
 
 ---
 
