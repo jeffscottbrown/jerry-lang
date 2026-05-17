@@ -115,15 +115,21 @@ func Check(prog *ast.Program) (*Info, []error) {
 //
 //   - projectProgs: one *ast.Program per project source file (may contain IncludeDecls)
 //   - coreAST:      parsed stdlib/core.jer, always in scope for every file
-//   - stdlibASTs:   map from stdlib module name → parsed AST, for explicit includes
+//   - stdlibASTs:   map from stdlib module name → parsed AST, for explicit @includes
+//   - remoteASTs:   map from import path → slice of ASTs (one per .jer file in module)
 //
 // Per-file scoping rules:
 //   - Compiler primitives (print, len, etc.) are always in scope.
 //   - core.jer functions are always in scope.
 //   - All project-defined functions/classes are always in scope for each other.
-//   - Functions from a stdlib module (e.g. @string) are only in scope for files
-//     that explicitly include it.
-func CheckAll(projectProgs []*ast.Program, coreAST *ast.Program, stdlibASTs map[string]*ast.Program) (*Info, []error) {
+//   - Functions from a stdlib/remote module are only in scope for files that
+//     explicitly include it.
+func CheckAll(
+	projectProgs []*ast.Program,
+	coreAST *ast.Program,
+	stdlibASTs map[string]*ast.Program,
+	remoteASTs map[string][]*ast.Program,
+) (*Info, []error) {
 	info := NewInfo()
 
 	// ── Build scope layers ────────────────────────────────────────────────────
@@ -176,17 +182,17 @@ func CheckAll(projectProgs []*ast.Program, coreAST *ast.Program, stdlibASTs map[
 	}
 
 	// ── Check each required stdlib module (once) ──────────────────────────────
-	checked := map[string]bool{}
+	checkedStdlib := map[string]bool{}
 	for _, prog := range projectProgs {
 		for _, tl := range prog.Stmts {
-			if tl.Include == nil {
+			if tl.Include == nil || tl.Include.Stdlib == "" {
 				continue
 			}
 			name := tl.Include.Stdlib
-			if checked[name] {
+			if checkedStdlib[name] {
 				continue
 			}
-			checked[name] = true
+			checkedStdlib[name] = true
 			stdAST, ok := stdlibASTs[name]
 			if !ok {
 				// Error reported during include resolution in main; skip body check.
@@ -216,27 +222,89 @@ func CheckAll(projectProgs []*ast.Program, coreAST *ast.Program, stdlibASTs map[
 		}
 	}
 
+	// ── Check each required remote module (once) ──────────────────────────────
+	checkedRemote := map[string]bool{}
+	for _, prog := range projectProgs {
+		for _, tl := range prog.Stmts {
+			if tl.Include == nil || tl.Include.Remote == "" {
+				continue
+			}
+			path := tl.Include.Remote
+			if checkedRemote[path] {
+				continue
+			}
+			checkedRemote[path] = true
+			progs, ok := remoteASTs[path]
+			if !ok {
+				continue
+			}
+			// Remote module sees: core scope + its own forward-declared names.
+			rc := &Checker{info: info, scope: NewScope(coreScope)}
+			for _, p := range progs {
+				for _, stl := range p.Stmts {
+					if stl.FnDecl != nil {
+						rc.registerFn(stl.FnDecl)
+					}
+					if stl.Class != nil {
+						rc.registerClass(stl.Class)
+					}
+				}
+			}
+			for _, p := range progs {
+				for _, stl := range p.Stmts {
+					switch {
+					case stl.FnDecl != nil:
+						rc.checkFnDecl(stl.FnDecl)
+					case stl.Class != nil:
+						rc.checkClassDecl(stl.Class)
+					}
+				}
+			}
+			for _, msg := range rc.errors {
+				allErrors = append(allErrors, fmt.Errorf("%s: %s", path, msg))
+			}
+		}
+	}
+
 	// ── Check each project file with its own per-file scope ───────────────────
 	for _, prog := range projectProgs {
 		// File scope is a child of the project scope.
 		fc := &Checker{info: info, scope: NewScope(projectScope)}
 
-		// Bring explicitly included stdlib symbols into this file's scope.
+		// Bring explicitly included stdlib and remote symbols into this file's scope.
 		for _, tl := range prog.Stmts {
 			if tl.Include == nil {
 				continue
 			}
-			stdAST, ok := stdlibASTs[tl.Include.Stdlib]
-			if !ok {
-				fc.errors = append(fc.errors, fmt.Sprintf("unknown stdlib module @%s", tl.Include.Stdlib))
-				continue
-			}
-			for _, stl := range stdAST.Stmts {
-				if stl.FnDecl != nil {
-					fc.registerFn(stl.FnDecl)
+			if tl.Include.Stdlib != "" {
+				stdAST, ok := stdlibASTs[tl.Include.Stdlib]
+				if !ok {
+					fc.errors = append(fc.errors, fmt.Sprintf("unknown stdlib module @%s", tl.Include.Stdlib))
+					continue
 				}
-				if stl.Class != nil {
-					fc.registerClass(stl.Class)
+				for _, stl := range stdAST.Stmts {
+					if stl.FnDecl != nil {
+						fc.registerFn(stl.FnDecl)
+					}
+					if stl.Class != nil {
+						fc.registerClass(stl.Class)
+					}
+				}
+			} else if tl.Include.Remote != "" {
+				progs, ok := remoteASTs[tl.Include.Remote]
+				if !ok {
+					fc.errors = append(fc.errors, fmt.Sprintf("unknown remote module %q", tl.Include.Remote))
+					continue
+				}
+				for _, p := range progs {
+					for _, stl := range p.Stmts {
+						if stl.FnDecl != nil {
+							fc.registerFn(stl.FnDecl)
+						}
+						if stl.Class != nil {
+							fc.registerClass(stl.Class)
+						}
+					}
 				}
 			}
 		}

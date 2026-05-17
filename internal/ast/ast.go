@@ -20,11 +20,14 @@ type TopLevel struct {
 	VarDecl *VarDecl     `| @@ )`
 }
 
-// IncludeDecl brings a stdlib module into scope for this file.
-// Syntax: include @modulename
+// IncludeDecl brings a module into scope for this file.
+//
+// Stdlib:  include @string          (resolved from embedded stdlib)
+// Remote:  include "github.com/x/y" (resolved via jerry.mod)
 type IncludeDecl struct {
 	Pos    lexer.Position
-	Stdlib string `"include" "@" @Ident`
+	Stdlib string `"include" ( "@" @Ident`
+	Remote string `           | @String )`
 }
 
 // ── Declarations ─────────────────────────────────────────────────────────────

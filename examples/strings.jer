@@ -1,7 +1,7 @@
 // examples/strings.jer — exercises char_at, string_slice, char_to_string,
 // and the string stdlib functions.
 
-include @string
+include "github.com/jeffscottbrown/jerry-string"
 
 fn main() {
     let s: string = "Hello, Jerry!";

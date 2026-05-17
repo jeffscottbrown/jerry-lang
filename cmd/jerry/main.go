@@ -5,29 +5,35 @@
 //	jerry compile <file.jer> [file.jer ...] [-o output]   compile to native binary
 //	jerry run     <file.jer> [file.jer ...]               compile and run immediately
 //	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
+//	jerry get     <module>@<version>                      fetch a remote module
+//	jerry sweep                                            sync jerry.remotes and jerry.sum
 //	jerry -v | --version                                  print version and exit
 //
 // Each source file is parsed independently. Functions defined in any project
 // file are visible to all other project files. Stdlib modules must be explicitly
 // included with `include @modulename` and are only visible in files that include
-// them. stdlib/core.jer is always included automatically.
+// them. Remote modules require `include "github.com/..."` and a jerry.remotes entry.
+// stdlib/core.jer is always included automatically.
 package main
 
 import (
 	"fmt"
 	"io/fs"
-	"github.com/jeffscottbrown/jerry-lang/internal/ast"
-	"github.com/jeffscottbrown/jerry-lang/internal/checker"
-	"github.com/jeffscottbrown/jerry-lang/internal/codegen"
-	"github.com/jeffscottbrown/jerry-lang/internal/parser"
-	jerryruntime "github.com/jeffscottbrown/jerry-lang/runtime"
-	"github.com/jeffscottbrown/jerry-lang/stdlib"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/debug"
 	"sort"
 	"strings"
+
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/checker"
+	"github.com/jeffscottbrown/jerry-lang/internal/codegen"
+	"github.com/jeffscottbrown/jerry-lang/internal/modfile"
+	"github.com/jeffscottbrown/jerry-lang/internal/module"
+	"github.com/jeffscottbrown/jerry-lang/internal/parser"
+	jerryruntime "github.com/jeffscottbrown/jerry-lang/runtime"
+	"github.com/jeffscottbrown/jerry-lang/stdlib"
 )
 
 // Version is injected at build time via -ldflags "-X main.Version=v1.2.3"
@@ -55,6 +61,7 @@ func main() {
 	case "-v", "--version":
 		fmt.Println("jerry " + Version)
 		return
+
 	case "compile":
 		outBin, srcs := parseCompileArgs(os.Args[2:])
 		if len(srcs) == 0 {
@@ -106,38 +113,148 @@ func main() {
 		}
 		fmt.Print(ir)
 
-	default:
-		// Catch the old "jerry <file.jer>" shorthand with no subcommand.
+	case "get":
 		if len(os.Args) < 3 {
-			usage()
+			fatalf("usage: jerry get <module>@<version>")
+		}
+		if err := cmdGet(os.Args[2]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+
+	case "sweep":
+		if err := cmdSweep(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+	default:
 		usage()
 		os.Exit(1)
 	}
 }
 
-func parseCompileArgs(args []string) (outBin string, srcs []string) {
-	for i := 0; i < len(args); i++ {
-		if args[i] == "-o" && i+1 < len(args) {
-			outBin = args[i+1]
-			i++
-		} else {
-			srcs = append(srcs, args[i])
-		}
+// ── jerry get ────────────────────────────────────────────────────────────────
+
+func cmdGet(arg string) error {
+	modPath, version, ok := splitAtVersion(arg)
+	if !ok {
+		return fmt.Errorf("jerry get: expected <module>@<version>, got %q", arg)
 	}
-	return
+
+	// Fetch (or re-use cached) module.
+	_, hash, err := module.Fetch(modPath, version)
+	if err != nil {
+		return err
+	}
+
+	// Update jerry.remotes.
+	mf, err := modfile.Parse(modfile.RemotesFileName)
+	if err != nil {
+		return fmt.Errorf("reading jerry.remotes: %w", err)
+	}
+	mf.Requires[modPath] = version
+	if err := modfile.Write(modfile.RemotesFileName, mf); err != nil {
+		return fmt.Errorf("writing jerry.remotes: %w", err)
+	}
+
+	// Update jerry.sum.
+	sums, err := modfile.ParseSum(modfile.SumFileName)
+	if err != nil {
+		return fmt.Errorf("reading jerry.sum: %w", err)
+	}
+	sums[sums.Key(modPath, version)] = hash
+	if err := sums.Write(modfile.SumFileName); err != nil {
+		return fmt.Errorf("writing jerry.sum: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "jerry: added %s %s\n", modPath, version)
+	return nil
 }
 
-func splitSrcs(args []string) (srcs, rest []string) {
-	i := 0
-	for i < len(args) && (strings.HasSuffix(args[i], ".jer") || strings.HasSuffix(args[i], ".jl")) {
-		srcs = append(srcs, args[i])
-		i++
+// ── jerry sweep ──────────────────────────────────────────────────────────────
+
+func cmdSweep() error {
+	// Find all .jer files in the current directory.
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		return err
 	}
-	rest = args[i:]
-	return
+	var srcs []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".jer") {
+			srcs = append(srcs, e.Name())
+		}
+	}
+
+	// Collect remote imports referenced in project files.
+	referenced := map[string]bool{}
+	for _, src := range srcs {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			return err
+		}
+		prog, err := parser.Parse(src, string(data))
+		if err != nil {
+			continue // ignore parse errors during tidy
+		}
+		for _, tl := range prog.Stmts {
+			if tl.Include != nil && tl.Include.Remote != "" {
+				referenced[tl.Include.Remote] = true
+			}
+		}
+	}
+
+	mf, err := modfile.Parse(modfile.RemotesFileName)
+	if err != nil {
+		return fmt.Errorf("reading jerry.remotes: %w", err)
+	}
+
+	sums, err := modfile.ParseSum(modfile.SumFileName)
+	if err != nil {
+		return fmt.Errorf("reading jerry.sum: %w", err)
+	}
+
+	// Add missing requires and ensure hashes exist.
+	changed := false
+	for modPath := range referenced {
+		if _, has := mf.Requires[modPath]; !has {
+			return fmt.Errorf("jerry sweep: %q is included but not in jerry.remotes — run: jerry get %s@<version>", modPath, modPath)
+		}
+		version := mf.Requires[modPath]
+		key := sums.Key(modPath, version)
+		if _, has := sums[key]; !has {
+			_, hash, fetchErr := module.Fetch(modPath, version)
+			if fetchErr != nil {
+				return fetchErr
+			}
+			sums[key] = hash
+			changed = true
+		}
+	}
+
+	// Remove requires no longer referenced.
+	for modPath := range mf.Requires {
+		if !referenced[modPath] {
+			delete(mf.Requires, modPath)
+			delete(sums, sums.Key(modPath, mf.Requires[modPath]))
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := modfile.Write(modfile.RemotesFileName, mf); err != nil {
+			return fmt.Errorf("writing jerry.remotes: %w", err)
+		}
+		if err := sums.Write(modfile.SumFileName); err != nil {
+			return fmt.Errorf("writing jerry.sum: %w", err)
+		}
+	}
+	fmt.Fprintln(os.Stderr, "jerry: sweep complete")
+	return nil
 }
+
+// ── Compilation pipeline ─────────────────────────────────────────────────────
 
 func compile(srcs []string, outBin string) error {
 	ir, err := compileToIR(srcs)
@@ -174,9 +291,9 @@ func compile(srcs []string, outBin string) error {
 }
 
 // compileToIR is the main compilation pipeline:
-//  1. Parse each project file independently.
-//  2. Parse stdlib/core.jer (always included).
-//  3. Parse any stdlib modules referenced by `include @name` declarations.
+//  1. Parse stdlib/core.jer (always included).
+//  2. Parse each project file independently.
+//  3. Resolve include @stdlib and include "remote" declarations.
 //  4. Type-check all files with per-file scoping via checker.CheckAll.
 //  5. Generate LLVM IR from all ASTs together.
 func compileToIR(srcs []string) (string, error) {
@@ -202,11 +319,11 @@ func compileToIR(srcs []string) (string, error) {
 		projectASTs = append(projectASTs, prog)
 	}
 
-	// Collect all unique stdlib includes across all project files and load them.
+	// Resolve stdlib includes.
 	stdlibASTs := make(map[string]*ast.Program)
 	for i, prog := range projectASTs {
 		for _, tl := range prog.Stmts {
-			if tl.Include == nil {
+			if tl.Include == nil || tl.Include.Stdlib == "" {
 				continue
 			}
 			name := tl.Include.Stdlib
@@ -224,8 +341,14 @@ func compileToIR(srcs []string) (string, error) {
 		}
 	}
 
+	// Resolve remote includes via jerry.remotes / jerry.sum.
+	remoteASTs, err := resolveRemoteIncludes(srcs, projectASTs)
+	if err != nil {
+		return "", err
+	}
+
 	// Type-check with per-file scoping.
-	info, errs := checker.CheckAll(projectASTs, coreAST, stdlibASTs)
+	info, errs := checker.CheckAll(projectASTs, coreAST, stdlibASTs, remoteASTs)
 	if len(errs) > 0 {
 		var msgs []string
 		for _, e := range errs {
@@ -235,15 +358,13 @@ func compileToIR(srcs []string) (string, error) {
 	}
 
 	// Assemble ordered list of ASTs for codegen:
-	//   core → included stdlibs (alphabetical) → project files (in argument order)
+	//   core → stdlib (alpha) → remote modules (alpha) → project files (argument order)
 	allASTs := []*ast.Program{coreAST}
-	var stdlibNames []string
-	for name := range stdlibASTs {
-		stdlibNames = append(stdlibNames, name)
-	}
-	sort.Strings(stdlibNames)
-	for _, name := range stdlibNames {
+	for _, name := range sortedMapKeys(stdlibASTs) {
 		allASTs = append(allASTs, stdlibASTs[name])
+	}
+	for _, path := range sortedMapKeys(remoteASTs) {
+		allASTs = append(allASTs, remoteASTs[path]...)
 	}
 	allASTs = append(allASTs, projectASTs...)
 
@@ -252,6 +373,150 @@ func compileToIR(srcs []string) (string, error) {
 		return "", fmt.Errorf("codegen error: %w", err)
 	}
 	return ir, nil
+}
+
+// resolveRemoteIncludes loads all remote modules referenced across the project
+// files. It reads jerry.remotes for version pinning and jerry.sum for verification,
+// then loads .jer files from the local cache.
+func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[string][]*ast.Program, error) {
+	// Collect all unique remote import paths.
+	type importSite struct {
+		srcIdx int
+		path   string
+	}
+	var imports []importSite
+	seen := map[string]bool{}
+	for i, prog := range projectASTs {
+		for _, tl := range prog.Stmts {
+			if tl.Include == nil || tl.Include.Remote == "" {
+				continue
+			}
+			path := tl.Include.Remote
+			if !seen[path] {
+				seen[path] = true
+				imports = append(imports, importSite{i, path})
+			}
+		}
+	}
+	if len(imports) == 0 {
+		return map[string][]*ast.Program{}, nil
+	}
+
+	// Resolve jerry.remotes and jerry.sum relative to the source files.
+	projectDir := filepath.Dir(srcs[0])
+
+	// Load jerry.remotes for version info.
+	mf, err := modfile.Parse(filepath.Join(projectDir, modfile.RemotesFileName))
+	if err != nil {
+		return nil, fmt.Errorf("reading jerry.remotes: %w", err)
+	}
+
+	// Load jerry.sum for hash verification.
+	sums, err := modfile.ParseSum(filepath.Join(projectDir, modfile.SumFileName))
+	if err != nil {
+		return nil, fmt.Errorf("reading jerry.sum: %w", err)
+	}
+
+	result := make(map[string][]*ast.Program)
+
+	for _, imp := range imports {
+		modPath := imp.path
+		version, ok := mf.Requires[modPath]
+		if !ok {
+			return nil, fmt.Errorf("%s: module %q is included but not in jerry.remotes\n  run: jerry get %s@<version>",
+				srcs[imp.srcIdx], modPath, modPath)
+		}
+
+		// Verify hash if present in jerry.sum.
+		key := sums.Key(modPath, version)
+		if expectedHash, has := sums[key]; has {
+			if err := module.VerifyHash(modPath, version, expectedHash); err != nil {
+				return nil, err
+			}
+		}
+
+		// Ensure the module is cached; fetch if not.
+		cached, err := module.IsCached(modPath, version)
+		if err != nil {
+			return nil, err
+		}
+		if !cached {
+			return nil, fmt.Errorf("module %s@%s is not cached — run: jerry get %s@%s",
+				modPath, version, modPath, version)
+		}
+
+		cacheDir, err := module.CachedDir(modPath, version)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse all .jer files in the cached module.
+		jerFiles, err := module.JerFiles(cacheDir)
+		if err != nil {
+			return nil, fmt.Errorf("reading cached module %s@%s: %w", modPath, version, err)
+		}
+		if len(jerFiles) == 0 {
+			return nil, fmt.Errorf("module %s@%s contains no .jer files", modPath, version)
+		}
+
+		var progs []*ast.Program
+		for _, f := range jerFiles {
+			data, err := os.ReadFile(f)
+			if err != nil {
+				return nil, err
+			}
+			prog, err := parser.Parse(f, string(data))
+			if err != nil {
+				return nil, fmt.Errorf("parse error in %s@%s (%s): %w", modPath, version, filepath.Base(f), err)
+			}
+			progs = append(progs, prog)
+		}
+		result[modPath] = progs
+	}
+
+	return result, nil
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+func parseCompileArgs(args []string) (outBin string, srcs []string) {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "-o" && i+1 < len(args) {
+			outBin = args[i+1]
+			i++
+		} else {
+			srcs = append(srcs, args[i])
+		}
+	}
+	return
+}
+
+func splitSrcs(args []string) (srcs, rest []string) {
+	i := 0
+	for i < len(args) && (strings.HasSuffix(args[i], ".jer") || strings.HasSuffix(args[i], ".jl")) {
+		srcs = append(srcs, args[i])
+		i++
+	}
+	rest = args[i:]
+	return
+}
+
+// splitAtVersion splits "github.com/x/y@v1.0.0" into ("github.com/x/y", "v1.0.0", true).
+func splitAtVersion(arg string) (modPath, version string, ok bool) {
+	idx := strings.LastIndex(arg, "@")
+	if idx < 0 {
+		return "", "", false
+	}
+	return arg[:idx], arg[idx+1:], true
+}
+
+func sortedMapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func parseStdlibFile(fsys fs.FS, name string) (*ast.Program, error) {
@@ -308,5 +573,7 @@ func usage() {
   jerry compile <file.jer> [file.jer ...] [-o output]   compile to binary
   jerry run     <file.jer> [file.jer ...]               compile and run
   jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
+  jerry get     <module>@<version>                      fetch a remote module
+  jerry sweep                                            sync jerry.remotes / jerry.sum
   jerry -v | --version                                  print version`)
 }
