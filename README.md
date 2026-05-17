@@ -189,4 +189,4 @@ jerry run examples/wordcount.jer      # combines jerry-string + jerry-logging
 
 ## License
 
-MIT
+Licensed under the [Apache License, Version 2.0](LICENSE). See the [`LICENSE`](LICENSE) file for the full text.

@@ -618,10 +618,10 @@ func cmdCreate(args []string) error {
 
 	// ── Project files ────────────────────────────────────────────────────────
 	for rel, content := range map[string]string{
-		"main.jer":     createMainJer(name),
+		"main.jer":      createMainJer(name),
 		"jerry.remotes": createRemotes(),
-		"Makefile":     createMakefile(name),
-		"README.md":    createProjectReadme(name, tapOwner),
+		"Makefile":      createMakefile(name),
+		"README.md":     createProjectReadme(name, tapOwner),
 	} {
 		if err := writeIn(name, rel, content); err != nil {
 			return err
@@ -868,7 +868,7 @@ func createFormula(name, owner string) string {
   desc "%s"
   homepage "https://github.com/%s/%s"
   version "0.0.0"
-  license "MIT"
+  license "Apache-2.0"
 
   on_macos do
     on_arm do
