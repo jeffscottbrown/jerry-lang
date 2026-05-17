@@ -35,8 +35,8 @@ jobs:
         # triggers false positives from the structtag analyzer. All other packages
         # use normal tags, so we vet them normally and skip structtag for ast.
         run: |
-          go vet $(go list ./... | grep -v 'jerry/internal/ast')
-          go vet -structtag=false jerry/internal/ast
+          go vet $(go list ./... | grep -v 'jerry-lang/internal/ast')
+          go vet -structtag=false github.com/jeffscottbrown/jerry-lang/internal/ast
 
       - name: go test
         run: go test ./...
