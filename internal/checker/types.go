@@ -1,7 +1,19 @@
 // Package checker defines the Jerry type system and performs semantic analysis.
 package checker
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/alecthomas/participle/v2/lexer"
+)
+
+// CheckError is a type / semantic error with the source position where it occurred.
+type CheckError struct {
+	Msg string
+	Pos lexer.Position
+}
+
+func (e CheckError) Error() string { return e.Msg }
 
 // ── Type definitions ─────────────────────────────────────────────────────────
 

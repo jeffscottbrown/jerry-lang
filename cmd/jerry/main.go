@@ -62,6 +62,9 @@ func main() {
 		fmt.Println("jerry " + Version)
 		return
 
+	case "lsp":
+		runLsp()
+
 	case "compile":
 		outBin, target, srcs := parseCompileArgs(os.Args[2:])
 		if len(srcs) == 0 {

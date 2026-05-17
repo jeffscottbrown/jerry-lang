@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 )
 
@@ -15,7 +16,7 @@ type Checker struct {
 	scope  *Scope // current scope
 	retTy  *Type  // return type of current function
 	inLoop bool
-	errors []string
+	errors []CheckError
 }
 
 func New() *Checker {
@@ -90,7 +91,7 @@ func installBuiltins(s *Scope) {
 }
 
 // Check type-checks a program and returns type info plus any errors.
-func Check(prog *ast.Program) (*Info, []error) {
+func Check(prog *ast.Program) (*Info, []CheckError) {
 	c := New()
 
 	// First pass: register all top-level declarations (functions and classes)
@@ -116,11 +117,7 @@ func Check(prog *ast.Program) (*Info, []error) {
 		}
 	}
 
-	var errs []error
-	for _, msg := range c.errors {
-		errs = append(errs, fmt.Errorf("%s", msg))
-	}
-	return c.info, errs
+	return c.info, c.errors
 }
 
 // CheckAll is the multi-file compilation entry point.
@@ -141,7 +138,7 @@ func CheckAll(
 	coreAST *ast.Program,
 	stdlibASTs map[string]*ast.Program,
 	remoteASTs map[string][]*ast.Program,
-) (*Info, []error) {
+) (*Info, []CheckError) {
 	info := NewInfo()
 
 	// ── Build scope layers ────────────────────────────────────────────────────
@@ -176,7 +173,7 @@ func CheckAll(
 	}
 	projectScope := projectChecker.scope
 
-	var allErrors []error
+	var allErrors []CheckError
 
 	// ── Check core.jer bodies ─────────────────────────────────────────────────
 	if coreAST != nil {
@@ -188,8 +185,8 @@ func CheckAll(
 				coreChecker.checkClassDecl(tl.Class)
 			}
 		}
-		for _, msg := range coreChecker.errors {
-			allErrors = append(allErrors, fmt.Errorf("stdlib/core: %s", msg))
+		for _, ce := range coreChecker.errors {
+			allErrors = append(allErrors, CheckError{Msg: "stdlib/core: " + ce.Msg, Pos: ce.Pos})
 		}
 	}
 
@@ -228,8 +225,8 @@ func CheckAll(
 					sc.checkClassDecl(stl.Class)
 				}
 			}
-			for _, msg := range sc.errors {
-				allErrors = append(allErrors, fmt.Errorf("stdlib/%s: %s", name, msg))
+			for _, ce := range sc.errors {
+				allErrors = append(allErrors, CheckError{Msg: fmt.Sprintf("stdlib/%s: %s", name, ce.Msg), Pos: ce.Pos})
 			}
 		}
 	}
@@ -272,8 +269,8 @@ func CheckAll(
 					}
 				}
 			}
-			for _, msg := range rc.errors {
-				allErrors = append(allErrors, fmt.Errorf("%s: %s", path, msg))
+			for _, ce := range rc.errors {
+				allErrors = append(allErrors, CheckError{Msg: fmt.Sprintf("%s: %s", path, ce.Msg), Pos: ce.Pos})
 			}
 		}
 	}
@@ -291,7 +288,10 @@ func CheckAll(
 			if tl.Include.Stdlib != "" {
 				stdAST, ok := stdlibASTs[tl.Include.Stdlib]
 				if !ok {
-					fc.errors = append(fc.errors, fmt.Sprintf("unknown stdlib module @%s", tl.Include.Stdlib))
+					fc.errors = append(fc.errors, CheckError{
+						Msg: fmt.Sprintf("unknown stdlib module @%s", tl.Include.Stdlib),
+						Pos: tl.Include.Pos,
+					})
 					continue
 				}
 				for _, stl := range stdAST.Stmts {
@@ -305,7 +305,10 @@ func CheckAll(
 			} else if tl.Include.Remote != "" {
 				progs, ok := remoteASTs[tl.Include.Remote]
 				if !ok {
-					fc.errors = append(fc.errors, fmt.Sprintf("unknown remote module %q", tl.Include.Remote))
+					fc.errors = append(fc.errors, CheckError{
+						Msg: fmt.Sprintf("unknown remote module %q", tl.Include.Remote),
+						Pos: tl.Include.Pos,
+					})
 					continue
 				}
 				for _, p := range progs {
@@ -333,17 +336,17 @@ func CheckAll(
 				// tl.Include: no body to check
 			}
 		}
-		for _, msg := range fc.errors {
-			allErrors = append(allErrors, fmt.Errorf("%s", msg))
-		}
+		allErrors = append(allErrors, fc.errors...)
 	}
 
 	return info, allErrors
 }
 
-func (c *Checker) errorf(pos interface{}, format string, args ...any) {
-	msg := fmt.Sprintf(format, args...)
-	c.errors = append(c.errors, msg)
+func (c *Checker) errorf(pos lexer.Position, format string, args ...any) {
+	c.errors = append(c.errors, CheckError{
+		Msg: fmt.Sprintf(format, args...),
+		Pos: pos,
+	})
 }
 
 func (c *Checker) setType(expr *ast.Expr, t *Type) {
@@ -393,7 +396,7 @@ func (c *Checker) resolveTypeExpr(te *ast.TypeExpr) *Type {
 		if _, ok := c.info.Classes[te.Name]; ok {
 			base = ClassType(te.Name)
 		} else {
-			c.errorf(nil, "unknown type %q", te.Name)
+			c.errorf(te.Pos, "unknown type %q", te.Name)
 			base = Void
 		}
 	}
@@ -497,7 +500,7 @@ func (c *Checker) checkVarDecl(vd *ast.VarDecl) {
 		emptyArray := valTy.Kind == KindArray && valTy.Elem.Kind == KindVoid &&
 			declTy.Kind == KindArray
 		if !emptyArray && !declTy.Equal(valTy) {
-			c.errorf(nil, "variable %q: declared type %s but got %s",
+			c.errorf(vd.Pos, "variable %q: declared type %s but got %s",
 				vd.Name, declTy, valTy)
 		}
 	} else {
@@ -532,14 +535,14 @@ func (c *Checker) checkStmt(s *ast.StmtNode) {
 			got = Void
 		}
 		if c.retTy != nil && !c.retTy.Equal(got) {
-			c.errorf(nil, "return type mismatch: expected %s, got %s", c.retTy, got)
+			c.errorf(s.Return.Pos, "return type mismatch: expected %s, got %s", c.retTy, got)
 		}
 	case s.If != nil:
 		c.checkIfStmt(s.If)
 	case s.While != nil:
 		condTy := c.checkExpr(s.While.Cond)
 		if condTy.Kind != KindBool {
-			c.errorf(nil, "while condition must be bool, got %s", condTy)
+			c.errorf(s.While.Pos, "while condition must be bool, got %s", condTy)
 		}
 		savedLoop := c.inLoop
 		c.inLoop = true
@@ -549,11 +552,11 @@ func (c *Checker) checkStmt(s *ast.StmtNode) {
 		c.checkForStmt(s.For)
 	case s.Break != nil:
 		if !c.inLoop {
-			c.errorf(nil, "break outside loop")
+			c.errorf(s.Break.Pos, "break outside loop")
 		}
 	case s.Continue != nil:
 		if !c.inLoop {
-			c.errorf(nil, "continue outside loop")
+			c.errorf(s.Continue.Pos, "continue outside loop")
 		}
 	case s.ExprStmt != nil:
 		c.checkExpr(s.ExprStmt.Expr)
@@ -563,7 +566,7 @@ func (c *Checker) checkStmt(s *ast.StmtNode) {
 func (c *Checker) checkIfStmt(s *ast.IfStmt) {
 	condTy := c.checkExpr(s.Cond)
 	if condTy.Kind != KindBool {
-		c.errorf(nil, "if condition must be bool, got %s", condTy)
+		c.errorf(s.Pos, "if condition must be bool, got %s", condTy)
 	}
 	c.checkBlock(s.Then)
 	if s.Else != nil {
@@ -587,7 +590,7 @@ func (c *Checker) checkForStmt(s *ast.ForStmt) {
 			if vd.Ann != nil {
 				declTy = c.resolveTypeExpr(vd.Ann)
 				if !declTy.Equal(valTy) {
-					c.errorf(nil, "for init: declared %s but got %s", declTy, valTy)
+					c.errorf(s.Init.Pos, "for init: declared %s but got %s", declTy, valTy)
 				}
 			}
 			c.scope.Define(&Symbol{Name: vd.Name, Kind: SymVar, Type: declTy})
@@ -598,7 +601,7 @@ func (c *Checker) checkForStmt(s *ast.ForStmt) {
 	if s.Cond != nil {
 		ct := c.checkExpr(s.Cond)
 		if ct.Kind != KindBool {
-			c.errorf(nil, "for condition must be bool, got %s", ct)
+			c.errorf(s.Cond.Pos, "for condition must be bool, got %s", ct)
 		}
 	}
 	if s.Post != nil {
@@ -631,10 +634,8 @@ func (c *Checker) checkAssign(a *ast.AssignExpr) *Type {
 	if a.Right != nil {
 		rightTy := c.checkAssign(a.Right)
 		if !leftTy.Equal(rightTy) {
-			c.errorf(nil, "assignment type mismatch: %s = %s", leftTy, rightTy)
+			c.errorf(a.Pos, "assignment type mismatch: %s = %s", leftTy, rightTy)
 		}
-		// Validate that left side is an lvalue (ident or field access).
-		// The codegen handles this; we just check types here.
 	}
 	return leftTy
 }
@@ -644,7 +645,7 @@ func (c *Checker) checkOr(a *ast.OrExpr) *Type {
 	for _, r := range a.Rest {
 		rt := c.checkAnd(r.Right)
 		if t.Kind != KindBool || rt.Kind != KindBool {
-			c.errorf(nil, "|| requires bool operands, got %s and %s", t, rt)
+			c.errorf(a.Pos, "|| requires bool operands, got %s and %s", t, rt)
 		}
 		t = Bool
 	}
@@ -656,7 +657,7 @@ func (c *Checker) checkAnd(a *ast.AndExpr) *Type {
 	for _, r := range a.Rest {
 		rt := c.checkEq(r.Right)
 		if t.Kind != KindBool || rt.Kind != KindBool {
-			c.errorf(nil, "&& requires bool operands, got %s and %s", t, rt)
+			c.errorf(a.Pos, "&& requires bool operands, got %s and %s", t, rt)
 		}
 		t = Bool
 	}
@@ -668,7 +669,7 @@ func (c *Checker) checkEq(a *ast.EqExpr) *Type {
 	for _, r := range a.Rest {
 		rt := c.checkCmp(r.Right)
 		if !t.Equal(rt) {
-			c.errorf(nil, "%s requires same-type operands, got %s and %s", r.Op, t, rt)
+			c.errorf(a.Left.Pos, "%s requires same-type operands, got %s and %s", r.Op, t, rt)
 		}
 		t = Bool
 	}
@@ -680,10 +681,10 @@ func (c *Checker) checkCmp(a *ast.CmpExpr) *Type {
 	for _, r := range a.Rest {
 		rt := c.checkAdd(r.Right)
 		if !t.Equal(rt) {
-			c.errorf(nil, "%s requires same-type operands, got %s and %s", r.Op, t, rt)
+			c.errorf(a.Left.Pos, "%s requires same-type operands, got %s and %s", r.Op, t, rt)
 		}
 		if t.Kind != KindInt && t.Kind != KindFloat && t.Kind != KindString {
-			c.errorf(nil, "%s not valid for type %s", r.Op, t)
+			c.errorf(a.Left.Pos, "%s not valid for type %s", r.Op, t)
 		}
 		t = Bool
 	}
@@ -699,10 +700,10 @@ func (c *Checker) checkAdd(a *ast.AddExpr) *Type {
 			continue
 		}
 		if !t.Equal(rt) {
-			c.errorf(nil, "%s type mismatch: %s and %s", r.Op, t, rt)
+			c.errorf(a.Left.Pos, "%s type mismatch: %s and %s", r.Op, t, rt)
 		}
 		if t.Kind != KindInt && t.Kind != KindFloat {
-			c.errorf(nil, "%s not valid for type %s", r.Op, t)
+			c.errorf(a.Left.Pos, "%s not valid for type %s", r.Op, t)
 		}
 	}
 	return t
@@ -713,10 +714,10 @@ func (c *Checker) checkMul(a *ast.MulExpr) *Type {
 	for _, r := range a.Rest {
 		rt := c.checkUnary(r.Right)
 		if !t.Equal(rt) {
-			c.errorf(nil, "%s type mismatch: %s and %s", r.Op, t, rt)
+			c.errorf(a.Left.Pos, "%s type mismatch: %s and %s", r.Op, t, rt)
 		}
 		if t.Kind != KindInt && t.Kind != KindFloat {
-			c.errorf(nil, "%s not valid for type %s", r.Op, t)
+			c.errorf(a.Left.Pos, "%s not valid for type %s", r.Op, t)
 		}
 	}
 	return t
@@ -728,12 +729,12 @@ func (c *Checker) checkUnary(u *ast.UnaryExpr) *Type {
 		switch u.Op {
 		case "!":
 			if t.Kind != KindBool {
-				c.errorf(nil, "! requires bool, got %s", t)
+				c.errorf(u.Pos, "! requires bool, got %s", t)
 			}
 			return Bool
 		case "-":
 			if t.Kind != KindInt && t.Kind != KindFloat {
-				c.errorf(nil, "unary - requires int or float, got %s", t)
+				c.errorf(u.Pos, "unary - requires int or float, got %s", t)
 			}
 			return t
 		}
@@ -748,21 +749,21 @@ func (c *Checker) checkPostfix(p *ast.PostfixExpr) *Type {
 		case op.Call != nil:
 			t = c.checkCall(p.Base, t, op.Call)
 		case op.Field != "":
-			t = c.checkFieldAccess(t, op.Field)
+			t = c.checkFieldAccess(t, op.Field, op.Pos)
 		case op.Index != nil:
 			if t.Kind != KindArray {
-				c.errorf(nil, "index on non-array type %s", t)
+				c.errorf(op.Pos, "index on non-array type %s", t)
 				t = Void
 			} else {
 				idxTy := c.checkExpr(op.Index)
 				if idxTy.Kind != KindInt {
-					c.errorf(nil, "array index must be int, got %s", idxTy)
+					c.errorf(op.Pos, "array index must be int, got %s", idxTy)
 				}
 				t = t.Elem
 			}
 		case op.PlusPlus || op.MinusMinus:
 			if t.Kind != KindInt && t.Kind != KindFloat {
-				c.errorf(nil, "++ / -- requires numeric type, got %s", t)
+				c.errorf(op.Pos, "++ / -- requires numeric type, got %s", t)
 			}
 		}
 	}
@@ -775,7 +776,7 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 		switch base.Ident {
 		case "print", "write":
 			if len(call.Args) != 1 {
-				c.errorf(nil, "%s() takes exactly 1 argument", base.Ident)
+				c.errorf(call.Pos, "%s() takes exactly 1 argument", base.Ident)
 			} else {
 				c.checkExpr(call.Args[0])
 			}
@@ -784,17 +785,17 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 			return Void
 		case "len":
 			if len(call.Args) != 1 {
-				c.errorf(nil, "len() takes exactly 1 argument")
+				c.errorf(call.Pos, "len() takes exactly 1 argument")
 			} else {
 				at := c.checkExpr(call.Args[0])
 				if at.Kind != KindArray && at.Kind != KindString {
-					c.errorf(nil, "len() requires array or string, got %s", at)
+					c.errorf(call.Pos, "len() requires array or string, got %s", at)
 				}
 			}
 			return Int
 		case "push":
 			if len(call.Args) != 2 {
-				c.errorf(nil, "push() takes 2 arguments")
+				c.errorf(call.Pos, "push() takes 2 arguments")
 			} else {
 				c.checkExpr(call.Args[0])
 				c.checkExpr(call.Args[1])
@@ -873,14 +874,14 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 	return calleeTy.Return
 }
 
-func (c *Checker) checkFieldAccess(recv *Type, field string) *Type {
+func (c *Checker) checkFieldAccess(recv *Type, field string, pos lexer.Position) *Type {
 	if recv.Kind != KindClass {
-		c.errorf(nil, "field access on non-class type %s", recv)
+		c.errorf(pos, "field access on non-class type %s", recv)
 		return Void
 	}
 	ci, ok := c.info.Classes[recv.ClassName]
 	if !ok {
-		c.errorf(nil, "unknown class %s", recv.ClassName)
+		c.errorf(pos, "unknown class %s", recv.ClassName)
 		return Void
 	}
 	if ft, ok := ci.Fields[field]; ok {
@@ -889,7 +890,7 @@ func (c *Checker) checkFieldAccess(recv *Type, field string) *Type {
 	if mt, ok := ci.Methods[field]; ok {
 		return mt
 	}
-	c.errorf(nil, "class %s has no field or method %q", recv.ClassName, field)
+	c.errorf(pos, "class %s has no field or method %q", recv.ClassName, field)
 	return Void
 }
 
@@ -912,12 +913,12 @@ func (c *Checker) checkPrimary(p *ast.PrimaryExpr) *Type {
 		if sym, ok := c.scope.Lookup("this"); ok {
 			return sym.Type
 		}
-		c.errorf(nil, "'this' used outside of class method")
+		c.errorf(p.Pos, "'this' used outside of class method")
 		return Void
 	case p.Ident != "":
 		sym, ok := c.scope.Lookup(p.Ident)
 		if !ok {
-			c.errorf(nil, "undefined: %s", p.Ident)
+			c.errorf(p.Pos, "undefined: %s", p.Ident)
 			return Void
 		}
 		return sym.Type
@@ -941,7 +942,7 @@ func (c *Checker) checkArrayLit(a *ast.ArrayLit) *Type {
 	for _, e := range a.Elems[1:] {
 		et := c.checkExpr(e)
 		if !elemTy.Equal(et) {
-			c.errorf(nil, "array literal has mixed types: %s and %s", elemTy, et)
+			c.errorf(a.Pos, "array literal has mixed types: %s and %s", elemTy, et)
 		}
 	}
 	return ArrayOf(elemTy)
@@ -971,14 +972,14 @@ func (c *Checker) checkFnExpr(fn *ast.FnExpr) *Type {
 func (c *Checker) checkNewExpr(n *ast.NewExpr) *Type {
 	ci, ok := c.info.Classes[n.ClassName]
 	if !ok {
-		c.errorf(nil, "unknown class %s", n.ClassName)
+		c.errorf(n.Pos, "unknown class %s", n.ClassName)
 		return Void
 	}
 	// Find constructor (method named "new" or "init", or match field count)
 	if _, hasNew := ci.Methods["new"]; hasNew {
 		mt := ci.Methods["new"]
 		if len(n.Args) != len(mt.Params) {
-			c.errorf(nil, "new %s: expected %d args, got %d",
+			c.errorf(n.Pos, "new %s: expected %d args, got %d",
 				n.ClassName, len(mt.Params), len(n.Args))
 		}
 	}
@@ -991,7 +992,7 @@ func (c *Checker) checkNewExpr(n *ast.NewExpr) *Type {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // FormatErrors formats checker errors with source context.
-func FormatErrors(errs []error) string {
+func FormatErrors(errs []CheckError) string {
 	var sb strings.Builder
 	for _, e := range errs {
 		sb.WriteString(e.Error())
