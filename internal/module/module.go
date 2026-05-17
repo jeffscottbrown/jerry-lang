@@ -102,19 +102,23 @@ func VerifyHash(modPath, version, expectedHash string) error {
 	return nil
 }
 
-// JerFiles returns the paths of all .jer files in a cached module directory.
+// JerFiles returns the paths of all .jer source files in a cached module
+// directory, searching recursively. Files whose base name matches *_test.jer
+// are excluded so that a library's test suite is never compiled into consumer
+// builds. This allows libraries to organise source under src/, lib/, etc. and
+// keep tests under tests/ or alongside source without affecting consumers.
 func JerFiles(cacheDir string) ([]string, error) {
-	entries, err := os.ReadDir(cacheDir)
-	if err != nil {
-		return nil, err
-	}
 	var paths []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".jer") {
-			paths = append(paths, filepath.Join(cacheDir, e.Name()))
+	err := filepath.WalkDir(cacheDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
 		}
-	}
-	return paths, nil
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".jer") && !strings.HasSuffix(d.Name(), "_test.jer") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	return paths, err
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

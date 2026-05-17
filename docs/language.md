@@ -670,6 +670,46 @@ Modules are cached at `~/.jerry/cache/remotes/<path>@<version>/`. Run
 `jerry sweep` to reconcile `jerry.remotes` and `jerry.sum` after editing
 includes.
 
+### Authoring a remote module
+
+When Jerry fetches a remote module it recursively collects every `.jer` file
+in the repository, so source files can live anywhere — the root, a `src/`
+subdirectory, or any other layout:
+
+```text
+my-lib/
+├── strings.jer          # included
+└── utils.jer            # included
+
+my-lib/
+├── src/
+│   ├── strings.jer      # included
+│   └── utils.jer        # included
+└── extras/
+    └── advanced.jer     # included
+```
+
+**Test files are automatically excluded.** Any file whose name ends in
+`_test.jer` is never compiled into a consumer's build, regardless of where it
+lives in the repository. This means a library can keep its tests alongside
+source or in a dedicated directory without any extra configuration:
+
+```text
+my-lib/
+├── src/
+│   ├── strings.jer          # included by consumers
+│   └── strings_test.jer     # excluded from consumers, run with jerry test
+└── tests/
+    └── integration_test.jer # excluded from consumers, run with jerry test
+```
+
+To run the library's own tests locally:
+
+```sh
+jerry test src/
+jerry test tests/
+```
+
 ---
 
 ## The `jerry-string` remote module
