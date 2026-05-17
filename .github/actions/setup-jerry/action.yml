@@ -52,7 +52,9 @@ runs:
         curl -fsSL "$CHECKSUMS_URL" -o "$RUNNER_TEMP/checksums.txt"
 
         cd "$RUNNER_TEMP"
-        grep "${JERRY_ASSET}.tar.gz" checksums.txt | sha256sum --check --status
+        EXPECTED=$(grep "${JERRY_ASSET}.tar.gz" checksums.txt | awk '{print $1}')
+        ACTUAL=$(openssl dgst -sha256 -r "${JERRY_ASSET}.tar.gz" | awk '{print $1}')
+        [ "$EXPECTED" = "$ACTUAL" ] || { echo "::error::Checksum mismatch for ${JERRY_ASSET}.tar.gz"; exit 1; }
         tar -xzf "${JERRY_ASSET}.tar.gz"
         chmod +x "${JERRY_ASSET}"
         mv "${JERRY_ASSET}" jerry
