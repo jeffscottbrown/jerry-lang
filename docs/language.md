@@ -11,6 +11,13 @@ runnable. Save any snippet as `foo.jer` and run it with:
 jerry run foo.jer
 ```
 
+> ✨ **Looking for a real-world program written in Jerry?**
+> Check out **[gdgrep](https://github.com/jeffscottbrown/gdgrep)** — a fast,
+> friendly `grep` replacement. It's installable in one command with Homebrew
+> (`brew install jeffscottbrown/gdgrep/gdgrep`) and its source is a great
+> reference for multi-file Jerry projects. See
+> [Showcase: gdgrep](#showcase-gdgrep) below.
+
 ---
 
 ## Table of Contents
@@ -32,7 +39,8 @@ jerry run foo.jer
 15. [The `jerry-string` remote module](#the-jerry-string-remote-module)
 16. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
 17. [Working program: end-to-end example](#working-program-end-to-end-example)
-18. [CLI reference](#cli-reference)
+18. [Showcase: gdgrep](#showcase-gdgrep)
+19. [CLI reference](#cli-reference)
 
 ---
 
@@ -777,6 +785,72 @@ jerry run wordcount.jer
 
 ---
 
+## Showcase: gdgrep
+
+For a complete, production-style Jerry program, take a look at
+**[gdgrep](https://github.com/jeffscottbrown/gdgrep)** — a fast, friendly
+`grep` replacement written entirely in Jerry.
+
+### What it demonstrates
+
+- **Multi-file projects** — source split across `src/strings.jer`,
+  `src/grep.jer`, and `src/main.jer`, all compiled together with a single
+  `jerry compile` invocation.
+- **CLI argument parsing** — reading `args()` and dispatching on flags
+  (`-i` for case-insensitive matching, `-n` for line numbers).
+- **File and stdin I/O** — `each_line` over file arguments, `read_stdin` when
+  no files are supplied, and proper exit-code handling.
+- **String utilities in pure Jerry** — small `to_lower` and `contains`
+  implementations.
+- **Release engineering** — a GitHub Actions workflow that builds pre-built
+  binaries for macOS (arm64, x86_64) and Linux (x86_64), publishes them with
+  checksums, and auto-updates a Homebrew tap.
+
+### Installing gdgrep
+
+Because `gdgrep` ships pre-built binaries, end users don't need the Jerry
+toolchain installed.
+
+```sh
+# Homebrew (macOS and Linux)
+brew tap jeffscottbrown/gdgrep
+brew install gdgrep
+
+# Or grab a release binary directly
+curl -fsSL https://github.com/jeffscottbrown/gdgrep/releases/latest/download/gdgrep-macos-arm64.tar.gz | tar -xz
+sudo mv gdgrep-macos-arm64 /usr/local/bin/gdgrep
+
+# Or build from source (requires the Jerry compiler and clang)
+git clone https://github.com/jeffscottbrown/gdgrep.git
+cd gdgrep && make install
+```
+
+### Using it
+
+```sh
+# Basic search
+gdgrep error app.log
+
+# Case-insensitive, with line numbers
+gdgrep -i -n TODO src/main.jer
+
+# Multi-file output (labels with filename:line)
+gdgrep -n fn src/strings.jer src/grep.jer src/main.jer
+
+# Pipeline
+cat access.log | gdgrep 404
+```
+
+### Why read its source?
+
+If you're writing your first Jerry tool, `gdgrep` is the closest thing to a
+reference application: it's small (three files), it does something genuinely
+useful, and it covers the patterns you'll need for any CLI utility — argument
+parsing, file iteration, stdin support, exit codes, and shipping a binary your
+users can `brew install`.
+
+---
+
 ## CLI reference
 
 | Command                                 | Purpose                                       |
@@ -809,6 +883,9 @@ myapp/
 ## Where to go next
 
 - Browse the runnable examples in [`examples/`](../examples/).
+- Read **[gdgrep](https://github.com/jeffscottbrown/gdgrep)** — a full,
+  install-it-today utility written in Jerry, and a great reference for your
+  own projects.
 - Read [`stdlib/core.jer`](../stdlib/core.jer) and
   [`stdlib/time.jer`](../stdlib/time.jer) — they're short and they show
   idiomatic Jerry.

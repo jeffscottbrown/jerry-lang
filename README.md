@@ -22,6 +22,36 @@ fn main() {
 }
 ```
 
+## Built with Jerry
+
+✨ **[gdgrep](https://github.com/jeffscottbrown/gdgrep)** — a fast, friendly
+`grep` replacement written entirely in Jerry. It supports case-insensitive
+matching (`-i`), line numbers (`-n`), multi-file labels, and stdin pipelines,
+and ships pre-built binaries for macOS (arm64, x86_64) and Linux (x86_64).
+
+Install it with one command:
+
+```sh
+# Homebrew (macOS and Linux)
+brew tap jeffscottbrown/gdgrep
+brew install gdgrep
+
+# or download a pre-built binary from the releases page
+curl -fsSL https://github.com/jeffscottbrown/gdgrep/releases/latest/download/gdgrep-macos-arm64.tar.gz | tar -xz
+```
+
+Then use it like any other grep:
+
+```sh
+gdgrep -n TODO src/main.jer
+cat access.log | gdgrep 404
+```
+
+`gdgrep` is a great real-world reference for how to structure a multi-file
+Jerry project, parse command-line flags, read files and stdin, and ship a
+released binary with a Homebrew tap. Browse its source at
+[`github.com/jeffscottbrown/gdgrep`](https://github.com/jeffscottbrown/gdgrep).
+
 ## Requirements
 
 Jerry requires **clang** to link compiled programs.
@@ -172,6 +202,7 @@ modules, see the **[Jerry Language Guide](docs/language.md)**.
 - [`stdlib/core.jer`](stdlib/core.jer) — always-available numeric and bool helpers.
 - [`stdlib/time.jer`](stdlib/time.jer) — `Timer` class and `millis_to_duration`.
 - [`examples/`](examples/) — short, self-contained programs.
+- [**gdgrep**](https://github.com/jeffscottbrown/gdgrep) — full-sized utility written in Jerry; a good reference project.
 
 ## Examples
 
