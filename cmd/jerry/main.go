@@ -128,6 +128,12 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "create":
+		if err := cmdCreate(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
 	default:
 		usage()
 		os.Exit(1)
@@ -553,6 +559,220 @@ func extractRuntime() (runtimeC string, cleanup func(), err error) {
 	return filepath.Join(dir, "runtime.c"), cleanup, nil
 }
 
+// ── jerry create ─────────────────────────────────────────────────────────────
+
+func cmdCreate(args []string) error {
+	withGit := false
+	var name string
+	for _, a := range args {
+		if a == "--git" {
+			withGit = true
+		} else if name == "" {
+			name = a
+		}
+	}
+	if name == "" {
+		return fmt.Errorf("usage: jerry create [--git] <project-name>")
+	}
+
+	if _, err := os.Stat(name); err == nil {
+		return fmt.Errorf("directory %q already exists", name)
+	}
+
+	write := func(rel, content string) error {
+		path := filepath.Join(name, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+		return os.WriteFile(path, []byte(content), 0644)
+	}
+
+	if err := write("main.jer", createMainJer(name)); err != nil {
+		return err
+	}
+	if err := write("jerry.remotes", createRemotes()); err != nil {
+		return err
+	}
+	if err := write("Makefile", createMakefile(name)); err != nil {
+		return err
+	}
+	if err := write("README.md", createReadme(name)); err != nil {
+		return err
+	}
+	if withGit {
+		if err := write(".github/workflows/release.yml", createWorkflow(name)); err != nil {
+			return err
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "jerry: created project %q\n", name)
+	if withGit {
+		fmt.Fprintf(os.Stderr, "jerry: GitHub Actions workflow written to %s/.github/workflows/release.yml\n", name)
+	}
+	fmt.Fprintf(os.Stderr, "\nGet started:\n  cd %s\n  jerry run main.jer\n", name)
+	return nil
+}
+
+func createMainJer(name string) string {
+	return fmt.Sprintf(`include "github.com/jeffscottbrown/jerry-string"
+
+fn main() {
+    // Split a sentence into words and print each one.
+    let sentence: string = "Welcome to %s";
+    let words: string[] = split_whitespace(sentence);
+
+    print("Project: %s");
+    print("Words in greeting: " + int_to_string(len(words)));
+
+    let i: int = 0;
+    while i < len(words) {
+        print("  [" + int_to_string(i) + "] " + words[i]);
+        i = i + 1;
+    }
+
+    // Join them back together with a separator.
+    print("Rejoined: " + join(words, "-"));
+}
+`, name, name)
+}
+
+func createRemotes() string {
+	return "github.com/jeffscottbrown/jerry-string v0.0.1\n"
+}
+
+func createMakefile(name string) string {
+	// Makefile requires tabs for recipe indentation.
+	return fmt.Sprintf(".PHONY: run build clean\n\nBINARY := %s\n\nrun:\n\tjerry run main.jer\n\nbuild:\n\tjerry compile main.jer -o $(BINARY)\n\nclean:\n\trm -f $(BINARY)\n", name)
+}
+
+func createReadme(name string) string {
+	return fmt.Sprintf(`# %s
+
+A Jerry language project.
+
+## Requirements
+
+- [Jerry compiler](https://github.com/jeffscottbrown/jerry-lang)
+- clang (for linking)
+  - macOS: `+"`"+`xcode-select --install`+"`"+`
+  - Linux: `+"`"+`apt install clang`+"`"+`
+
+## Run
+
+`+"```"+`sh
+jerry run main.jer
+# or
+make run
+`+"```"+`
+
+## Build
+
+`+"```"+`sh
+jerry compile main.jer -o %s
+# or
+make build
+`+"```"+`
+
+## Remote modules
+
+Dependencies are listed in `+"`jerry.remotes`"+`. They are fetched automatically on first build.
+To add a new module:
+
+`+"```"+`sh
+jerry get github.com/owner/repo@v1.0.0
+`+"```"+`
+`, name, name)
+}
+
+func createWorkflow(name string) string {
+	return fmt.Sprintf(`name: Release
+
+on:
+  push:
+    branches: [main]
+    tags:     ["v*.*.*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name:       linux-x86_64
+            os:         ubuntu-latest
+            asset_name: %s-linux-x86_64
+
+          - name:       macos-x86_64
+            os:         macos-15
+            asset_name: %s-macos-x86_64
+
+          - name:       macos-arm64
+            os:         macos-latest
+            asset_name: %s-macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang
+
+      - uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
+
+      - name: Build
+        run: jerry compile main.jer -o ${{ matrix.asset_name }}
+
+      - name: Run
+        run: jerry run main.jer
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/*
+`, name, name, name)
+}
+
 func fatalf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "jerry: "+format+"\n", args...)
 	os.Exit(1)
@@ -565,5 +785,6 @@ func usage() {
   jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
   jerry get     <module>@<version>                      fetch a remote module
   jerry sweep                                            sync jerry.remotes / jerry.sum
+  jerry create  [--git] <name>                          scaffold a new project
   jerry -v | --version                                  print version`)
 }
