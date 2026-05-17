@@ -77,7 +77,16 @@ func installBuiltins(s *Scope) {
 	s.Define(&Symbol{Name: "panic", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, Void)})
 	s.Define(&Symbol{Name: "each_line", Kind: SymFunc,
-		Type: FuncType([]*Type{String, FuncType([]*Type{String}, Void)}, Void)}) // <-- Add this line
+		Type: FuncType([]*Type{String, FuncType([]*Type{String}, Void)}, Void)})
+	// args(): string[]
+	s.Define(&Symbol{Name: "args", Kind: SymFunc,
+		Type: FuncType([]*Type{}, ArrayOf(String))})
+	// print_err(s: string): void
+	s.Define(&Symbol{Name: "print_err", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, Void)})
+	// read_stdin(): string
+	s.Define(&Symbol{Name: "read_stdin", Kind: SymFunc,
+		Type: FuncType([]*Type{}, String)})
 }
 
 // Check type-checks a program and returns type info plus any errors.
@@ -839,6 +848,15 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(call.Args[0])
 			}
 			return Void
+		case "args":
+			return ArrayOf(String)
+		case "print_err":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Void
+		case "read_stdin":
+			return String
 		}
 	}
 

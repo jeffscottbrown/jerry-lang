@@ -253,7 +253,62 @@ void jerry_array_push(JerryArray* arr, void* elem) {
     arr->len++;
 }
 
+/* ── Program arguments ──────────────────────────────────────────────────────── */
+
+static int64_t g_argc = 0;
+static char**  g_argv = NULL;
+
+void jerry_capture_args(int64_t argc, char** argv) {
+    g_argc = argc;
+    g_argv = argv;
+}
+
+JerryArray* jerry_args(void) {
+    int64_t count = g_argc > 1 ? g_argc - 1 : 0;
+    JerryArray* arr = jerry_array_new(sizeof(void*), count > 0 ? count : 1);
+    for (int64_t i = 1; i < g_argc; i++) {
+        int64_t slen = (int64_t)strlen(g_argv[i]);
+        JerryStr* s = jerry_string_new(g_argv[i], slen);
+        jerry_array_push(arr, &s);
+    }
+    return arr;
+}
+
+/* ── I/O extras ─────────────────────────────────────────────────────────────── */
+
+void jerry_print_err(JerryStr* s) {
+    if (s == NULL) { fputs("null", stderr); return; }
+    fwrite(s->data, 1, (size_t)s->len, stderr);
+    fputc('\n', stderr);
+}
+
+JerryStr* jerry_read_stdin(void) {
+    char* buf = NULL;
+    size_t cap = 0, used = 0;
+    int c;
+    while ((c = fgetc(stdin)) != EOF) {
+        if (used + 1 >= cap) {
+            size_t new_cap = cap == 0 ? 4096 : cap * 2;
+            char* new_buf = realloc(buf, new_cap);
+            if (!new_buf) {
+                fprintf(stderr, "jerry: read_stdin: out of memory\n");
+                exit(1);
+            }
+            buf = new_buf;
+            cap = new_cap;
+        }
+        buf[used++] = (char)c;
+    }
+    JerryStr* s = jerry_string_new(buf ? buf : "", (int64_t)used);
+    free(buf);
+    return s;
+}
+
 /* ── Control ────────────────────────────────────────────────────────────────── */
+
+void jerry_exit(int64_t code) {
+    exit((int)code);
+}
 
 void jerry_panic(JerryStr* msg) {
     fprintf(stderr, "jerry panic: ");

@@ -158,10 +158,15 @@ declare void @jerry_array_set(ptr, i64, ptr)
 declare i64  @jerry_array_len(ptr)
 declare void @jerry_array_push(ptr, ptr)
 declare void @jerry_panic(ptr)
+declare void @jerry_exit(i64)
 declare ptr  @jerry_alloc(i64)
 declare ptr  @jerry_read_file(ptr)
 declare void @jerry_write_file(ptr, ptr)
 declare void @jerry_each_line(ptr, ptr)
+declare void @jerry_capture_args(i64, ptr)
+declare ptr  @jerry_args()
+declare void @jerry_print_err(ptr)
+declare ptr  @jerry_read_stdin()
 
 `
 }
@@ -209,6 +214,8 @@ func (g *Generator) cMainWrapper() string {
 ; ── C entry point ────────────────────────────────────────────────────────────
 define i32 @main(i32 %argc, ptr %argv) {
 entry:
+  %argc64 = sext i32 %argc to i64
+  call void @jerry_capture_args(i64 %argc64, ptr %argv)
   call void @main_jerry()
   ret i32 0
 }
@@ -1152,12 +1159,31 @@ func (g *Generator) genCall(
 			if err != nil {
 				return "", nil, err
 			}
-			// exit takes i32
-			iReg := g.newTmp()
-			fmt.Fprintf(out, "  %s = trunc i64 %s to i32\n", iReg, argVal)
-			fmt.Fprintf(out, "  call void @exit(i32 %s)\n", iReg)
+			fmt.Fprintf(out, "  call void @jerry_exit(i64 %s)\n", argVal)
+			fmt.Fprintf(out, "  unreachable\n")
 			g.terminated = true
 			return "0", checker.Void, nil
+
+		case "args":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_args()\n", res)
+			return res, checker.ArrayOf(checker.String), nil
+
+		case "print_err":
+			if len(call.Args) != 1 {
+				return "", nil, fmt.Errorf("print_err() takes 1 argument")
+			}
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			fmt.Fprintf(out, "  call void @jerry_print_err(ptr %s)\n", argVal)
+			return "0", checker.Void, nil
+
+		case "read_stdin":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_read_stdin()\n", res)
+			return res, checker.String, nil
 
 		case "each_line": // <-- Add this case block
 			if len(call.Args) != 2 {
@@ -1874,6 +1900,9 @@ var builtinReturnType = map[string]*checker.Type{
 	"exit":            checker.Void,
 	"panic":           checker.Void,
 	"each_line":       checker.Void,
+	"args":            checker.ArrayOf(checker.String),
+	"print_err":       checker.Void,
+	"read_stdin":      checker.String,
 }
 
 // llvmEscapeString escapes a Go string for LLVM IR constant syntax.
