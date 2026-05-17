@@ -3,12 +3,11 @@ module github.com/jeffscottbrown/jerry-lang
 go 1.21
 
 require (
-	github.com/alecthomas/participle/v2 v2.1.1
+	github.com/alecthomas/participle/v2 v2.1.4
 	github.com/tliron/glsp v0.2.2
 )
 
 require (
-	github.com/alecthomas/repr v0.4.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
