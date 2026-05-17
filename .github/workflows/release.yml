@@ -23,7 +23,7 @@ jobs:
             asset_name: jerry-linux-x86_64
 
           - name: macos-x86_64
-            os: macos-15          # GitHub's Intel Mac runner (x86_64)
+            os: macos-latest
             goos: darwin
             goarch: amd64
             asset_name: jerry-macos-x86_64

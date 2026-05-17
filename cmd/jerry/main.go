@@ -63,14 +63,14 @@ func main() {
 		return
 
 	case "compile":
-		outBin, srcs := parseCompileArgs(os.Args[2:])
+		outBin, target, srcs := parseCompileArgs(os.Args[2:])
 		if len(srcs) == 0 {
 			fatalf("no source files given")
 		}
 		if outBin == "" {
 			outBin = strings.TrimSuffix(srcs[0], filepath.Ext(srcs[0]))
 		}
-		if err := compile(srcs, outBin); err != nil {
+		if err := compile(srcs, outBin, target); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -86,7 +86,7 @@ func main() {
 		}
 		defer os.RemoveAll(tmp)
 		bin := filepath.Join(tmp, "a.out")
-		if err := compile(srcs, bin); err != nil {
+		if err := compile(srcs, bin, ""); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -262,7 +262,7 @@ func cmdSweep() error {
 
 // ── Compilation pipeline ─────────────────────────────────────────────────────
 
-func compile(srcs []string, outBin string) error {
+func compile(srcs []string, outBin, target string) error {
 	ir, err := compileToIR(srcs)
 	if err != nil {
 		return err
@@ -286,6 +286,9 @@ func compile(srcs []string, outBin string) error {
 
 	sysroot, _ := exec.Command("xcrun", "--show-sdk-path").Output()
 	args := []string{"-O1", tmp.Name(), runtimeLib, "-o", outBin, "-lm"}
+	if target != "" {
+		args = append(args, "-target", target)
+	}
 	if len(sysroot) > 0 {
 		args = append(args, "-isysroot", strings.TrimSpace(string(sysroot)))
 	}
@@ -475,12 +478,16 @@ func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[strin
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-func parseCompileArgs(args []string) (outBin string, srcs []string) {
+func parseCompileArgs(args []string) (outBin, target string, srcs []string) {
 	for i := 0; i < len(args); i++ {
-		if args[i] == "-o" && i+1 < len(args) {
+		switch {
+		case args[i] == "-o" && i+1 < len(args):
 			outBin = args[i+1]
 			i++
-		} else {
+		case args[i] == "--target" && i+1 < len(args):
+			target = args[i+1]
+			i++
+		default:
 			srcs = append(srcs, args[i])
 		}
 	}
@@ -778,12 +785,14 @@ jobs:
             asset_name: %s-linux-x86_64
 
           - name:       macos-x86_64
-            os:         macos-15
+            os:         macos-latest
             asset_name: %s-macos-x86_64
+            jerry_target: x86_64-apple-darwin
 
           - name:       macos-arm64
             os:         macos-latest
             asset_name: %s-macos-arm64
+            jerry_target: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -797,9 +806,15 @@ jobs:
       - uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
 
       - name: Build
-        run: jerry compile main.jer -o ${{ matrix.asset_name }}
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+          fi
+          jerry compile main.jer -o ${{ matrix.asset_name }} $TARGET_FLAG
 
       - name: Run
+        if: matrix.jerry_target == ''
         run: jerry run main.jer
 
       - name: Archive
