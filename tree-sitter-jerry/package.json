@@ -1,0 +1,48 @@
+{
+  "name": "tree-sitter-jerry",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for the Jerry language",
+  "repository": "https://github.com/jeffscottbrown/jerry-zed",
+  "license": "MIT",
+  "main": "grammar.js",
+  "types": "bindings/node",
+  "devDependencies": {
+    "tree-sitter-cli": "^0.22.0",
+    "prebuildify": "^6.0.0"
+  },
+  "scripts": {
+    "build": "tree-sitter generate",
+    "test": "tree-sitter test",
+    "install": "node-gyp-build",
+    "prebuildify": "prebuildify --napi --strip"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.jerry",
+      "file-types": [
+        "jer"
+      ],
+      "highlights": "highlights.scm",
+      "content-regex": "^\\s*(fn|class|let|include)\\b"
+    }
+  ],
+  "dependencies": {
+    "node-gyp-build": "^4.8.0"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.21.0"
+  },
+  "peerDependenciesMeta": {
+    "tree_sitter": {
+      "optional": true
+    }
+  },
+  "files": [
+    "grammar.js",
+    "binding.gyp",
+    "prebuilds/**",
+    "bindings/node/*",
+    "queries/*",
+    "src/**"
+  ]
+}
