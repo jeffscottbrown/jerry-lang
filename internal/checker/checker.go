@@ -88,6 +88,15 @@ func installBuiltins(s *Scope) {
 	// read_stdin(): string
 	s.Define(&Symbol{Name: "read_stdin", Kind: SymFunc,
 		Type: FuncType([]*Type{}, String)})
+	// now_millis(): int — Unix epoch in milliseconds
+	s.Define(&Symbol{Name: "now_millis", Kind: SymFunc,
+		Type: FuncType([]*Type{}, Int)})
+	// now_seconds(): int — Unix epoch in seconds
+	s.Define(&Symbol{Name: "now_seconds", Kind: SymFunc,
+		Type: FuncType([]*Type{}, Int)})
+	// now_string(): string — local time as "YYYY-MM-DD HH:MM:SS"
+	s.Define(&Symbol{Name: "now_string", Kind: SymFunc,
+		Type: FuncType([]*Type{}, String)})
 }
 
 // Check type-checks a program and returns type info plus any errors.
@@ -183,6 +192,8 @@ func CheckAll(
 				coreChecker.checkFnDecl(tl.FnDecl)
 			case tl.Class != nil:
 				coreChecker.checkClassDecl(tl.Class)
+			case tl.VarDecl != nil:
+				coreChecker.checkVarDecl(tl.VarDecl)
 			}
 		}
 		for _, ce := range coreChecker.errors {
@@ -191,17 +202,19 @@ func CheckAll(
 	}
 
 	// ── Check each required stdlib module (once) ──────────────────────────────
-	checkedStdlib := map[string]bool{}
+	// checkedStdlib maps stdlib module name to the checker scope produced when
+	// that module was checked. Storing the scope lets project-file checkers
+	// import global-variable symbols (not just functions and classes).
+	checkedStdlib := map[string]*Scope{}
 	for _, prog := range projectProgs {
 		for _, tl := range prog.Stmts {
 			if tl.Include == nil || tl.Include.Stdlib == "" {
 				continue
 			}
 			name := tl.Include.Stdlib
-			if checkedStdlib[name] {
+			if _, already := checkedStdlib[name]; already {
 				continue
 			}
-			checkedStdlib[name] = true
 			stdAST, ok := stdlibASTs[name]
 			if !ok {
 				// Error reported during include resolution in main; skip body check.
@@ -223,8 +236,11 @@ func CheckAll(
 					sc.checkFnDecl(stl.FnDecl)
 				case stl.Class != nil:
 					sc.checkClassDecl(stl.Class)
+				case stl.VarDecl != nil:
+					sc.checkVarDecl(stl.VarDecl)
 				}
 			}
+			checkedStdlib[name] = sc.scope
 			for _, ce := range sc.errors {
 				allErrors = append(allErrors, CheckError{Msg: fmt.Sprintf("stdlib/%s: %s", name, ce.Msg), Pos: ce.Pos})
 			}
@@ -300,6 +316,13 @@ func CheckAll(
 					}
 					if stl.Class != nil {
 						fc.registerClass(stl.Class)
+					}
+					if stl.VarDecl != nil {
+						if stdScope, ok := checkedStdlib[tl.Include.Stdlib]; ok {
+							if sym, found := stdScope.Lookup(stl.VarDecl.Name); found {
+								_ = fc.scope.Define(sym)
+							}
+						}
 					}
 				}
 			} else if tl.Include.Remote != "" {

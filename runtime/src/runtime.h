@@ -74,4 +74,9 @@ JerryArray* jerry_args(void);
 void      jerry_print_err(JerryStr* s);
 JerryStr* jerry_read_stdin(void);
 
+/* ── Time ────────────────────────────────────────────────────────────────────────────────── */
+int64_t    jerry_now_millis(void);   /* Unix epoch in milliseconds              */
+int64_t    jerry_now_seconds(void);  /* Unix epoch in seconds                   */
+JerryStr*  jerry_now_string(void);   /* Local time as "YYYY-MM-DD HH:MM:SS"    */
+
 #endif /* JERRY_RUNTIME_H */

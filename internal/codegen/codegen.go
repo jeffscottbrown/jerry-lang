@@ -43,6 +43,9 @@ type Generator struct {
 
 	// Name of the current basic block (without %)
 	curBlock string
+
+	globals     map[string]*localVar // global variable slots, name → @name
+	globalDecls strings.Builder      // LLVM global variable declarations
 }
 
 type localVar struct {
@@ -62,7 +65,7 @@ type loopLabels struct {
 // single LLVM IR module. The programs must already be type-checked and their
 // type info collected into info.
 func Generate(progs []*ast.Program, info *checker.Info) (string, error) {
-	g := &Generator{info: info}
+	g := &Generator{info: info, globals: make(map[string]*localVar)}
 	if err := g.genPrograms(progs); err != nil {
 		return "", err
 	}
@@ -78,6 +81,24 @@ func (g *Generator) genPrograms(progs []*ast.Program) error {
 	// Build class type declarations (uses g.info which has all classes).
 	g.emitClassTypeDecls()
 
+	// Collect all top-level variable declarations first and pre-register them
+	// in g.globals so that function bodies generated below can reference them.
+	var globalVarDecls []*ast.VarDecl
+	for _, prog := range progs {
+		for _, tl := range prog.Stmts {
+			if tl.VarDecl != nil {
+				globalVarDecls = append(globalVarDecls, tl.VarDecl)
+			}
+		}
+	}
+	for _, vd := range globalVarDecls {
+		ty := g.exprType(vd.Value)
+		lt := g.llvmType(ty)
+		zero := g.zeroValue(ty)
+		fmt.Fprintf(&g.globalDecls, "@%s = global %s %s\n", vd.Name, lt, zero)
+		g.globals[vd.Name] = &localVar{reg: "@" + vd.Name, llvmTy: lt, altType: ty}
+	}
+
 	// Generate function bodies from all programs in order.
 	for _, prog := range progs {
 		for _, tl := range prog.Stmts {
@@ -91,9 +112,15 @@ func (g *Generator) genPrograms(progs []*ast.Program) error {
 					return err
 				}
 			case tl.VarDecl != nil:
-				return fmt.Errorf("top-level variable declarations not yet supported")
+				// already pre-registered above; init code generated after all fns
 				// tl.Include: no IR to emit
 			}
+		}
+	}
+
+	if len(globalVarDecls) > 0 {
+		if err := g.genGlobalInitFn(globalVarDecls, &fnBuf); err != nil {
+			return err
 		}
 	}
 
@@ -102,6 +129,11 @@ func (g *Generator) genPrograms(progs []*ast.Program) error {
 	mod.WriteString(g.moduleHeader())
 	mod.WriteString(g.classTypes.String())
 	mod.WriteString(g.runtimeDecls())
+	if g.globalDecls.Len() > 0 {
+		mod.WriteString("\n; ── Global variables ──────────────────────────────────────────────\n")
+		mod.WriteString(g.globalDecls.String())
+		mod.WriteString("\n")
+	}
 	// Emit string constants.
 	for i, s := range g.strConsts {
 		escaped := llvmEscapeString(s)
@@ -167,6 +199,9 @@ declare void @jerry_capture_args(i64, ptr)
 declare ptr  @jerry_args()
 declare void @jerry_print_err(ptr)
 declare ptr  @jerry_read_stdin()
+declare i64  @jerry_now_millis()
+declare i64  @jerry_now_seconds()
+declare ptr  @jerry_now_string()
 
 `
 }
@@ -210,16 +245,22 @@ func (g *Generator) classVtableDecls() string {
 }
 
 func (g *Generator) cMainWrapper() string {
-	return `
+	var sb strings.Builder
+	sb.WriteString(`
 ; ── C entry point ────────────────────────────────────────────────────────────
 define i32 @main(i32 %argc, ptr %argv) {
 entry:
   %argc64 = sext i32 %argc to i64
   call void @jerry_capture_args(i64 %argc64, ptr %argv)
-  call void @main_jerry()
+`)
+	if len(g.globals) > 0 {
+		sb.WriteString("  call void @jerry_global_init()\n")
+	}
+	sb.WriteString(`  call void @main_jerry()
   ret i32 0
 }
-`
+`)
+	return sb.String()
 }
 
 // ── Function code generation ──────────────────────────────────────────────────
@@ -409,6 +450,37 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 		_, err := g.genExpr(s.ExprStmt.Expr, out)
 		return err
 	}
+	return nil
+}
+
+// genGlobalInitFn generates the jerry_global_init() function that stores the
+// real initial values into all top-level variables. The globals have already
+// been declared and registered in g.globals by genPrograms before any function
+// bodies were generated, so they are visible to all function bodies.
+func (g *Generator) genGlobalInitFn(varDecls []*ast.VarDecl, fnBuf *strings.Builder) error {
+	// Generate the initialisation function body.
+	fmt.Fprintf(fnBuf, "define void @jerry_global_init() {\n")
+	fmt.Fprintf(fnBuf, "entry:\n")
+
+	saved := g.saveContext()
+	g.curFnName = "jerry_global_init"
+	g.curBlock = "entry"
+	g.retType = checker.Void
+	g.locals = make(map[string]*localVar)
+	g.terminated = false
+
+	for _, vd := range varDecls {
+		val, err := g.genExpr(vd.Value, fnBuf)
+		if err != nil {
+			return err
+		}
+		gvar := g.globals[vd.Name]
+		fmt.Fprintf(fnBuf, "  store %s %s, ptr %s\n", gvar.llvmTy, val, gvar.reg)
+	}
+
+	fmt.Fprintf(fnBuf, "  ret void\n")
+	fmt.Fprintf(fnBuf, "}\n\n")
+	g.restoreContext(saved)
 	return nil
 }
 
@@ -647,6 +719,10 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 		}
 		lvar, ok := g.locals[prim.Ident]
 		if !ok {
+			if gvar, ok2 := g.globals[prim.Ident]; ok2 {
+				g.storeInto(out, lt, rhs, gvar.reg)
+				return nil
+			}
 			return fmt.Errorf("undefined variable %q", prim.Ident)
 		}
 		g.storeInto(out, lt, rhs, lvar.reg)
@@ -1185,6 +1261,21 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  %s = call ptr @jerry_read_stdin()\n", res)
 			return res, checker.String, nil
 
+		case "now_millis":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_now_millis()\n", res)
+			return res, checker.Int, nil
+
+		case "now_seconds":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_now_seconds()\n", res)
+			return res, checker.Int, nil
+
+		case "now_string":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_now_string()\n", res)
+			return res, checker.String, nil
+
 		case "each_line": // <-- Add this case block
 			if len(call.Args) != 2 {
 				return "", nil, fmt.Errorf("each_line() takes 2 arguments (filename, callback)")
@@ -1366,6 +1457,12 @@ func (g *Generator) genPrimary(p *ast.PrimaryExpr, out *strings.Builder) (string
 		if lvar, ok := g.locals[p.Ident]; ok {
 			res := g.newTmp()
 			fmt.Fprintf(out, "  %s = load %s, ptr %s\n", res, lvar.llvmTy, lvar.reg)
+			return res, nil
+		}
+		// Global variable?
+		if gvar, ok := g.globals[p.Ident]; ok {
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = load %s, ptr %s\n", res, gvar.llvmTy, gvar.reg)
 			return res, nil
 		}
 		// Named function reference (used as a value or about to be called).
@@ -1773,6 +1870,9 @@ func (g *Generator) primaryType(p *ast.PrimaryExpr) *checker.Type {
 		if lv, ok := g.locals[p.Ident]; ok {
 			return lv.altType
 		}
+		if gv, ok := g.globals[p.Ident]; ok {
+			return gv.altType
+		}
 		if ft, ok := g.info.Funcs[p.Ident]; ok {
 			return ft
 		}
@@ -1903,6 +2003,9 @@ var builtinReturnType = map[string]*checker.Type{
 	"args":            checker.ArrayOf(checker.String),
 	"print_err":       checker.Void,
 	"read_stdin":      checker.String,
+	"now_millis":      checker.Int,
+	"now_seconds":     checker.Int,
+	"now_string":      checker.String,
 }
 
 // llvmEscapeString escapes a Go string for LLVM IR constant syntax.

@@ -29,6 +29,7 @@ func init() {
 		"read_file", "write_file", "each_line",
 		"char_at", "string_slice", "char_to_string",
 		"int_to_string", "float_to_string",
+		"now_millis", "now_seconds", "now_string",
 		// core stdlib (always auto-included)
 		"int_abs", "int_max", "int_min",
 		"float_abs", "float_max", "float_min",

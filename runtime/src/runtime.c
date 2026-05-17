@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 /* ── Memory ─────────────────────────────────────────────────────────────────── */
 
@@ -317,4 +318,25 @@ void jerry_panic(JerryStr* msg) {
     }
     fprintf(stderr, "\n");
     exit(1);
+}
+
+/* ── Time ────────────────────────────────────────────────────────────────────── */
+
+int64_t jerry_now_millis(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (int64_t)ts.tv_sec * 1000 + (int64_t)(ts.tv_nsec / 1000000);
+}
+
+int64_t jerry_now_seconds(void) {
+    return (int64_t)time(NULL);
+}
+
+JerryStr* jerry_now_string(void) {
+    time_t t = time(NULL);
+    struct tm* tm_info = localtime(&t);
+    char buf[32];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);
+    int64_t slen = (int64_t)strlen(buf);
+    return jerry_string_new(buf, slen);
 }

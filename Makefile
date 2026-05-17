@@ -14,6 +14,9 @@ build:
 run-hello:
 	$(JERRY) run examples/hello.jer
 
+run-logging:
+	$(JERRY) run examples/logging.jer
+
 run-files:
 	$(JERRY) run examples/files.jer
 
