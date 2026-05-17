@@ -1,6 +1,6 @@
 module github.com/jeffscottbrown/jerry-lang
 
-go 1.21
+go 1.26
 
 require (
 	github.com/alecthomas/participle/v2 v2.1.1

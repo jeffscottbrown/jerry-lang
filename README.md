@@ -82,7 +82,7 @@ brew install jerry
 
 ### go install
 
-Requires Go 1.21+.
+Requires Go 1.26+.
 
 ```sh
 go install github.com/jeffscottbrown/jerry-lang/cmd/jerry@latest
@@ -104,7 +104,7 @@ sudo mv jerry-macos-arm64 /usr/local/bin/jerry
 
 ### Build from source
 
-Requires Go 1.21+ and clang.
+Requires Go 1.26+ and clang.
 
 ```sh
 git clone https://github.com/jeffscottbrown/jerry-lang.git
