@@ -56,6 +56,14 @@ func initialize(_ *glsp.Context, _ *protocol.InitializeParams) (any, error) {
 		TriggerCharacters: []string{"."},
 	}
 
+	// Advertise code lens support so editors send textDocument/codeLens requests.
+	capabilities.CodeLensProvider = &protocol.CodeLensOptions{}
+
+	// Advertise executeCommand support for jerry.run.
+	capabilities.ExecuteCommandProvider = &protocol.ExecuteCommandOptions{
+		Commands: []string{runCommandID},
+	}
+
 	return protocol.InitializeResult{
 		Capabilities: capabilities,
 		ServerInfo: &protocol.InitializeResultServerInfo{
