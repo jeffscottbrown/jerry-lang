@@ -427,18 +427,17 @@ func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[strin
 				srcs[imp.srcIdx], modPath, modPath)
 		}
 
-		// Verify hash if present in jerry.sum.
-		key := sums.Key(modPath, version)
-		if expectedHash, has := sums[key]; has {
-			if err := module.VerifyHash(modPath, version, expectedHash); err != nil {
-				return nil, err
-			}
-		}
-
 		// Fetch the module if not already cached.
-		cacheDir, _, err := module.Fetch(modPath, version)
+		cacheDir, actualHash, err := module.Fetch(modPath, version)
 		if err != nil {
 			return nil, fmt.Errorf("fetching module %s@%s: %w", modPath, version, err)
+		}
+
+		// Verify hash against jerry.sum if an entry exists.
+		key := sums.Key(modPath, version)
+		if expectedHash, has := sums[key]; has && expectedHash != actualHash {
+			return nil, fmt.Errorf("hash mismatch for %s@%s: expected %s, got %s",
+				modPath, version, expectedHash, actualHash)
 		}
 
 		// Parse all .jer files in the cached module.
