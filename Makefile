@@ -1,9 +1,13 @@
 .PHONY: build test run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
+# Inject version from the most recent git tag if available, else "dev".
+VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+LDFLAGS = -X main.Version=$(VERSION)
+
 JERRY = go run ./cmd/jerry
 
 build:
-	go build -o bin/jerry ./cmd/jerry
+	go build -ldflags "$(LDFLAGS)" -o bin/jerry ./cmd/jerry
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 

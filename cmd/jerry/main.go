@@ -5,6 +5,7 @@
 //	jerry compile <file.jer> [file.jer ...] [-o output]   compile to native binary
 //	jerry run     <file.jer> [file.jer ...]               compile and run immediately
 //	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
+//	jerry -v | --version                                  print version and exit
 //
 // Each source file is parsed independently. Functions defined in any project
 // file are visible to all other project files. Stdlib modules must be explicitly
@@ -25,14 +26,21 @@ import (
 	"strings"
 )
 
+// Version is injected at build time via -ldflags "-X main.Version=v1.2.3".
+// Falls back to "dev" for local builds.
+var Version = "dev"
+
 func main() {
-	if len(os.Args) < 3 {
+	if len(os.Args) < 2 {
 		usage()
 		os.Exit(1)
 	}
 	cmd := os.Args[1]
 
 	switch cmd {
+	case "-v", "--version":
+		fmt.Println("jerry " + Version)
+		return
 	case "compile":
 		outBin, srcs := parseCompileArgs(os.Args[2:])
 		if len(srcs) == 0 {
@@ -85,6 +93,11 @@ func main() {
 		fmt.Print(ir)
 
 	default:
+		// Catch the old "jerry <file.jer>" shorthand with no subcommand.
+		if len(os.Args) < 3 {
+			usage()
+			os.Exit(1)
+		}
 		usage()
 		os.Exit(1)
 	}
@@ -281,5 +294,6 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `Usage:
   jerry compile <file.jer> [file.jer ...] [-o output]   compile to binary
   jerry run     <file.jer> [file.jer ...]               compile and run
-  jerry ir      <file.jer> [file.jer ...]               dump LLVM IR`)
+  jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
+  jerry -v | --version                                  print version`)
 }
