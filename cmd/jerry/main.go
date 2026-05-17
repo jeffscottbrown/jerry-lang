@@ -435,19 +435,10 @@ func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[strin
 			}
 		}
 
-		// Ensure the module is cached; fetch if not.
-		cached, err := module.IsCached(modPath, version)
+		// Fetch the module if not already cached.
+		cacheDir, _, err := module.Fetch(modPath, version)
 		if err != nil {
-			return nil, err
-		}
-		if !cached {
-			return nil, fmt.Errorf("module %s@%s is not cached — run: jerry get %s@%s",
-				modPath, version, modPath, version)
-		}
-
-		cacheDir, err := module.CachedDir(modPath, version)
-		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fetching module %s@%s: %w", modPath, version, err)
 		}
 
 		// Parse all .jer files in the cached module.
