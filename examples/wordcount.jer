@@ -1,0 +1,33 @@
+// examples/wordcount.jer — pulls in both remote modules
+include "github.com/jeffscottbrown/jerry-string"
+include "github.com/jeffscottbrown/jerry-logging"
+
+fn count_word(words: string[], target: string): int {
+    let n: int = 0;
+    for (let i: int = 0; i < len(words); i++) {
+        if words[i] == target {
+            n++;
+        }
+    }
+    return n;
+}
+
+fn main() {
+    log_set_level(LOG_DEBUG);
+
+    let text: string =
+        "the quick brown fox jumps over the lazy dog the fox sleeps";
+
+    log_debug("input length = " + int_to_string(len(text)));
+
+    let words: string[] = split_whitespace(text);
+    log_info("found " + int_to_string(len(words)) + " words");
+
+    let needle: string = "the";
+    let count: int = count_word(words, needle);
+    log_info("count of '" + needle + "' = " + int_to_string(count));
+
+    if count == 0 {
+        log_error("expected at least one match");
+    }
+}

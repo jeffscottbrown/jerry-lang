@@ -6,6 +6,8 @@
 
 Jerry is a statically-typed, JavaScript-style language that compiles to native binaries via LLVM IR. The compiler is written in Go.
 
+📖 **[Read the Jerry Language Guide](docs/language.md)** for a full tour of the language, standard library, and remote modules.
+
 ```jerry
 fn main() {
     let name: string = "world";
@@ -159,6 +161,18 @@ The action automatically detects the runner OS and architecture (Linux x86_64, m
 | Closures | `let double = fn(x: int): int { return x * 2; };` |
 | For / while | `for (let i: int = 0; i < 10; i++) { ... }` |
 
+For a complete, runnable walkthrough of types, control flow, classes, the
+standard library, and the [`jerry-string`](https://github.com/jeffscottbrown/jerry-string)
+and [`jerry-logging`](https://github.com/jeffscottbrown/jerry-logging) remote
+modules, see the **[Jerry Language Guide](docs/language.md)**.
+
+## Documentation
+
+- **[Language Guide](docs/language.md)** — practical tour of every feature with runnable snippets.
+- [`stdlib/core.jer`](stdlib/core.jer) — always-available numeric and bool helpers.
+- [`stdlib/time.jer`](stdlib/time.jer) — `Timer` class and `millis_to_duration`.
+- [`examples/`](examples/) — short, self-contained programs.
+
 ## Examples
 
 The [`examples/`](examples/) directory contains runnable programs:
@@ -169,6 +183,8 @@ jerry run examples/fibonacci.jer
 jerry run examples/classes.jer
 jerry run examples/closures.jer
 jerry run examples/strings.jer
+jerry run examples/logging.jer        # uses the jerry-logging remote module
+jerry run examples/wordcount.jer      # combines jerry-string + jerry-logging
 ```
 
 ## License
