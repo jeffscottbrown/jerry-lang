@@ -31,7 +31,12 @@ jobs:
           sudo apt-get install -y clang
 
       - name: go vet
-        run: go vet ./...
+        # Participle uses non-standard struct tag syntax in internal/ast, which
+        # triggers false positives from the structtag analyzer. All other packages
+        # use normal tags, so we vet them normally and skip structtag for ast.
+        run: |
+          go vet $(go list ./... | grep -v 'jerry/internal/ast')
+          go vet -structtag=false jerry/internal/ast
 
       - name: go test
         run: go test ./...
