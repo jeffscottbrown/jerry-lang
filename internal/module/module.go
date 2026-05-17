@@ -2,7 +2,7 @@
 //
 // Modules are identified by import paths of the form "github.com/owner/repo".
 // Versions correspond to git tags (e.g. "v1.0.0"). The local cache lives at
-// ~/.jerry/pkg/mod/<modpath>@<version>/ and contains only the .jer files and
+// ~/.jerry/cache/remotes/<modpath>@<version>/ and contains only the .jer files and
 // jerry.mod extracted from the upstream repository archive.
 package module
 
@@ -20,13 +20,13 @@ import (
 	"strings"
 )
 
-// CacheDir returns the root of the module cache (~/.jerry/pkg/mod).
+// CacheDir returns the root of the module cache (~/.jerry/cache/remotes).
 func CacheDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)
 	}
-	return filepath.Join(home, ".jerry", "pkg", "mod"), nil
+	return filepath.Join(home, ".jerry", "cache", "remotes"), nil
 }
 
 // CachedDir returns the directory where a specific module version is (or will
