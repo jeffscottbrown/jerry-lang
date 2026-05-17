@@ -1392,7 +1392,7 @@ closureCall:
 		fnTySig := fmt.Sprintf("%s (%s)", retLLVM, strings.Join(paramTypes, ", "))
 
 		if retLLVM == "void" {
-			fmt.Fprintf(out, "  call void %s %s(%s)\n", fnTySig, fnPtr, strings.Join(argLLVM, ", "))
+			fmt.Fprintf(out, "  call %s %s(%s)\n", fnTySig, fnPtr, strings.Join(argLLVM, ", "))
 			return "0", checker.Void, nil
 		}
 		res := g.newTmp()

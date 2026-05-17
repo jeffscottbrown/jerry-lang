@@ -1,7 +1,13 @@
-// examples/closures.alt — first-class functions (non-capturing)
+// examples/closures.jer — first-class functions (non-capturing)
 
 fn apply(f: fn(int): int, x: int): int {
     return f(x);
+}
+
+fn foreach(nums: int[], f: fn(int): void) {
+    for (let i: int = 0; i < len(nums); i++) {
+        f(nums[i]);
+    }
 }
 
 fn make_adder(): fn(int): int {
@@ -20,4 +26,10 @@ fn main() {
 
     let add10 = make_adder();
     print("add10(7) = " + int_to_string(apply(add10, 7)));
+
+    let nums: int[] = [1, 2, 3, 4, 5];
+    let printer = fn(x: int): void {
+        print("  item: " + int_to_string(x));
+    };
+    foreach(nums, printer);
 }
