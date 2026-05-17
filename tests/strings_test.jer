@@ -1,0 +1,62 @@
+// tests/strings_test.jer — built-in string operations
+include @testing
+
+fn test_concat() {
+    assert_eq_string("hello" + " " + "world", "hello world", "three-part concat");
+    assert_eq_string("" + "abc", "abc", "empty left");
+    assert_eq_string("abc" + "", "abc", "empty right");
+    assert_eq_string("" + "", "", "both empty");
+}
+
+fn test_len() {
+    assert_eq_int(len("hello"), 5, "len hello");
+    assert_eq_int(len(""), 0, "len empty");
+    assert_eq_int(len("a"), 1, "len single char");
+    assert_eq_int(len("jerry lang"), 10, "len with space");
+}
+
+fn test_slice() {
+    assert_eq_string(string_slice("hello", 0, 3), "hel", "slice 0-3");
+    assert_eq_string(string_slice("hello", 1, 4), "ell", "slice 1-4");
+    assert_eq_string(string_slice("hello", 0, 5), "hello", "full slice");
+    assert_eq_string(string_slice("hello", 2, 2), "", "zero-length slice");
+}
+
+fn test_char_at() {
+    // ASCII: 'h'=104, 'e'=101, 'l'=108, 'o'=111
+    assert_eq_int(char_at("hello", 0), 104, "char_at h");
+    assert_eq_int(char_at("hello", 1), 101, "char_at e");
+    assert_eq_int(char_at("hello", 4), 111, "char_at o");
+}
+
+fn test_int_to_string() {
+    assert_eq_string(int_to_string(0), "0", "zero");
+    assert_eq_string(int_to_string(42), "42", "positive");
+    assert_eq_string(int_to_string(-7), "-7", "negative");
+    assert_eq_string(int_to_string(1000000), "1000000", "large");
+}
+
+fn test_float_to_string() {
+    assert_eq_string(float_to_string(0.0), "0", "zero float");
+    assert_eq_string(float_to_string(3.14), "3.14", "pi-ish");
+    assert_eq_string(float_to_string(1.5), "1.5", "one point five");
+    assert_eq_string(float_to_string(100.0), "100", "whole number float");
+}
+
+fn test_bool_to_string() {
+    assert_eq_string(bool_to_string(true), "true", "true");
+    assert_eq_string(bool_to_string(false), "false", "false");
+}
+
+fn test_char_to_string() {
+    assert_eq_string(char_to_string(65), "A", "char A");
+    assert_eq_string(char_to_string(97), "a", "char a");
+    assert_eq_string(char_to_string(48), "0", "char 0");
+}
+
+fn test_string_equality() {
+    assert_true("hello" == "hello", "equal strings");
+    assert_false("hello" == "world", "unequal strings");
+    assert_true("" == "", "empty strings equal");
+    assert_false("" == "a", "empty vs non-empty");
+}

@@ -5,6 +5,7 @@
 //	jerry compile <file.jer> [file.jer ...] [-o output]   compile to native binary
 //	jerry run     <file.jer> [file.jer ...]               compile and run immediately
 //	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
+//	jerry test    [file_test.jer ...]                     run unit tests
 //	jerry get     <module>@<version>                      fetch a remote module
 //	jerry sweep                                            sync jerry.remotes and jerry.sum
 //	jerry -v | --version                                  print version and exit
@@ -127,6 +128,12 @@ func main() {
 
 	case "sweep":
 		if err := cmdSweep(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+	case "test":
+		if err := cmdTest(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -569,6 +576,130 @@ func extractRuntime() (runtimeC string, cleanup func(), err error) {
 	return filepath.Join(dir, "runtime.c"), cleanup, nil
 }
 
+// ── jerry test ───────────────────────────────────────────────────────────────
+
+// cmdTest discovers *_test.jer files, finds all fn test_*() functions in them,
+// generates a temporary main file that calls each one, compiles everything
+// together, and runs the resulting binary.
+func cmdTest(args []string) error {
+	// Collect test files: explicit .jer args, directory args (scanned for
+	// *_test.jer), or fall back to globbing *_test.jer in cwd.
+	var testFiles []string
+	for _, a := range args {
+		if strings.HasSuffix(a, ".jer") {
+			testFiles = append(testFiles, a)
+		} else {
+			// Treat as a directory — scan it for *_test.jer files.
+			entries, err := os.ReadDir(a)
+			if err != nil {
+				return fmt.Errorf("jerry test: %w", err)
+			}
+			for _, e := range entries {
+				if !e.IsDir() && strings.HasSuffix(e.Name(), "_test.jer") {
+					testFiles = append(testFiles, filepath.Join(a, e.Name()))
+				}
+			}
+		}
+	}
+	if len(testFiles) == 0 {
+		entries, err := os.ReadDir(".")
+		if err != nil {
+			return err
+		}
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), "_test.jer") {
+				testFiles = append(testFiles, e.Name())
+			}
+		}
+	}
+	if len(testFiles) == 0 {
+		fmt.Fprintln(os.Stderr, "jerry test: no test files found")
+		return nil
+	}
+
+	// Parse each test file and collect test function names per file.
+	type fileTests struct {
+		path  string
+		names []string
+	}
+	var allTests []fileTests
+	for _, path := range testFiles {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("cannot read %s: %w", path, err)
+		}
+		prog, err := parser.Parse(path, string(data))
+		if err != nil {
+			return fmt.Errorf("parse error in %s: %w", path, err)
+		}
+		var names []string
+		for _, tl := range prog.Stmts {
+			if tl.FnDecl == nil {
+				continue
+			}
+			fn := tl.FnDecl
+			if strings.HasPrefix(fn.Name, "test_") && len(fn.Params) == 0 {
+				names = append(names, fn.Name)
+			}
+		}
+		if len(names) > 0 {
+			allTests = append(allTests, fileTests{path, names})
+		}
+	}
+	if len(allTests) == 0 {
+		fmt.Fprintln(os.Stderr, "jerry test: no test_* functions found")
+		return nil
+	}
+
+	// Generate the test main file.
+	var sb strings.Builder
+	sb.WriteString("include @testing\n\nfn main(): void {\n")
+	for _, ft := range allTests {
+		fmt.Fprintf(&sb, "    print(\"--- %s ---\");\n", ft.path)
+		for _, name := range ft.names {
+			fmt.Fprintf(&sb, "    print(\"  %s\");\n", name)
+			fmt.Fprintf(&sb, "    %s();\n", name)
+		}
+	}
+	sb.WriteString("    test_summary();\n}\n")
+
+	// Write to a temp file.
+	tmp, err := os.CreateTemp("", "jerry-test-main-*.jer")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.WriteString(sb.String()); err != nil {
+		return err
+	}
+	tmp.Close()
+
+	// Compile test files + generated main.
+	srcs := append(testFiles, tmp.Name())
+	tmpDir, err := os.MkdirTemp("", "jerry-test-bin-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	bin := filepath.Join(tmpDir, "test")
+
+	if err := compile(srcs, bin, ""); err != nil {
+		return err
+	}
+
+	// Run.
+	runCmd := exec.Command(bin)
+	runCmd.Stdout = os.Stdout
+	runCmd.Stderr = os.Stderr
+	if err := runCmd.Run(); err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			os.Exit(exit.ExitCode())
+		}
+		return fmt.Errorf("test run failed: %w", err)
+	}
+	return nil
+}
+
 // ── jerry create ─────────────────────────────────────────────────────────────
 
 func cmdCreate(args []string) error {
@@ -942,6 +1073,7 @@ func usage() {
   jerry compile <file.jer> [file.jer ...] [-o output]   compile to binary
   jerry run     <file.jer> [file.jer ...]               compile and run
   jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
+  jerry test    [file_test.jer ...]                     run unit tests
   jerry get     <module>@<version>                      fetch a remote module
   jerry sweep                                            sync jerry.remotes / jerry.sum
   jerry create  [--git] [--tap <owner>] <name>          scaffold a new project

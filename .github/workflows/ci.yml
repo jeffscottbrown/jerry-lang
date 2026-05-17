@@ -53,3 +53,6 @@ jobs:
           ./jerry-bin run examples/classes.jer
           ./jerry-bin run examples/closures.jer
           ./jerry-bin run examples/strings.jer
+
+      - name: Jerry tests
+        run: ./jerry-bin test tests/

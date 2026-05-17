@@ -1054,6 +1054,9 @@ func (g *Generator) genPostfixVal(p *ast.PostfixExpr, out *strings.Builder) (str
 			varName := p.Base.Ident
 			lvar, ok := g.locals[varName]
 			if !ok {
+				lvar, ok = g.globals[varName]
+			}
+			if !ok {
 				return "", nil, fmt.Errorf("undefined variable %q for ++/--", varName)
 			}
 			res := g.newTmp()

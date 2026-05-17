@@ -33,15 +33,16 @@ jerry run foo.jer
 9. [Strings](#strings)
 10. [Classes](#classes)
 11. [Memory model](#memory-model)
-12. [Built-in functions](#built-in-functions)
-13. [The always-available core library](#the-always-available-core-library)
-14. [Time and the `Timer` class](#time-and-the-timer-class)
-15. [Modules and remote packages](#modules-and-remote-packages)
-16. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-17. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-18. [Working program: end-to-end example](#working-program-end-to-end-example)
-19. [Showcase: gdgrep](#showcase-gdgrep)
-20. [CLI reference](#cli-reference)
+12. [Testing](#testing)
+13. [Built-in functions](#built-in-functions)
+14. [The always-available core library](#the-always-available-core-library)
+15. [Time and the `Timer` class](#time-and-the-timer-class)
+16. [Modules and remote packages](#modules-and-remote-packages)
+17. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+18. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+19. [Working program: end-to-end example](#working-program-end-to-end-example)
+20. [Showcase: gdgrep](#showcase-gdgrep)
+21. [CLI reference](#cli-reference)
 
 ---
 
@@ -416,6 +417,99 @@ Jerry passes all values as copies of what the variable actually holds.
 - Mutating the *contents* of an array or object through a parameter does
   affect the caller's copy.
 - Strings are safe to pass freely — they cannot be mutated through any API.
+
+---
+
+## Testing
+
+Jerry includes a built-in test runner and an assertion library in the standard
+library. No external tools or frameworks are required.
+
+### Conventions
+
+- Test files are named `*_test.jer`.
+- Test functions are named `fn test_*()` — no parameters, no return value.
+- Every test file that uses assertions must `include @testing`.
+
+### Writing tests
+
+```jerry
+// math_test.jer
+include @testing
+
+fn test_addition() {
+    assert_eq_int(2 + 2, 4, "addition");
+    assert_eq_int(0 + 0, 0, "zero");
+}
+
+fn test_signs() {
+    assert_true(1 > 0, "positive");
+    assert_false(-1 > 0, "negative");
+}
+```
+
+Assertions do **not** abort on failure — every test function runs to completion,
+and the final tally is printed when all tests in the run are done. If any
+assertion failed, the process exits with code 1.
+
+### Running tests
+
+```sh
+# Run all *_test.jer files in the current directory
+jerry test
+
+# Run all tests in a specific directory
+jerry test tests/
+
+# Run specific test files
+jerry test math_test.jer string_test.jer
+```
+
+Output on success:
+
+```text
+--- math_test.jer ---
+  test_addition
+  test_signs
+3 passed
+```
+
+Output when a test fails:
+
+```text
+--- math_test.jer ---
+  test_addition
+  FAIL: addition (expected 5, got 4)
+  test_signs
+2 passed, 1 failed
+```
+
+### Assertion reference
+
+All assertions take a `msg: string` as the final argument — this is printed
+alongside the failure to identify which check failed.
+
+| Function | Checks |
+|---|---|
+| `assert_true(cond: bool, msg)` | `cond` is `true` |
+| `assert_false(cond: bool, msg)` | `cond` is `false` |
+| `assert_eq_int(a: int, b: int, msg)` | `a == b`, prints values on mismatch |
+| `assert_eq_string(a: string, b: string, msg)` | `a == b`, prints values on mismatch |
+| `assert_eq_bool(a: bool, b: bool, msg)` | `a == b`, prints values on mismatch |
+| `assert_eq_float(a: float, b: float, msg)` | `a == b`, prints values on mismatch |
+
+`test_summary()` is called automatically by `jerry test` — you do not call it
+yourself.
+
+### Notes
+
+- A test function that calls `panic` will bring down the whole run; there is no
+  per-test isolation. Keep panics out of test code.
+- Closures cannot capture local variables. If a void callback needs to
+  accumulate a result, use a module-level global as a shared accumulator (see
+  [`tests/closures_test.jer`](../tests/closures_test.jer) for an example).
+- The `tests/` directory in the Jerry repository contains the full test suite
+  and is a good reference for patterns.
 
 ---
 
@@ -932,6 +1026,7 @@ users can `brew install`.
 | `jerry run <file.jer> [args...]`        | Compile and execute in one step               |
 | `jerry compile <file.jer> -o <bin>`     | Build a native binary                         |
 | `jerry ir <file.jer>`                   | Print the generated LLVM IR                   |
+| `jerry test [dir or files...]`          | Run unit tests (see [Testing](#testing))      |
 | `jerry get <path>@<version>`            | Fetch and pin a remote module                 |
 | `jerry sweep`                           | Reconcile `jerry.remotes` and `jerry.sum`     |
 | `jerry --version`                       | Print the compiler version                    |
@@ -948,6 +1043,9 @@ Project layout for a typical app:
 myapp/
 ├── main.jer
 ├── util.jer
+├── tests/
+│   ├── util_test.jer
+│   └── core_test.jer
 ├── jerry.remotes        # pinned remote versions
 └── jerry.sum            # content hashes
 ```
@@ -957,6 +1055,8 @@ myapp/
 ## Where to go next
 
 - Browse the runnable examples in [`examples/`](../examples/).
+- Read the test suite in [`tests/`](../tests/) — every language feature has
+  assertions you can learn from and run with `jerry test tests/`.
 - Read **[gdgrep](https://github.com/jeffscottbrown/gdgrep)** — a full,
   install-it-today utility written in Jerry, and a great reference for your
   own projects.

@@ -1,0 +1,52 @@
+// tests/stdlib_test.jer — core stdlib functions (always available, no include needed)
+include @testing
+
+fn test_int_abs() {
+    assert_eq_int(int_abs(5), 5, "abs positive");
+    assert_eq_int(int_abs(-5), 5, "abs negative");
+    assert_eq_int(int_abs(0), 0, "abs zero");
+    assert_eq_int(int_abs(-1), 1, "abs -1");
+}
+
+fn test_int_max() {
+    assert_eq_int(int_max(3, 7), 7, "max right larger");
+    assert_eq_int(int_max(7, 3), 7, "max left larger");
+    assert_eq_int(int_max(5, 5), 5, "max equal");
+    assert_eq_int(int_max(-1, -5), -1, "max negatives");
+    assert_eq_int(int_max(0, -1), 0, "max zero vs negative");
+}
+
+fn test_int_min() {
+    assert_eq_int(int_min(3, 7), 3, "min left smaller");
+    assert_eq_int(int_min(7, 3), 3, "min right smaller");
+    assert_eq_int(int_min(5, 5), 5, "min equal");
+    assert_eq_int(int_min(-1, -5), -5, "min negatives");
+    assert_eq_int(int_min(0, 1), 0, "min zero vs positive");
+}
+
+fn test_float_abs() {
+    assert_eq_float(float_abs(3.14), 3.14, "float abs positive");
+    assert_eq_float(float_abs(-3.14), 3.14, "float abs negative");
+    assert_eq_float(float_abs(0.0), 0.0, "float abs zero");
+}
+
+fn test_float_max() {
+    assert_eq_float(float_max(1.0, 2.5), 2.5, "float max right");
+    assert_eq_float(float_max(2.5, 1.0), 2.5, "float max left");
+    assert_eq_float(float_max(1.5, 1.5), 1.5, "float max equal");
+}
+
+fn test_float_min() {
+    assert_eq_float(float_min(1.0, 2.5), 1.0, "float min left");
+    assert_eq_float(float_min(2.5, 1.0), 1.0, "float min right");
+    assert_eq_float(float_min(1.5, 1.5), 1.5, "float min equal");
+}
+
+fn test_clamp_with_max_min() {
+    // Simulate a clamp using int_max and int_min
+    let lo: int = 0;
+    let hi: int = 100;
+    assert_eq_int(int_min(int_max(-5, lo), hi), 0, "clamp below lo");
+    assert_eq_int(int_min(int_max(50, lo), hi), 50, "clamp in range");
+    assert_eq_int(int_min(int_max(150, lo), hi), 100, "clamp above hi");
+}

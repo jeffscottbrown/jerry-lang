@@ -1,0 +1,149 @@
+// tests/classes_test.jer — class fields, methods, constructors, multiple instances
+include @testing
+
+class Counter {
+    value: int;
+
+    fn new(start: int) {
+        this.value = start;
+    }
+
+    fn increment(): void {
+        this.value = this.value + 1;
+    }
+
+    fn decrement(): void {
+        this.value = this.value - 1;
+    }
+
+    fn add(n: int): void {
+        this.value = this.value + n;
+    }
+
+    fn get(): int {
+        return this.value;
+    }
+
+    fn reset(): void {
+        this.value = 0;
+    }
+}
+
+class Rectangle {
+    width: int;
+    height: int;
+
+    fn new(w: int, h: int) {
+        this.width = w;
+        this.height = h;
+    }
+
+    fn area(): int {
+        return this.width * this.height;
+    }
+
+    fn perimeter(): int {
+        return 2 * (this.width + this.height);
+    }
+
+    fn scale(factor: int): void {
+        this.width = this.width * factor;
+        this.height = this.height * factor;
+    }
+
+    fn is_square(): bool {
+        return this.width == this.height;
+    }
+}
+
+class Accumulator {
+    total: int;
+    count: int;
+
+    fn new() {
+        this.total = 0;
+        this.count = 0;
+    }
+
+    fn add(n: int): void {
+        this.total = this.total + n;
+        this.count = this.count + 1;
+    }
+
+    fn average(): int {
+        if this.count == 0 {
+            return 0;
+        }
+        return this.total / this.count;
+    }
+}
+
+fn test_counter_basic() {
+    let c: Counter = new Counter(0);
+    assert_eq_int(c.get(), 0, "initial value 0");
+    c.increment();
+    assert_eq_int(c.get(), 1, "after increment");
+    c.increment();
+    assert_eq_int(c.get(), 2, "after second increment");
+    c.decrement();
+    assert_eq_int(c.get(), 1, "after decrement");
+}
+
+fn test_counter_add() {
+    let c: Counter = new Counter(10);
+    c.add(5);
+    assert_eq_int(c.get(), 15, "add 5 to 10");
+    c.add(-3);
+    assert_eq_int(c.get(), 12, "add -3");
+}
+
+fn test_counter_reset() {
+    let c: Counter = new Counter(42);
+    assert_eq_int(c.get(), 42, "initial 42");
+    c.reset();
+    assert_eq_int(c.get(), 0, "after reset");
+}
+
+fn test_multiple_independent_instances() {
+    let a: Counter = new Counter(1);
+    let b: Counter = new Counter(100);
+    a.increment();
+    b.add(5);
+    assert_eq_int(a.get(), 2, "a not affected by b");
+    assert_eq_int(b.get(), 105, "b not affected by a");
+    a.reset();
+    assert_eq_int(a.get(), 0, "a reset");
+    assert_eq_int(b.get(), 105, "b unaffected by a reset");
+}
+
+fn test_rectangle_area_perimeter() {
+    let r: Rectangle = new Rectangle(4, 3);
+    assert_eq_int(r.area(), 12, "area 4x3");
+    assert_eq_int(r.perimeter(), 14, "perimeter 4x3");
+}
+
+fn test_rectangle_scale() {
+    let r: Rectangle = new Rectangle(2, 3);
+    r.scale(3);
+    assert_eq_int(r.width, 6, "scaled width");
+    assert_eq_int(r.height, 9, "scaled height");
+    assert_eq_int(r.area(), 54, "scaled area");
+}
+
+fn test_rectangle_is_square() {
+    let sq: Rectangle = new Rectangle(5, 5);
+    let rect: Rectangle = new Rectangle(4, 6);
+    assert_eq_bool(sq.is_square(), true, "5x5 is square");
+    assert_eq_bool(rect.is_square(), false, "4x6 is not square");
+}
+
+fn test_accumulator() {
+    let acc: Accumulator = new Accumulator();
+    assert_eq_int(acc.average(), 0, "empty average");
+    acc.add(10);
+    acc.add(20);
+    acc.add(30);
+    assert_eq_int(acc.total, 60, "total");
+    assert_eq_int(acc.count, 3, "count");
+    assert_eq_int(acc.average(), 20, "average of 10,20,30");
+}

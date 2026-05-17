@@ -55,6 +55,7 @@ ir-strings:
 
 test:
 	go test ./...
+	$(JERRY) test tests/
 
 # ── Build the installed binary ────────────────────────────────────────────────
 

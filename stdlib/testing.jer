@@ -1,0 +1,84 @@
+// stdlib/testing.jer — simple unit test assertion library.
+//
+// Usage:
+//   include @testing
+//
+//   fn test_something() {
+//       assert_eq_int(1 + 1, 2, "addition");
+//       assert_true(1 < 2, "ordering");
+//   }
+//
+// Run with:
+//   jerry test             — runs all *_test.jer files in the current directory
+//   jerry test foo_test.jer bar_test.jer
+//
+// Assertions do not abort on failure; all tests in a file run to completion.
+// Call test_summary() (injected automatically by `jerry test`) at the end to
+// print totals and exit with code 1 if any assertion failed.
+
+let _test_failures: int = 0;
+let _test_passes: int = 0;
+
+fn assert_true(cond: bool, msg: string): void {
+    if cond {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg);
+    }
+}
+
+fn assert_false(cond: bool, msg: string): void {
+    if !cond {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg + " (expected false, got true)");
+    }
+}
+
+fn assert_eq_int(a: int, b: int, msg: string): void {
+    if a == b {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg + " (expected " + int_to_string(b) + ", got " + int_to_string(a) + ")");
+    }
+}
+
+fn assert_eq_string(a: string, b: string, msg: string): void {
+    if a == b {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg + " (expected \"" + b + "\", got \"" + a + "\")");
+    }
+}
+
+fn assert_eq_bool(a: bool, b: bool, msg: string): void {
+    if a == b {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg + " (expected " + bool_to_string(b) + ", got " + bool_to_string(a) + ")");
+    }
+}
+
+fn assert_eq_float(a: float, b: float, msg: string): void {
+    if a == b {
+        _test_passes = _test_passes + 1;
+    } else {
+        _test_failures = _test_failures + 1;
+        print("  FAIL: " + msg + " (expected " + float_to_string(b) + ", got " + float_to_string(a) + ")");
+    }
+}
+
+fn test_summary(): void {
+    let total: int = _test_passes + _test_failures;
+    if _test_failures == 0 {
+        print(int_to_string(total) + " passed");
+    } else {
+        print(int_to_string(_test_passes) + " passed, " + int_to_string(_test_failures) + " failed");
+        exit(1);
+    }
+}
