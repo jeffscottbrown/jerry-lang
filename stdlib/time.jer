@@ -1,0 +1,95 @@
+// stdlib/time.jer — time utilities built on the now_millis(), now_seconds(),
+// and now_string() builtins.
+//
+// Available primitives (no import needed — provided by the runtime):
+//   now_millis()  : int    — Unix epoch time in milliseconds
+//   now_seconds() : int    — Unix epoch time in seconds
+//   now_string()  : string — Local time as "YYYY-MM-DD HH:MM:SS"
+//
+// Provides:
+//   millis_to_duration(ms: int): string — formats a raw ms count as a human-
+//                                          readable duration string
+//   class Timer — a simple monotonic stopwatch
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+// _pad2 zero-pads a non-negative integer to at least two digits.
+// Used to produce the "05" / "02" segments in longer duration strings.
+fn _pad2(n: int): string {
+    if n < 10 {
+        return "0" + int_to_string(n);
+    }
+    return int_to_string(n);
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+// millis_to_duration formats a millisecond count as a human-readable duration.
+//
+// Examples:
+//   millis_to_duration(42)        → "42ms"
+//   millis_to_duration(3500)      → "3.5s"
+//   millis_to_duration(125000)    → "2m05s"
+//   millis_to_duration(3723000)   → "1h02m03s"
+fn millis_to_duration(ms: int): string {
+    // Under one second → plain milliseconds
+    if ms < 1000 {
+        return int_to_string(ms) + "ms";
+    }
+
+    // Under one minute → seconds with one decimal place
+    // The fractional digit is the leading tenth: (ms % 1000) / 100
+    if ms < 60000 {
+        let secs: int = ms / 1000;
+        let frac: int = (ms % 1000) / 100;
+        return int_to_string(secs) + "." + int_to_string(frac) + "s";
+    }
+
+    // Under one hour → minutes and zero-padded seconds
+    if ms < 3600000 {
+        let mins: int = ms / 60000;
+        let secs: int = (ms / 1000) % 60;
+        return int_to_string(mins) + "m" + _pad2(secs) + "s";
+    }
+
+    // One hour or more → hours, zero-padded minutes, zero-padded seconds
+    let hours: int = ms / 3600000;
+    let mins: int = (ms / 60000) % 60;
+    let secs: int = (ms / 1000) % 60;
+    return int_to_string(hours) + "h" + _pad2(mins) + "m" + _pad2(secs) + "s";
+}
+
+// ── Timer class ───────────────────────────────────────────────────────────────
+
+// Timer is a simple stopwatch.  Create one, do some work, then read how long
+// it took via elapsed_ms() or elapsed_string().
+//
+// Example:
+//   let t: Timer = new Timer();
+//   // ... do work ...
+//   print("done in " + t.elapsed_string());
+class Timer {
+    start_ms: int;
+
+    // new records the current time as the start of the interval.
+    fn new() {
+        this.start_ms = now_millis();
+    }
+
+    // reset restarts the timer from the current moment.
+    fn reset() {
+        this.start_ms = now_millis();
+    }
+
+    // elapsed_ms returns the number of milliseconds since the timer was
+    // created or last reset.
+    fn elapsed_ms(): int {
+        return now_millis() - this.start_ms;
+    }
+
+    // elapsed_string returns the elapsed time as a human-readable duration
+    // string (e.g. "42ms", "3.5s", "2m05s", "1h02m03s").
+    fn elapsed_string(): string {
+        return millis_to_duration(now_millis() - this.start_ms);
+    }
+}
