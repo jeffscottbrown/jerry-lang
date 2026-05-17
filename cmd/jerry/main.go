@@ -5,7 +5,7 @@
 //	jerry compile <file.jer> [file.jer ...] [-o output]   compile to native binary
 //	jerry run     <file.jer> [file.jer ...]               compile and run immediately
 //	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
-//	jerry test    [file_test.jer ...]                     run unit tests
+//	jerry test    [dir|file_test.jer ...]                 run unit tests
 //	jerry get     <module>@<version>                      fetch a remote module
 //	jerry sweep                                            sync jerry.remotes and jerry.sum
 //	jerry -v | --version                                  print version and exit
@@ -1073,7 +1073,7 @@ func usage() {
   jerry compile <file.jer> [file.jer ...] [-o output]   compile to binary
   jerry run     <file.jer> [file.jer ...]               compile and run
   jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
-  jerry test    [file_test.jer ...]                     run unit tests
+  jerry test    [dir|file_test.jer ...]                 run unit tests
   jerry get     <module>@<version>                      fetch a remote module
   jerry sweep                                            sync jerry.remotes / jerry.sum
   jerry create  [--git] [--tap <owner>] <name>          scaffold a new project
