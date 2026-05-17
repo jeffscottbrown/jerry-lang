@@ -39,16 +39,6 @@ func CachedDir(modPath, version string) (string, error) {
 	return filepath.Join(base, modPath+"@"+version), nil
 }
 
-// IsCached reports whether a module version is already in the local cache.
-func IsCached(modPath, version string) (bool, error) {
-	dir, err := CachedDir(modPath, version)
-	if err != nil {
-		return false, err
-	}
-	_, err = os.Stat(dir)
-	return err == nil, nil
-}
-
 // Fetch downloads a module archive, extracts .jer files to the cache, and
 // returns (cacheDir, "h1:<hex>", nil). If the module is already cached the
 // download is skipped and the stored hash is returned.
