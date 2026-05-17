@@ -122,7 +122,6 @@ Module versions are tracked in `jerry.remotes` and hashes in `jerry.sum`, both l
 | Arrays | `let nums: int[] = [1, 2, 3];` |
 | Closures | `let double = fn(x: int): int { return x * 2; };` |
 | For / while | `for (let i: int = 0; i < 10; i++) { ... }` |
-| String builtins | `split`, `join`, `trim`, `starts_with`, `index_of`, … |
 
 ## Examples
 
