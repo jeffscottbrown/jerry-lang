@@ -2,7 +2,7 @@
 package parser
 
 import (
-	"jerry/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"

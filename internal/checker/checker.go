@@ -1,7 +1,7 @@
 package checker
 
 import (
-	"jerry/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 	"fmt"
 	"strconv"
 	"strings"

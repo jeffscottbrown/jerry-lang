@@ -3,8 +3,8 @@
 package codegen
 
 import (
-	"jerry/internal/ast"
-	"jerry/internal/checker"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/checker"
 	"fmt"
 	"strconv"
 	"strings"
