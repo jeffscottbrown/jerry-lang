@@ -25,13 +25,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 )
 
-// Version is injected at build time via -ldflags "-X main.Version=v1.2.3".
-// Falls back to "dev" for local builds.
+// Version is injected at build time via -ldflags "-X main.Version=v1.2.3"
+// for release builds. For binaries installed via `go install`, it falls back
+// to the module version embedded automatically in the binary's build info.
+// Local `go run` builds show "dev".
 var Version = "dev"
+
+func init() {
+	if Version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			Version = info.Main.Version
+		}
+	}
+}
 
 func main() {
 	if len(os.Args) < 2 {
