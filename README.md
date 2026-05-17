@@ -112,6 +112,42 @@ fn main() {
 
 Module versions are tracked in `jerry.remotes` and hashes in `jerry.sum`, both located alongside your source files.
 
+## GitHub Actions
+
+The `setup-jerry` composite action installs the Jerry compiler on any GitHub-hosted runner. No marketplace listing required — reference it directly from this repo.
+
+```yaml
+- uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
+```
+
+Pin a specific version for reproducible builds:
+
+```yaml
+- uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
+  with:
+    version: v0.1.4
+```
+
+### Full project workflow
+
+A complete workflow that builds on all platforms and creates a GitHub Release on `v*.*.*` tag pushes is available at [`examples/workflows/release.yml`](examples/workflows/release.yml). Copy it to your project at `.github/workflows/release.yml` and replace `myapp` with your binary name.
+
+Key steps:
+
+```yaml
+- name: Install clang (Linux only)
+  if: runner.os == 'Linux'
+  run: sudo apt-get install -y clang
+
+- name: Setup Jerry
+  uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
+
+- name: Build
+  run: jerry compile main.jer -o myapp
+```
+
+The action automatically detects the runner OS and architecture (Linux x86_64, macOS x86_64, macOS arm64), downloads the matching pre-built binary, verifies its checksum, and adds `jerry` to `PATH`.
+
 ## Language features
 
 | Feature | Example |

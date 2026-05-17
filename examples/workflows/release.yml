@@ -1,0 +1,101 @@
+# Sample GitHub Actions workflow for a Jerry project.
+#
+# Copy this file to your project at .github/workflows/release.yml.
+#
+# Behaviour:
+#   - On every push to main: build and test.
+#   - On a v*.*.* tag push: build for all platforms and create a GitHub Release.
+#
+# Prerequisites:
+#   - Linux runners require clang:  sudo apt-get install -y clang
+#   - macOS runners have clang via Xcode Command Line Tools (pre-installed on GH runners)
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags:     ["v*.*.*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write   # required to create GitHub Releases
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name:       linux-x86_64
+            os:         ubuntu-latest
+            asset_name: myapp-linux-x86_64
+
+          - name:       macos-x86_64
+            os:         macos-15
+            asset_name: myapp-macos-x86_64
+
+          - name:       macos-arm64
+            os:         macos-latest
+            asset_name: myapp-macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang
+
+      - name: Setup Jerry
+        uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main
+        # Pin a specific version for reproducible builds:
+        # with:
+        #   version: v0.1.4
+
+      - name: Build
+        run: jerry compile main.jer -o ${{ matrix.asset_name }}
+
+      - name: Test
+        run: jerry run tests.jer
+
+      - name: Upload artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            dist/*
