@@ -1,0 +1,58 @@
+// stdlib/core.jer — always included; no explicit `include` required.
+//
+// Depends only on compiler primitives (print, len, int_to_string, etc.).
+
+// ── Integer utilities ─────────────────────────────────────────────────────────
+
+fn int_abs(n: int): int {
+    if n < 0 {
+        return -n;
+    }
+    return n;
+}
+
+fn int_max(a: int, b: int): int {
+    if a > b {
+        return a;
+    }
+    return b;
+}
+
+fn int_min(a: int, b: int): int {
+    if a < b {
+        return a;
+    }
+    return b;
+}
+
+// ── Float utilities ───────────────────────────────────────────────────────────
+
+fn float_abs(n: float): float {
+    if n < 0.0 {
+        return -n;
+    }
+    return n;
+}
+
+fn float_max(a: float, b: float): float {
+    if a > b {
+        return a;
+    }
+    return b;
+}
+
+fn float_min(a: float, b: float): float {
+    if a < b {
+        return a;
+    }
+    return b;
+}
+
+// ── Bool utilities ────────────────────────────────────────────────────────────
+
+fn bool_to_string(b: bool): string {
+    if b {
+        return "true";
+    }
+    return "false";
+}

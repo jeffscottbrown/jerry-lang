@@ -6,18 +6,22 @@
 //	jerry run     <file.jer> [file.jer ...]               compile and run immediately
 //	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
 //
-// Multiple source files are concatenated before parsing, so all top-level
-// declarations share a single global namespace.
+// Each source file is parsed independently. Functions defined in any project
+// file are visible to all other project files. Stdlib modules must be explicitly
+// included with `include @modulename` and are only visible in files that include
+// them. stdlib/core.jer is always included automatically.
 package main
 
 import (
 	"fmt"
+	"jerry/internal/ast"
 	"jerry/internal/checker"
 	"jerry/internal/codegen"
 	"jerry/internal/parser"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -43,7 +47,6 @@ func main() {
 		}
 
 	case "run":
-		// Collect source files (all .jer args before any program args).
 		srcs, rest := splitSrcs(os.Args[2:])
 		if len(srcs) == 0 {
 			fatalf("no source files given")
@@ -87,7 +90,6 @@ func main() {
 	}
 }
 
-// parseCompileArgs splits "file... [-o out]" into (outBin, srcs).
 func parseCompileArgs(args []string) (outBin string, srcs []string) {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "-o" && i+1 < len(args) {
@@ -100,9 +102,6 @@ func parseCompileArgs(args []string) (outBin string, srcs []string) {
 	return
 }
 
-// splitSrcs separates .jer source files from remaining program arguments.
-// Source files are any args that end in .jer; everything after the first
-// non-.jer arg is treated as program arguments.
 func splitSrcs(args []string) (srcs, rest []string) {
 	i := 0
 	for i < len(args) && (strings.HasSuffix(args[i], ".jer") || strings.HasSuffix(args[i], ".jl")) {
@@ -146,30 +145,63 @@ func compile(srcs []string, outBin string) error {
 	return nil
 }
 
-// compileToIR reads and concatenates all source files, then compiles to LLVM IR.
+// compileToIR is the main compilation pipeline:
+//  1. Parse each project file independently.
+//  2. Parse stdlib/core.jer (always included).
+//  3. Parse any stdlib modules referenced by `include @name` declarations.
+//  4. Type-check all files with per-file scoping via checker.CheckAll.
+//  5. Generate LLVM IR from all ASTs together.
 func compileToIR(srcs []string) (string, error) {
-	var combined strings.Builder
+	stdlibDir, err := findStdlib()
+	if err != nil {
+		return "", err
+	}
+
+	// Always load core.jer.
+	coreAST, err := parseStdlibFile(stdlibDir, "core")
+	if err != nil {
+		return "", fmt.Errorf("failed to load stdlib/core.jer: %w", err)
+	}
+
+	// Parse each project source file independently.
+	projectASTs := make([]*ast.Program, 0, len(srcs))
 	for _, src := range srcs {
 		data, err := os.ReadFile(src)
 		if err != nil {
 			return "", fmt.Errorf("cannot read %s: %w", src, err)
 		}
-		combined.WriteString(string(data))
-		combined.WriteByte('\n')
+		prog, err := parser.Parse(src, string(data))
+		if err != nil {
+			return "", fmt.Errorf("parse error in %s: %w", src, err)
+		}
+		projectASTs = append(projectASTs, prog)
 	}
 
-	// Use the first filename for error reporting.
-	name := srcs[0]
-	if len(srcs) > 1 {
-		name = strings.Join(srcs, "+")
+	// Collect all unique stdlib includes across all project files and load them.
+	stdlibASTs := make(map[string]*ast.Program)
+	for i, prog := range projectASTs {
+		for _, tl := range prog.Stmts {
+			if tl.Include == nil {
+				continue
+			}
+			name := tl.Include.Stdlib
+			if name == "core" {
+				return "", fmt.Errorf("%s: do not include @core — it is always available", srcs[i])
+			}
+			if _, already := stdlibASTs[name]; already {
+				continue
+			}
+			stdAST, err := parseStdlibFile(stdlibDir, name)
+			if err != nil {
+				return "", fmt.Errorf("%s: unknown stdlib module @%s (no file %s/%s.jer)",
+					srcs[i], name, stdlibDir, name)
+			}
+			stdlibASTs[name] = stdAST
+		}
 	}
 
-	prog, err := parser.Parse(name, combined.String())
-	if err != nil {
-		return "", fmt.Errorf("parse error: %w", err)
-	}
-
-	info, errs := checker.Check(prog)
+	// Type-check with per-file scoping.
+	info, errs := checker.CheckAll(projectASTs, coreAST, stdlibASTs)
 	if len(errs) > 0 {
 		var msgs []string
 		for _, e := range errs {
@@ -178,11 +210,49 @@ func compileToIR(srcs []string) (string, error) {
 		return "", fmt.Errorf("type errors:\n%s", strings.Join(msgs, "\n"))
 	}
 
-	ir, err := codegen.Generate(prog, info)
+	// Assemble ordered list of ASTs for codegen:
+	//   core → included stdlibs (alphabetical) → project files (in argument order)
+	allASTs := []*ast.Program{coreAST}
+	var stdlibNames []string
+	for name := range stdlibASTs {
+		stdlibNames = append(stdlibNames, name)
+	}
+	sort.Strings(stdlibNames)
+	for _, name := range stdlibNames {
+		allASTs = append(allASTs, stdlibASTs[name])
+	}
+	allASTs = append(allASTs, projectASTs...)
+
+	ir, err := codegen.Generate(allASTs, info)
 	if err != nil {
 		return "", fmt.Errorf("codegen error: %w", err)
 	}
 	return ir, nil
+}
+
+func parseStdlibFile(stdlibDir, name string) (*ast.Program, error) {
+	path := filepath.Join(stdlibDir, name+".jer")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return parser.Parse(path, string(data))
+}
+
+func findStdlib() (string, error) {
+	exe, err := os.Executable()
+	if err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), "..", "..", "stdlib")
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Abs(candidate)
+		}
+	}
+	for _, rel := range []string{"stdlib", "../stdlib"} {
+		if _, err := os.Stat(rel); err == nil {
+			return filepath.Abs(rel)
+		}
+	}
+	return "", fmt.Errorf("cannot find stdlib directory — run jerry from the project root")
 }
 
 func findRuntime() (string, error) {

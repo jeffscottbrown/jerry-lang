@@ -1,4 +1,4 @@
-.PHONY: build test run-hello run-fibonacci run-arrays run-classes clean ir-hello
+.PHONY: build test run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 JERRY = go run ./cmd/jerry
 
@@ -19,6 +19,12 @@ run-arrays:
 run-classes:
 	$(JERRY) run examples/classes.jer
 
+run-closures:
+	$(JERRY) run examples/closures.jer
+
+run-strings:
+	$(JERRY) run examples/strings.jer
+
 # Dump LLVM IR (useful for debugging codegen)
 ir-hello:
 	$(JERRY) ir examples/hello.jer
@@ -31,6 +37,9 @@ ir-arrays:
 
 ir-classes:
 	$(JERRY) ir examples/classes.jer
+
+ir-strings:
+	$(JERRY) ir examples/strings.jer
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 

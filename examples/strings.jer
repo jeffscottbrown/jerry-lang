@@ -1,6 +1,8 @@
 // examples/strings.jer — exercises char_at, string_slice, char_to_string,
 // and the string stdlib functions.
 
+include @string
+
 fn main() {
     let s: string = "Hello, Jerry!";
 

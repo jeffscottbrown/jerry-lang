@@ -14,9 +14,17 @@ type Program struct {
 // TopLevel is anything that can appear at module scope.
 type TopLevel struct {
 	Pos     lexer.Position
-	FnDecl  *FnDecl    `( @@`
-	Class   *ClassDecl `| @@`
-	VarDecl *VarDecl   `| @@ )`
+	Include *IncludeDecl `( @@`
+	FnDecl  *FnDecl      `| @@`
+	Class   *ClassDecl   `| @@`
+	VarDecl *VarDecl     `| @@ )`
+}
+
+// IncludeDecl brings a stdlib module into scope for this file.
+// Syntax: include @modulename
+type IncludeDecl struct {
+	Pos    lexer.Position
+	Stdlib string `"include" "@" @Ident`
 }
 
 // ── Declarations ─────────────────────────────────────────────────────────────
@@ -306,7 +314,7 @@ type PrimaryExpr struct {
 	Paren   *Expr     `| "(" @@ ")"`
 	This    bool      `| @"this"`
 	Null    bool      `| @"null"`
-	Bool    string    `| @( "true" | "false" )`
+	Bool    string    `| @BoolLit`
 	Float   string    `| @Float`
 	Int     string    `| @Int`
 	String  *string   `| @String`

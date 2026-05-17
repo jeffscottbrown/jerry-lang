@@ -13,9 +13,8 @@ import (
 // ── Generator ─────────────────────────────────────────────────────────────────
 
 type Generator struct {
-	out     strings.Builder
-	info    *checker.Info
-	prog    *ast.Program
+	out  strings.Builder
+	info *checker.Info
 
 	// Counter for unique temporaries and labels
 	tmp   int
@@ -56,43 +55,44 @@ type loopLabels struct {
 	endLabel  string
 }
 
-func New(prog *ast.Program, info *checker.Info) *Generator {
-	return &Generator{prog: prog, info: info}
-}
-
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-func Generate(prog *ast.Program, info *checker.Info) (string, error) {
-	g := New(prog, info)
-	err := g.genProgram()
-	if err != nil {
+// Generate compiles a set of programs (core + stdlib + project files) into a
+// single LLVM IR module. The programs must already be type-checked and their
+// type info collected into info.
+func Generate(progs []*ast.Program, info *checker.Info) (string, error) {
+	g := &Generator{info: info}
+	if err := g.genPrograms(progs); err != nil {
 		return "", err
 	}
 	return g.out.String(), nil
 }
 
-func (g *Generator) genProgram() error {
+func (g *Generator) genPrograms(progs []*ast.Program) error {
 	// We buffer class type decls and string constants, emitting them after
 	// collecting everything.
 	var fnBuf strings.Builder
 	g.out = strings.Builder{} // will be rebuilt
 
-	// Build class type declarations.
+	// Build class type declarations (uses g.info which has all classes).
 	g.emitClassTypeDecls()
 
-	// Generate function bodies into fnBuf.
-	for _, tl := range g.prog.Stmts {
-		switch {
-		case tl.FnDecl != nil:
-			if err := g.genFnDecl(tl.FnDecl, &fnBuf); err != nil {
-				return err
+	// Generate function bodies from all programs in order.
+	for _, prog := range progs {
+		for _, tl := range prog.Stmts {
+			switch {
+			case tl.FnDecl != nil:
+				if err := g.genFnDecl(tl.FnDecl, &fnBuf); err != nil {
+					return err
+				}
+			case tl.Class != nil:
+				if err := g.genClassDecl(tl.Class, &fnBuf); err != nil {
+					return err
+				}
+			case tl.VarDecl != nil:
+				return fmt.Errorf("top-level variable declarations not yet supported")
+			// tl.Include: no IR to emit
 			}
-		case tl.Class != nil:
-			if err := g.genClassDecl(tl.Class, &fnBuf); err != nil {
-				return err
-			}
-		case tl.VarDecl != nil:
-			return fmt.Errorf("top-level variable declarations not yet supported")
 		}
 	}
 
