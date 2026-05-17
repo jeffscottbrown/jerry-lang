@@ -1,11 +1,12 @@
 package checker
 
 import (
-	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 	"fmt"
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
 )
 
 // Checker performs type checking and semantic analysis on an Jerry AST.
@@ -75,6 +76,8 @@ func installBuiltins(s *Scope) {
 	// panic(msg): void
 	s.Define(&Symbol{Name: "panic", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, Void)})
+	s.Define(&Symbol{Name: "each_line", Kind: SymFunc,
+		Type: FuncType([]*Type{String, FuncType([]*Type{String}, Void)}, Void)}) // <-- Add this line
 }
 
 // Check type-checks a program and returns type info plus any errors.
@@ -318,7 +321,7 @@ func CheckAll(
 				fc.checkClassDecl(tl.Class)
 			case tl.VarDecl != nil:
 				fc.checkVarDecl(tl.VarDecl)
-			// tl.Include: no body to check
+				// tl.Include: no body to check
 			}
 		}
 		for _, msg := range fc.errors {

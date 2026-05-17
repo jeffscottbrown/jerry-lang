@@ -728,44 +728,15 @@ func createWorkflow(name, tapOwner string) string {
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           TAG="${{ github.ref_name }}"
-          BASE="https://github.com/%s/%s/releases/download/${TAG}"
-          SHA_LINUX=$(sha256sum dist/%s-linux-x86_64.tar.gz  | awk '{print $1}')
+          SHA_LINUX=$(sha256sum dist/%s-linux-x86_64.tar.gz   | awk '{print $1}')
           SHA_MACOS_X86=$(sha256sum dist/%s-macos-x86_64.tar.gz | awk '{print $1}')
           SHA_MACOS_ARM=$(sha256sum dist/%s-macos-arm64.tar.gz  | awk '{print $1}')
           git clone "https://github.com/%s/homebrew-%s.git" tap
-          cat > tap/Formula/%s.rb << FORMULA
-class %s < Formula
-  desc "%s"
-  homepage "https://github.com/%s/%s"
-  version "${TAG#v}"
-  license "MIT"
-
-  on_macos do
-    on_arm do
-      url "${BASE}/%s-macos-arm64.tar.gz"
-      sha256 "${SHA_MACOS_ARM}"
-    end
-    on_intel do
-      url "${BASE}/%s-macos-x86_64.tar.gz"
-      sha256 "${SHA_MACOS_X86}"
-    end
-  end
-  on_linux do
-    on_intel do
-      url "${BASE}/%s-linux-x86_64.tar.gz"
-      sha256 "${SHA_LINUX}"
-    end
-  end
-
-  def install
-    bin.install Dir["%s-*"].first => "%s"
-  end
-
-  test do
-    assert_shell_output "#{bin}/%s"
-  end
-end
-FORMULA
+          sed -i "s|version \".*\"|version \"${TAG#v}\"|"                  tap/Formula/%s.rb
+          sed -i "s|/releases/download/v[^/]*/|/releases/download/${TAG}/|g" tap/Formula/%s.rb
+          sed -i "s|SHA256_MACOS_ARM64|${SHA_MACOS_ARM}|"                  tap/Formula/%s.rb
+          sed -i "s|SHA256_MACOS_X86_64|${SHA_MACOS_X86}|"                 tap/Formula/%s.rb
+          sed -i "s|SHA256_LINUX_X86_64|${SHA_LINUX}|"                     tap/Formula/%s.rb
           cd tap
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -774,12 +745,9 @@ FORMULA
           git commit -m "chore: update %s to ${TAG}" || echo "no changes"
           git push
 `,
-			tapOwner, name,
 			name, name, name,
-			tapOwner, name, name,
-			toRubyClass(name), name,
 			tapOwner, name,
-			name, name, name,
+			name, name,
 			name, name, name,
 			tapOwner, name, name, name,
 		)
@@ -881,23 +849,23 @@ func createFormula(name, owner string) string {
 	return fmt.Sprintf(`class %s < Formula
   desc "%s"
   homepage "https://github.com/%s/%s"
-  version "0.0.0"   # updated automatically by release workflow
+  version "0.0.0"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/%s/%s/releases/download/v0.0.0/%s-macos-arm64.tar.gz"
-      sha256 "PLACEHOLDER"
+      sha256 "SHA256_MACOS_ARM64"
     end
     on_intel do
       url "https://github.com/%s/%s/releases/download/v0.0.0/%s-macos-x86_64.tar.gz"
-      sha256 "PLACEHOLDER"
+      sha256 "SHA256_MACOS_X86_64"
     end
   end
   on_linux do
     on_intel do
       url "https://github.com/%s/%s/releases/download/v0.0.0/%s-linux-x86_64.tar.gz"
-      sha256 "PLACEHOLDER"
+      sha256 "SHA256_LINUX_X86_64"
     end
   end
 

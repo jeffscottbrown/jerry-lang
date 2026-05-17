@@ -3,11 +3,12 @@
 package codegen
 
 import (
-	"github.com/jeffscottbrown/jerry-lang/internal/ast"
-	"github.com/jeffscottbrown/jerry-lang/internal/checker"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/checker"
 )
 
 // ── Generator ─────────────────────────────────────────────────────────────────
@@ -32,9 +33,9 @@ type Generator struct {
 	pendingFns strings.Builder
 
 	// Current function context
-	curFnName string
-	retType   *checker.Type
-	locals    map[string]*localVar // name → alloca register + type
+	curFnName  string
+	retType    *checker.Type
+	locals     map[string]*localVar // name → alloca register + type
 	labelStack []loopLabels         // for break/continue
 
 	// Tracks whether current basic block has a terminator
@@ -91,7 +92,7 @@ func (g *Generator) genPrograms(progs []*ast.Program) error {
 				}
 			case tl.VarDecl != nil:
 				return fmt.Errorf("top-level variable declarations not yet supported")
-			// tl.Include: no IR to emit
+				// tl.Include: no IR to emit
 			}
 		}
 	}
@@ -160,6 +161,7 @@ declare void @jerry_panic(ptr)
 declare ptr  @jerry_alloc(i64)
 declare ptr  @jerry_read_file(ptr)
 declare void @jerry_write_file(ptr, ptr)
+declare void @jerry_each_line(ptr, ptr)
 
 `
 }
@@ -1157,6 +1159,28 @@ func (g *Generator) genCall(
 			g.terminated = true
 			return "0", checker.Void, nil
 
+		case "each_line": // <-- Add this case block
+			if len(call.Args) != 2 {
+				return "", nil, fmt.Errorf("each_line() takes 2 arguments (filename, callback)")
+			}
+			// 1. Evaluate the file name (Expected: checker.String / ptr)
+			pathVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+
+			// 2. Evaluate the callback (Expected: checker.KindFunc / ptr representing %JerryClosure)
+			callbackVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+
+			// 3. Emit the call to the runtime helper
+			// fmt.Fprintf(out, "  call void @jerry_each_line(ptr %s, ptr %s)\n", pathVal, callbackVal)
+			// Change this line to use standard regular spaces:
+			fmt.Fprintf(out, "  call void @jerry_each_line(ptr %s, ptr %s)\n", pathVal, callbackVal)
+			return "0", checker.Void, nil
+
 		case "panic":
 			argVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {
@@ -1835,20 +1859,21 @@ func (g *Generator) cloneLocals() map[string]*localVar {
 // Used by the codegen's type-inference helpers (primaryType etc.) which
 // don't have access to the checker's scope.
 var builtinReturnType = map[string]*checker.Type{
-	"print":            checker.Void,
-	"write":            checker.Void,
-	"println":          checker.Void,
-	"len":              checker.Int,
-	"push":             checker.Void,
-	"int_to_string":    checker.String,
-	"float_to_string":  checker.String,
-	"char_at":          checker.Int,
-	"string_slice":     checker.String,
-	"char_to_string":   checker.String,
-	"read_file":        checker.String,
-	"write_file":       checker.Void,
-	"exit":             checker.Void,
-	"panic":            checker.Void,
+	"print":           checker.Void,
+	"write":           checker.Void,
+	"println":         checker.Void,
+	"len":             checker.Int,
+	"push":            checker.Void,
+	"int_to_string":   checker.String,
+	"float_to_string": checker.String,
+	"char_at":         checker.Int,
+	"string_slice":    checker.String,
+	"char_to_string":  checker.String,
+	"read_file":       checker.String,
+	"write_file":      checker.Void,
+	"exit":            checker.Void,
+	"panic":           checker.Void,
+	"each_line":       checker.Void,
 }
 
 // llvmEscapeString escapes a Go string for LLVM IR constant syntax.

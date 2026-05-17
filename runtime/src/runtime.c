@@ -113,7 +113,7 @@ void jerry_print_array(JerryArray* arr) {
     /* Generic array printing — prints raw element bytes as hex.
        Type-specific printing would require runtime type tags.
        For now this is a placeholder; override in Jerry code with
-       a manual loop.                                                          */
+       a manual loop.                                                  */
     if (arr == NULL) {
         fputs("null", stdout);
         return;
@@ -164,6 +164,45 @@ void jerry_write_file(JerryStr* path, JerryStr* content) {
     fclose(f);
 }
 
+void jerry_each_line(JerryStr* path, JerryClosure* closure) {
+    if (path == NULL || closure == NULL || closure->fn_ptr == NULL) {
+        fprintf(stderr, "jerry: each_line: null argument or invalid callback\n");
+        exit(1);
+    }
+
+    FILE* f = fopen(path->data, "r");
+    if (!f) {
+        fprintf(stderr, "jerry: each_line: cannot open '%s'\n", path->data);
+        exit(1);
+    }
+
+    char* line = NULL;
+    size_t cap = 0;
+    ssize_t len;
+
+    // Read file line by line safely handling dynamic string buffers via getline
+    while ((len = getline(&line, &cap, f)) != -1) {
+        // Strip trailing line configurations (\n and \r)
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+            len--;
+        }
+        if (len > 0 && line[len - 1] == '\r') {
+            line[len - 1] = '\0';
+            len--;
+        }
+
+        // Allocate dynamic JerryStr context for the line read
+        JerryStr* jerry_line = jerry_string_new(line, (int64_t)len);
+
+        // Call user closure function passing the environment space pointer and string payload
+        closure->fn_ptr(closure->env_ptr, jerry_line);
+    }
+
+    free(line);
+    fclose(f);
+}
+
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */
 
 JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap) {
@@ -202,7 +241,7 @@ int64_t jerry_array_len(JerryArray* arr) {
 void jerry_array_push(JerryArray* arr, void* elem) {
     if (arr->len >= arr->cap) {
         int64_t new_cap = arr->cap * 2;
-        char*   new_data = realloc(arr->data, (size_t)(new_cap * arr->elem_size));
+        char* new_data = realloc(arr->data, (size_t)(new_cap * arr->elem_size));
         if (!new_data) {
             fprintf(stderr, "jerry: array_push: out of memory\n");
             exit(1);

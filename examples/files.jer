@@ -1,0 +1,19 @@
+// examples/files.alt — basic file i/o
+
+fn print_line_from_file(): fn(string): void {
+    return fn(line: string): void {
+        print(line);
+    };
+}
+
+fn main() {
+    let fileName: string = "/tmp/demo.txt";
+
+    write_file(fileName, "One\nTwo\nThree");
+
+    let line_printer = fn(line: string): void {
+        print(line);
+    };
+
+    each_line(fileName, line_printer);
+}

@@ -22,7 +22,7 @@ typedef struct {
 
 /* JerryClosure: first-class function value */
 typedef struct {
-    void* fn_ptr;
+    void (*fn_ptr)(void* env, JerryStr* str); // Typed function pointer
     void* env_ptr;
 } JerryClosure;
 

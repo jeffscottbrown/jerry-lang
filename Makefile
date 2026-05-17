@@ -14,6 +14,9 @@ build:
 run-hello:
 	$(JERRY) run examples/hello.jer
 
+run-files:
+	$(JERRY) run examples/files.jer
+
 run-fibonacci:
 	$(JERRY) run examples/fibonacci.jer
 
