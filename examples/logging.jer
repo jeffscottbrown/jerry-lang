@@ -1,0 +1,14 @@
+// examples/logging.jer — demonstrates stdlib logging and timer utilities.
+//
+// Shows:
+//   - Module-level log_* convenience functions
+//   - Adjusting the default logger's minimum level
+//   - Named Logger instances with per-module prefixes
+//   - ERROR / FATAL routing to stderr
+//   - Timing work with the Timer class
+
+include "github.com/jeffscottbrown/jerry-logging"
+
+fn main() {
+    log_info("hello");
+}
