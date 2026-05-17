@@ -28,13 +28,15 @@ var lsHandler protocol.Handler
 // Run starts the LSP server on stdio and blocks until the client disconnects.
 func Run() error {
 	lsHandler = protocol.Handler{
-		Initialize:             initialize,
-		Initialized:            initialized,
-		Shutdown:               shutdown,
-		TextDocumentDidOpen:    didOpen,
-		TextDocumentDidChange:  didChange,
-		TextDocumentDidClose:   didClose,
-		TextDocumentCompletion: completion,
+		Initialize:              initialize,
+		Initialized:             initialized,
+		Shutdown:                shutdown,
+		TextDocumentDidOpen:     didOpen,
+		TextDocumentDidChange:   didChange,
+		TextDocumentDidClose:    didClose,
+		TextDocumentCompletion:  completion,
+		TextDocumentCodeLens:    codeLens,
+		WorkspaceExecuteCommand: executeCommand,
 	}
 	srv := server.NewServer(&lsHandler, lsName, false)
 	return srv.RunStdio()
