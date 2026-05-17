@@ -563,51 +563,85 @@ func extractRuntime() (runtimeC string, cleanup func(), err error) {
 
 func cmdCreate(args []string) error {
 	withGit := false
+	tapOwner := ""
 	var name string
-	for _, a := range args {
-		if a == "--git" {
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--git":
 			withGit = true
-		} else if name == "" {
-			name = a
+		case "--tap":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--tap requires a GitHub username")
+			}
+			i++
+			tapOwner = args[i]
+			withGit = true // --tap implies --git
+		default:
+			if name == "" {
+				name = args[i]
+			}
 		}
 	}
 	if name == "" {
-		return fmt.Errorf("usage: jerry create [--git] <project-name>")
+		return fmt.Errorf("usage: jerry create [--git] [--tap <github-owner>] <project-name>")
 	}
+
+	tapDir := "homebrew-" + name
 
 	if _, err := os.Stat(name); err == nil {
 		return fmt.Errorf("directory %q already exists", name)
 	}
+	if tapOwner != "" {
+		if _, err := os.Stat(tapDir); err == nil {
+			return fmt.Errorf("directory %q already exists", tapDir)
+		}
+	}
 
-	write := func(rel, content string) error {
-		path := filepath.Join(name, rel)
+	writeIn := func(root, rel, content string) error {
+		path := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 			return err
 		}
 		return os.WriteFile(path, []byte(content), 0644)
 	}
 
-	if err := write("main.jer", createMainJer(name)); err != nil {
-		return err
-	}
-	if err := write("jerry.remotes", createRemotes()); err != nil {
-		return err
-	}
-	if err := write("Makefile", createMakefile(name)); err != nil {
-		return err
-	}
-	if err := write("README.md", createReadme(name)); err != nil {
-		return err
+	// ── Project files ────────────────────────────────────────────────────────
+	for rel, content := range map[string]string{
+		"main.jer":     createMainJer(name),
+		"jerry.remotes": createRemotes(),
+		"Makefile":     createMakefile(name),
+		"README.md":    createProjectReadme(name, tapOwner),
+	} {
+		if err := writeIn(name, rel, content); err != nil {
+			return err
+		}
 	}
 	if withGit {
-		if err := write(".github/workflows/release.yml", createWorkflow(name)); err != nil {
+		if err := writeIn(name, ".github/workflows/release.yml", createWorkflow(name, tapOwner)); err != nil {
 			return err
 		}
 	}
 
+	// ── Homebrew tap files ───────────────────────────────────────────────────
+	if tapOwner != "" {
+		if err := writeIn(tapDir, "Formula/"+name+".rb", createFormula(name, tapOwner)); err != nil {
+			return err
+		}
+		if err := writeIn(tapDir, "README.md", createTapReadme(name, tapOwner)); err != nil {
+			return err
+		}
+	}
+
+	// ── Summary ──────────────────────────────────────────────────────────────
 	fmt.Fprintf(os.Stderr, "jerry: created project %q\n", name)
 	if withGit {
 		fmt.Fprintf(os.Stderr, "jerry: GitHub Actions workflow written to %s/.github/workflows/release.yml\n", name)
+	}
+	if tapOwner != "" {
+		fmt.Fprintf(os.Stderr, "jerry: Homebrew tap written to %s/\n", tapDir)
+		fmt.Fprintf(os.Stderr, "       Push it to github.com/%s/%s and add HOMEBREW_TAP_TOKEN to %s/%s secrets.\n",
+			tapOwner, tapDir, tapOwner, name)
 	}
 	fmt.Fprintf(os.Stderr, "\nGet started:\n  cd %s\n  jerry run main.jer\n", name)
 	return nil
@@ -645,32 +679,32 @@ func createMakefile(name string) string {
 	return fmt.Sprintf(".PHONY: run build clean\n\nBINARY := %s\n\nrun:\n\tjerry run main.jer\n\nbuild:\n\tjerry compile main.jer -o $(BINARY)\n\nclean:\n\trm -f $(BINARY)\n", name)
 }
 
-func createReadme(name string) string {
+func createProjectReadme(name, tapOwner string) string {
+	installSection := ""
+	if tapOwner != "" {
+		installSection = fmt.Sprintf(`
+## Install via Homebrew
+
+`+"```"+`sh
+brew tap %s/%s
+brew install %s
+`+"```"+`
+`, tapOwner, name, name)
+	}
 	return fmt.Sprintf(`# %s
 
 A Jerry language project.
+%s
+## Build from source
 
-## Requirements
+Requires the [Jerry compiler](https://github.com/jeffscottbrown/jerry-lang) and clang.
 
-- [Jerry compiler](https://github.com/jeffscottbrown/jerry-lang)
-- clang (for linking)
-  - macOS: `+"`"+`xcode-select --install`+"`"+`
-  - Linux: `+"`"+`apt install clang`+"`"+`
-
-## Run
+- macOS: `+"`"+`xcode-select --install`+"`"+`
+- Linux: `+"`"+`apt install clang`+"`"+`
 
 `+"```"+`sh
-jerry run main.jer
-# or
-make run
-`+"```"+`
-
-## Build
-
-`+"```"+`sh
-jerry compile main.jer -o %s
-# or
-make build
+jerry run main.jer    # compile and run immediately
+jerry compile main.jer -o %s   # compile to a binary
 `+"```"+`
 
 ## Remote modules
@@ -681,10 +715,76 @@ To add a new module:
 `+"```"+`sh
 jerry get github.com/owner/repo@v1.0.0
 `+"```"+`
-`, name, name)
+`, name, installSection, name)
 }
 
-func createWorkflow(name string) string {
+func createWorkflow(name, tapOwner string) string {
+	tapStep := ""
+	if tapOwner != "" {
+		tapStep = fmt.Sprintf(`
+      - name: Update Homebrew tap formula
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          BASE="https://github.com/%s/%s/releases/download/${TAG}"
+          SHA_LINUX=$(sha256sum dist/%s-linux-x86_64.tar.gz  | awk '{print $1}')
+          SHA_MACOS_X86=$(sha256sum dist/%s-macos-x86_64.tar.gz | awk '{print $1}')
+          SHA_MACOS_ARM=$(sha256sum dist/%s-macos-arm64.tar.gz  | awk '{print $1}')
+          git clone "https://github.com/%s/homebrew-%s.git" tap
+          cat > tap/Formula/%s.rb << FORMULA
+class %s < Formula
+  desc "%s"
+  homepage "https://github.com/%s/%s"
+  version "${TAG#v}"
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "${BASE}/%s-macos-arm64.tar.gz"
+      sha256 "${SHA_MACOS_ARM}"
+    end
+    on_intel do
+      url "${BASE}/%s-macos-x86_64.tar.gz"
+      sha256 "${SHA_MACOS_X86}"
+    end
+  end
+  on_linux do
+    on_intel do
+      url "${BASE}/%s-linux-x86_64.tar.gz"
+      sha256 "${SHA_LINUX}"
+    end
+  end
+
+  def install
+    bin.install Dir["%s-*"].first => "%s"
+  end
+
+  test do
+    assert_shell_output "#{bin}/%s"
+  end
+end
+FORMULA
+          cd tap
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/%s/homebrew-%s.git"
+          git add Formula/%s.rb
+          git commit -m "chore: update %s to ${TAG}" || echo "no changes"
+          git push
+`,
+			tapOwner, name,
+			name, name, name,
+			tapOwner, name, name,
+			toRubyClass(name), name,
+			tapOwner, name,
+			name, name, name,
+			name, name, name,
+			tapOwner, name, name, name,
+		)
+	}
+
 	return fmt.Sprintf(`name: Release
 
 on:
@@ -734,12 +834,16 @@ jobs:
       - name: Run
         run: jerry run main.jer
 
+      - name: Archive
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.tar.gz
           retention-days: 1
 
   release:
@@ -759,7 +863,7 @@ jobs:
 
       - name: Generate checksums
         working-directory: dist
-        run: sha256sum * > checksums.txt
+        run: sha256sum *.tar.gz > checksums.txt
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -770,7 +874,76 @@ jobs:
           generate_release_notes: true
           files: |
             dist/*
-`, name, name, name)
+%s`, name, name, name, tapStep)
+}
+
+func createFormula(name, owner string) string {
+	return fmt.Sprintf(`class %s < Formula
+  desc "%s"
+  homepage "https://github.com/%s/%s"
+  version "0.0.0"   # updated automatically by release workflow
+  license "MIT"
+
+  on_macos do
+    on_arm do
+      url "https://github.com/%s/%s/releases/download/v0.0.0/%s-macos-arm64.tar.gz"
+      sha256 "PLACEHOLDER"
+    end
+    on_intel do
+      url "https://github.com/%s/%s/releases/download/v0.0.0/%s-macos-x86_64.tar.gz"
+      sha256 "PLACEHOLDER"
+    end
+  end
+  on_linux do
+    on_intel do
+      url "https://github.com/%s/%s/releases/download/v0.0.0/%s-linux-x86_64.tar.gz"
+      sha256 "PLACEHOLDER"
+    end
+  end
+
+  def install
+    bin.install Dir["%s-*"].first => "%s"
+  end
+
+  test do
+    assert_shell_output "#{bin}/%s"
+  end
+end
+`,
+		toRubyClass(name), name,
+		owner, name,
+		owner, name, name,
+		owner, name, name,
+		owner, name, name,
+		name, name, name,
+	)
+}
+
+func createTapReadme(name, owner string) string {
+	return fmt.Sprintf(`# homebrew-%s
+
+Homebrew tap for [%s](https://github.com/%s/%s).
+
+## Install
+
+`+"```"+`sh
+brew tap %s/%s
+brew install %s
+`+"```"+`
+
+The formula is updated automatically when a new release is published.
+`, name, name, owner, name, owner, name, name)
+}
+
+func toRubyClass(name string) string {
+	parts := strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' })
+	var sb strings.Builder
+	for _, p := range parts {
+		if len(p) > 0 {
+			sb.WriteString(strings.ToUpper(p[:1]) + p[1:])
+		}
+	}
+	return sb.String()
 }
 
 func fatalf(format string, args ...any) {
@@ -785,6 +958,6 @@ func usage() {
   jerry ir      <file.jer> [file.jer ...]               dump LLVM IR
   jerry get     <module>@<version>                      fetch a remote module
   jerry sweep                                            sync jerry.remotes / jerry.sum
-  jerry create  [--git] <name>                          scaffold a new project
+  jerry create  [--git] [--tap <owner>] <name>          scaffold a new project
   jerry -v | --version                                  print version`)
 }
