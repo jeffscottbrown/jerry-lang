@@ -1,5 +1,5 @@
 // tests/primitives_test.jer — int, float, and bool operations
-include "github.com/jeffscottbrown/jerry-testing"
+include @testing
 
 fn test_int_arithmetic() {
     assert_eq_int(2 + 3, 5, "addition");

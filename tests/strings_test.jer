@@ -1,5 +1,5 @@
 // tests/strings_test.jer — built-in string operations
-include "github.com/jeffscottbrown/jerry-testing"
+include @testing
 
 fn test_concat() {
     assert_eq_string("hello" + " " + "world", "hello world", "three-part concat");

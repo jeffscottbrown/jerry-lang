@@ -1,5 +1,5 @@
 // tests/control_flow_test.jer — if/else, while, for, break, continue
-include "github.com/jeffscottbrown/jerry-testing"
+include @testing
 
 fn test_if_taken() {
     let result: string = "none";

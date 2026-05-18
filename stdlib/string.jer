@@ -1,0 +1,254 @@
+// ── Character classification ──────────────────────────────────────────────────
+// All functions here operate on raw ASCII char codes (int), not strings.
+// Use char_at(s, i) to get a char code from a string.
+
+// Returns true if c is an ASCII digit (0–9).
+fn is_digit(c: int): bool {
+    return c >= 48 && c <= 57;   // '0'..'9'
+}
+
+// Returns true if c is an ASCII letter (A–Z or a–z).
+fn is_alpha(c: int): bool {
+    return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);  // A-Z, a-z
+}
+
+// Returns true if c is an ASCII letter or digit; combines is_alpha and is_digit.
+fn is_alnum(c: int): bool {
+    return is_digit(c) || is_alpha(c);
+}
+
+// Returns true if c is an ASCII whitespace character (space, tab, \n, \r).
+fn is_whitespace(c: int): bool {
+    return c == 32 || c == 9 || c == 10 || c == 13;
+}
+
+// Returns true if c is an uppercase ASCII letter (A–Z).
+fn is_upper(c: int): bool {
+    return c >= 65 && c <= 90;
+}
+
+// Returns true if c is a lowercase ASCII letter (a–z).
+fn is_lower(c: int): bool {
+    return c >= 97 && c <= 122;
+}
+
+// Converts an uppercase ASCII char code to its lowercase equivalent.
+// Returns c unchanged if it is not an uppercase letter.
+fn to_lower(c: int): int {
+    if is_upper(c) {
+        return c + 32;
+    }
+    return c;
+}
+
+// Converts a lowercase ASCII char code to its uppercase equivalent.
+// Returns c unchanged if it is not a lowercase letter.
+fn to_upper(c: int): int {
+    if is_lower(c) {
+        return c - 32;
+    }
+    return c;
+}
+
+// ── String inspection ─────────────────────────────────────────────────────────
+
+// Returns true if s begins with prefix.
+fn starts_with(s: string, prefix: string): bool {
+    let slen: int = len(s);
+    let plen: int = len(prefix);
+    if plen > slen {
+        return false;
+    }
+    let i: int = 0;
+    while i < plen {
+        if char_at(s, i) != char_at(prefix, i) {
+            return false;
+        }
+        i++;
+    }
+    return true;
+}
+
+// Returns true if s ends with suffix.
+fn ends_with(s: string, suffix: string): bool {
+    let slen: int = len(s);
+    let suflen: int = len(suffix);
+    if suflen > slen {
+        return false;
+    }
+    let offset: int = slen - suflen;
+    let i: int = 0;
+    while i < suflen {
+        if char_at(s, offset + i) != char_at(suffix, i) {
+            return false;
+        }
+        i++;
+    }
+    return true;
+}
+
+// Returns the index of the first occurrence of needle in s, or -1 if not found.
+// An empty needle always returns 0.
+fn index_of(s: string, needle: string): int {
+    let slen: int = len(s);
+    let nlen: int = len(needle);
+    if nlen == 0 {
+        return 0;
+    }
+    let i: int = 0;
+    while i <= slen - nlen {
+        let j: int = 0;
+        let match: bool = true;
+        while j < nlen {
+            if char_at(s, i + j) != char_at(needle, j) {
+                match = false;
+                j = nlen;  // break
+            }
+            j++;
+        }
+        if match {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+// Returns true if needle appears anywhere in s.
+fn contains(s: string, needle: string): bool {
+    return index_of(s, needle) >= 0;
+}
+
+// ── String transformation ─────────────────────────────────────────────────────
+
+// Strips leading whitespace from s.
+fn trim_left(s: string): string {
+    let i: int = 0;
+    let n: int = len(s);
+    while i < n && is_whitespace(char_at(s, i)) {
+        i++;
+    }
+    return string_slice(s, i, n);
+}
+
+// Strips trailing whitespace from s.
+fn trim_right(s: string): string {
+    let n: int = len(s);
+    let i: int = n - 1;
+    while i >= 0 && is_whitespace(char_at(s, i)) {
+        i--;
+    }
+    return string_slice(s, 0, i + 1);
+}
+
+// Strips both leading and trailing whitespace from s.
+fn trim(s: string): string {
+    return trim_left(trim_right(s));
+}
+
+// Returns s concatenated n times; returns an empty string when n <= 0.
+fn repeat(s: string, n: int): string {
+    let result: string = "";
+    let i: int = 0;
+    while i < n {
+        result = result + s;
+        i++;
+    }
+    return result;
+}
+
+// Converts every ASCII uppercase letter in s to lowercase.
+fn lower_str(s: string): string {
+    let result: string = "";
+    let i: int = 0;
+    let n: int = len(s);
+    while (i < n) {
+        result = result + char_to_string(to_lower(char_at(s, i)));
+        i = i + 1;
+    }
+    return result;
+}
+
+// ── Splitting ─────────────────────────────────────────────────────────────────
+
+// Splits s on every exact occurrence of sep and returns the parts as an array.
+// An empty sep splits s into individual single-character strings.
+fn split(s: string, sep: string): string[] {
+    let parts: string[] = [];
+    let slen: int = len(s);
+    let seplen: int = len(sep);
+    let start: int = 0;
+
+    if seplen == 0 {
+        let i: int = 0;
+        while i < slen {
+            push(parts, string_slice(s, i, i + 1));
+            i++;
+        }
+        return parts;
+    }
+
+    let i: int = 0;
+    while i <= slen - seplen {
+        let j: int = 0;
+        let match: bool = true;
+        while j < seplen {
+            if char_at(s, i + j) != char_at(sep, j) {
+                match = false;
+                j = seplen;  // break
+            }
+            j++;
+        }
+        if match {
+            push(parts, string_slice(s, start, i));
+            start = i + seplen;
+            i = start;
+        } else {
+            i++;
+        }
+    }
+    push(parts, string_slice(s, start, slen));
+    return parts;
+}
+
+// Splits s on any run of whitespace, ignoring leading and trailing whitespace.
+fn split_whitespace(s: string): string[] {
+    let parts: string[] = [];
+    let n: int = len(s);
+    let i: int = 0;
+
+    while i < n && is_whitespace(char_at(s, i)) {
+        i++;
+    }
+
+    while i < n {
+        let start: int = i;
+        while i < n && !is_whitespace(char_at(s, i)) {
+            i++;
+        }
+        if i > start {
+            push(parts, string_slice(s, start, i));
+        }
+        while i < n && is_whitespace(char_at(s, i)) {
+            i++;
+        }
+    }
+    return parts;
+}
+
+// ── Joining ───────────────────────────────────────────────────────────────────
+
+// Concatenates all strings in parts with sep inserted between each adjacent pair.
+fn join(parts: string[], sep: string): string {
+    let result: string = "";
+    let i: int = 0;
+    let n: int = len(parts);
+    while i < n {
+        if i > 0 {
+            result = result + sep;
+        }
+        result = result + parts[i];
+        i++;
+    }
+    return result;
+}

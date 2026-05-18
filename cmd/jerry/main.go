@@ -19,22 +19,16 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime/debug"
-	"sort"
 	"strings"
 
-	"github.com/jeffscottbrown/jerry-lang/internal/ast"
-	"github.com/jeffscottbrown/jerry-lang/internal/checker"
-	"github.com/jeffscottbrown/jerry-lang/internal/codegen"
+	"github.com/jeffscottbrown/jerry-lang/internal/build"
 	"github.com/jeffscottbrown/jerry-lang/internal/modfile"
 	"github.com/jeffscottbrown/jerry-lang/internal/module"
 	"github.com/jeffscottbrown/jerry-lang/internal/parser"
-	jerryruntime "github.com/jeffscottbrown/jerry-lang/runtime"
-	"github.com/jeffscottbrown/jerry-lang/stdlib"
 )
 
 // Version is injected at build time via -ldflags "-X main.Version=v1.2.3"
@@ -74,7 +68,7 @@ func main() {
 		if outBin == "" {
 			outBin = strings.TrimSuffix(srcs[0], filepath.Ext(srcs[0]))
 		}
-		if err := compile(srcs, outBin, target); err != nil {
+		if err := build.Compile(srcs, outBin, target); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -90,7 +84,7 @@ func main() {
 		}
 		defer os.RemoveAll(tmp)
 		bin := filepath.Join(tmp, "a.out")
-		if err := compile(srcs, bin, ""); err != nil {
+		if err := build.Compile(srcs, bin, ""); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -110,7 +104,7 @@ func main() {
 		if len(srcs) == 0 {
 			fatalf("no source files given")
 		}
-		ir, err := compileToIR(srcs)
+		ir, err := build.CompileToIR(srcs)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -270,225 +264,6 @@ func cmdSweep() error {
 	return nil
 }
 
-// ── Compilation pipeline ─────────────────────────────────────────────────────
-
-func compile(srcs []string, outBin, target string) error {
-	ir, err := compileToIR(srcs)
-	if err != nil {
-		return err
-	}
-
-	tmp, err := os.CreateTemp("", "jerry-*.ll")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.WriteString(ir); err != nil {
-		return fmt.Errorf("failed to write IR: %w", err)
-	}
-	tmp.Close()
-
-	runtimeLib, cleanupRuntime, err := extractRuntime()
-	if err != nil {
-		return err
-	}
-	defer cleanupRuntime()
-
-	sysroot, _ := exec.Command("xcrun", "--show-sdk-path").Output()
-	args := []string{"-O1", tmp.Name(), runtimeLib, "-o", outBin, "-lm"}
-	if target != "" {
-		args = append(args, "-target", target)
-	}
-	if len(sysroot) > 0 {
-		args = append(args, "-isysroot", strings.TrimSpace(string(sysroot)))
-	}
-	out, err := exec.Command("clang", args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("clang error:\n%s", out)
-	}
-	return nil
-}
-
-// compileToIR is the main compilation pipeline:
-//  1. Parse stdlib/core.jer (always included).
-//  2. Parse each project file independently.
-//  3. Resolve include @stdlib and include "remote" declarations.
-//  4. Type-check all files with per-file scoping via checker.CheckAll.
-//  5. Generate LLVM IR from all ASTs together.
-func compileToIR(srcs []string) (string, error) {
-	fsys := stdlibFS()
-
-	// Always load core.jer.
-	coreAST, err := parseStdlibFile(fsys, "core")
-	if err != nil {
-		return "", fmt.Errorf("failed to load stdlib/core.jer: %w", err)
-	}
-
-	// Parse each project source file independently.
-	projectASTs := make([]*ast.Program, 0, len(srcs))
-	for _, src := range srcs {
-		data, err := os.ReadFile(src)
-		if err != nil {
-			return "", fmt.Errorf("cannot read %s: %w", src, err)
-		}
-		prog, err := parser.Parse(src, string(data))
-		if err != nil {
-			return "", fmt.Errorf("parse error in %s: %w", src, err)
-		}
-		projectASTs = append(projectASTs, prog)
-	}
-
-	// Resolve stdlib includes.
-	stdlibASTs := make(map[string]*ast.Program)
-	for i, prog := range projectASTs {
-		for _, tl := range prog.Stmts {
-			if tl.Include == nil || tl.Include.Stdlib == "" {
-				continue
-			}
-			name := tl.Include.Stdlib
-			if name == "core" {
-				return "", fmt.Errorf("%s: do not include @core — it is always available", srcs[i])
-			}
-			if _, already := stdlibASTs[name]; already {
-				continue
-			}
-			stdAST, err := parseStdlibFile(fsys, name)
-			if err != nil {
-				return "", fmt.Errorf("%s: unknown stdlib module @%s", srcs[i], name)
-			}
-			stdlibASTs[name] = stdAST
-		}
-	}
-
-	// Resolve remote includes via jerry.remotes / jerry.sum.
-	remoteASTs, err := resolveRemoteIncludes(srcs, projectASTs)
-	if err != nil {
-		return "", err
-	}
-
-	// Type-check with per-file scoping.
-	info, errs := checker.CheckAll(projectASTs, coreAST, stdlibASTs, remoteASTs)
-	if len(errs) > 0 {
-		var msgs []string
-		for _, e := range errs {
-			msgs = append(msgs, e.Error())
-		}
-		return "", fmt.Errorf("type errors:\n%s", strings.Join(msgs, "\n"))
-	}
-
-	// Assemble ordered list of ASTs for codegen:
-	//   core → stdlib (alpha) → remote modules (alpha) → project files (argument order)
-	allASTs := []*ast.Program{coreAST}
-	for _, name := range sortedMapKeys(stdlibASTs) {
-		allASTs = append(allASTs, stdlibASTs[name])
-	}
-	for _, path := range sortedMapKeys(remoteASTs) {
-		allASTs = append(allASTs, remoteASTs[path]...)
-	}
-	allASTs = append(allASTs, projectASTs...)
-
-	ir, err := codegen.Generate(allASTs, info)
-	if err != nil {
-		return "", fmt.Errorf("codegen error: %w", err)
-	}
-	return ir, nil
-}
-
-// resolveRemoteIncludes loads all remote modules referenced across the project
-// files. It reads jerry.remotes for version pinning and jerry.sum for verification,
-// then loads .jer files from the local cache.
-func resolveRemoteIncludes(srcs []string, projectASTs []*ast.Program) (map[string][]*ast.Program, error) {
-	// Collect all unique remote import paths.
-	type importSite struct {
-		srcIdx int
-		path   string
-	}
-	var imports []importSite
-	seen := map[string]bool{}
-	for i, prog := range projectASTs {
-		for _, tl := range prog.Stmts {
-			if tl.Include == nil || tl.Include.Remote == "" {
-				continue
-			}
-			path := tl.Include.Remote
-			if !seen[path] {
-				seen[path] = true
-				imports = append(imports, importSite{i, path})
-			}
-		}
-	}
-	if len(imports) == 0 {
-		return map[string][]*ast.Program{}, nil
-	}
-
-	// Resolve jerry.remotes and jerry.sum from the working directory.
-	projectDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("getting working directory: %w", err)
-	}
-
-	// Load jerry.remotes for version info.
-	mf, err := modfile.Parse(filepath.Join(projectDir, modfile.RemotesFileName))
-	if err != nil {
-		return nil, fmt.Errorf("reading jerry.remotes: %w", err)
-	}
-
-	// Load jerry.sum for hash verification.
-	sums, err := modfile.ParseSum(filepath.Join(projectDir, modfile.SumFileName))
-	if err != nil {
-		return nil, fmt.Errorf("reading jerry.sum: %w", err)
-	}
-
-	result := make(map[string][]*ast.Program)
-
-	for _, imp := range imports {
-		modPath := imp.path
-		version, ok := mf.Requires[modPath]
-		if !ok {
-			return nil, fmt.Errorf("%s: module %q is included but not in jerry.remotes\n  run: jerry get %s@<version>",
-				srcs[imp.srcIdx], modPath, modPath)
-		}
-
-		// Fetch the module if not already cached.
-		cacheDir, actualHash, err := module.Fetch(modPath, version)
-		if err != nil {
-			return nil, fmt.Errorf("fetching module %s@%s: %w", modPath, version, err)
-		}
-
-		// Verify hash against jerry.sum if an entry exists.
-		key := sums.Key(modPath, version)
-		if expectedHash, has := sums[key]; has && expectedHash != actualHash {
-			return nil, fmt.Errorf("hash mismatch for %s@%s: expected %s, got %s",
-				modPath, version, expectedHash, actualHash)
-		}
-
-		// Parse all .jer files in the cached module.
-		jerFiles, err := module.JerFiles(cacheDir)
-		if err != nil {
-			return nil, fmt.Errorf("reading cached module %s@%s: %w", modPath, version, err)
-		}
-		if len(jerFiles) == 0 {
-			return nil, fmt.Errorf("module %s@%s contains no .jer files", modPath, version)
-		}
-
-		var progs []*ast.Program
-		for _, f := range jerFiles {
-			data, err := os.ReadFile(f)
-			if err != nil {
-				return nil, err
-			}
-			prog, err := parser.Parse(f, string(data))
-			if err != nil {
-				return nil, fmt.Errorf("parse error in %s@%s (%s): %w", modPath, version, filepath.Base(f), err)
-			}
-			progs = append(progs, prog)
-		}
-		result[modPath] = progs
-	}
-
-	return result, nil
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 func parseCompileArgs(args []string) (outBin, target string, srcs []string) {
@@ -526,58 +301,6 @@ func splitAtVersion(arg string) (modPath, version string, ok bool) {
 	return arg[:idx], arg[idx+1:], true
 }
 
-func sortedMapKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func parseStdlibFile(fsys fs.FS, name string) (*ast.Program, error) {
-	filename := name + ".jer"
-	data, err := fs.ReadFile(fsys, filename)
-	if err != nil {
-		return nil, err
-	}
-	return parser.Parse("stdlib/"+filename, string(data))
-}
-
-// stdlibFS returns the filesystem to use for stdlib lookups.
-// If the JERRY_STDLIB environment variable points to a directory, an OS-based
-// FS rooted there is returned — useful when developing the stdlib itself.
-// Otherwise the embedded FS baked into the binary is used.
-func stdlibFS() fs.FS {
-	if dir := os.Getenv("JERRY_STDLIB"); dir != "" {
-		return os.DirFS(dir)
-	}
-	return stdlib.Files
-}
-
-// extractRuntime writes the embedded runtime C sources to a temp directory
-// and returns the path to runtime.c. The caller is responsible for removing
-// the directory when done.
-func extractRuntime() (runtimeC string, cleanup func(), err error) {
-	dir, err := os.MkdirTemp("", "jerry-runtime-*")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create runtime temp dir: %w", err)
-	}
-	cleanup = func() { os.RemoveAll(dir) }
-
-	for _, name := range []string{"runtime.c", "runtime.h"} {
-		data, err := fs.ReadFile(jerryruntime.Files, "src/"+name)
-		if err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("embedded runtime missing %s: %w", name, err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, name), data, 0644); err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("failed to write runtime %s: %w", name, err)
-		}
-	}
-	return filepath.Join(dir, "runtime.c"), cleanup, nil
-}
 
 // ── jerry test ───────────────────────────────────────────────────────────────
 
@@ -694,7 +417,7 @@ func cmdTest(args []string) error {
 
 	// Generate the test main file.
 	var sb strings.Builder
-	sb.WriteString("include \"github.com/jeffscottbrown/jerry-testing\"\n\nfn main(): void {\n")
+	sb.WriteString("include @testing\n\nfn main(): void {\n")
 	for _, ft := range allTests {
 		fmt.Fprintf(&sb, "    print(\"--- %s ---\");\n", ft.path)
 		for _, name := range ft.names {
@@ -725,7 +448,7 @@ func cmdTest(args []string) error {
 	defer os.RemoveAll(tmpDir)
 	bin := filepath.Join(tmpDir, "test")
 
-	if err := compile(srcs, bin, ""); err != nil {
+	if err := build.Compile(srcs, bin, ""); err != nil {
 		return err
 	}
 
@@ -831,7 +554,7 @@ func cmdCreate(args []string) error {
 }
 
 func createMainJer(name string) string {
-	return fmt.Sprintf(`include "github.com/jeffscottbrown/jerry-string"
+	return fmt.Sprintf(`include @string
 
 fn main() {
     // Split a sentence into words and print each one.
@@ -854,7 +577,7 @@ fn main() {
 }
 
 func createRemotes() string {
-	return "github.com/jeffscottbrown/jerry-string v0.0.1\n"
+	return ""
 }
 
 func createMakefile(name string) string {

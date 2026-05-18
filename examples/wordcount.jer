@@ -1,5 +1,5 @@
 // examples/wordcount.jer — pulls in both remote modules
-include "github.com/jeffscottbrown/jerry-string"
+include @string
 include "github.com/jeffscottbrown/jerry-logging"
 
 fn count_word(words: string[], target: string): int {

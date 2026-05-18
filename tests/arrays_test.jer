@@ -1,5 +1,5 @@
 // tests/arrays_test.jer — array creation, indexing, mutation, and push
-include "github.com/jeffscottbrown/jerry-testing"
+include @testing
 
 fn array_sum(nums: int[]): int {
     let total: int = 0;

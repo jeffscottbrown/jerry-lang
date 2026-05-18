@@ -1,0 +1,64 @@
+// time — stopwatch and human-readable duration formatting.
+//
+// Depends on builtins: now_millis() — always available, no include required.
+
+// _pad2 zero-pads a non-negative integer to at least two digits.
+fn _pad2(n: int): string {
+    if n < 10 {
+        return "0" + int_to_string(n);
+    }
+    return int_to_string(n);
+}
+
+// millis_to_duration formats a millisecond count as a human-readable duration.
+//
+// Examples:
+//   millis_to_duration(42)        → "42ms"
+//   millis_to_duration(3500)      → "3.5s"
+//   millis_to_duration(125000)    → "2m05s"
+//   millis_to_duration(3723000)   → "1h02m03s"
+fn millis_to_duration(ms: int): string {
+    if ms < 1000 {
+        return int_to_string(ms) + "ms";
+    }
+    if ms < 60000 {
+        let secs: int = ms / 1000;
+        let frac: int = (ms % 1000) / 100;
+        return int_to_string(secs) + "." + int_to_string(frac) + "s";
+    }
+    if ms < 3600000 {
+        let mins: int = ms / 60000;
+        let secs: int = (ms / 1000) % 60;
+        return int_to_string(mins) + "m" + _pad2(secs) + "s";
+    }
+    let hours: int = ms / 3600000;
+    let mins: int = (ms / 60000) % 60;
+    let secs: int = (ms / 1000) % 60;
+    return int_to_string(hours) + "h" + _pad2(mins) + "m" + _pad2(secs) + "s";
+}
+
+// Timer is a simple monotonic stopwatch.
+//
+// Example:
+//   let t: Timer = new Timer();
+//   // ... do work ...
+//   print("done in " + t.elapsed_string());
+class Timer {
+    start_ms: int;
+
+    fn new() {
+        this.start_ms = now_millis();
+    }
+
+    fn reset() {
+        this.start_ms = now_millis();
+    }
+
+    fn elapsed_ms(): int {
+        return now_millis() - this.start_ms;
+    }
+
+    fn elapsed_string(): string {
+        return millis_to_duration(now_millis() - this.start_ms);
+    }
+}
