@@ -2,10 +2,10 @@
 //
 // Usage:
 //
-//	jerry compile <file.jer> [file.jer ...] [-o output]   compile to native binary
-//	jerry run     <file.jer> [file.jer ...]               compile and run immediately
-//	jerry ir      <file.jer> [file.jer ...]               dump LLVM IR to stdout
-//	jerry test    [dir|file_test.jer ...]                 run unit tests
+//	jerry compile <file.jer|dir> [...]  [-o output]   compile to native binary
+//	jerry run     <file.jer|dir> [...]                compile and run immediately
+//	jerry ir      <file.jer|dir> [...]                dump LLVM IR to stdout
+//	jerry test    [dir|file_test.jer ...]             run unit tests
 //	jerry get     <module>@<version>                      fetch a remote module
 //	jerry sweep                                            sync jerry.remotes and jerry.sum
 //	jerry -v | --version                                  print version and exit
@@ -284,9 +284,27 @@ func parseCompileArgs(args []string) (outBin, target string, srcs []string) {
 
 func splitSrcs(args []string) (srcs, rest []string) {
 	i := 0
-	for i < len(args) && (strings.HasSuffix(args[i], ".jer") || strings.HasSuffix(args[i], ".jl")) {
-		srcs = append(srcs, args[i])
-		i++
+	for i < len(args) {
+		a := args[i]
+		if strings.HasSuffix(a, ".jer") || strings.HasSuffix(a, ".jl") {
+			srcs = append(srcs, a)
+			i++
+			continue
+		}
+		// Directory: expand to all .jer files inside it.
+		if info, err := os.Stat(a); err == nil && info.IsDir() {
+			entries, err := os.ReadDir(a)
+			if err == nil {
+				for _, e := range entries {
+					if !e.IsDir() && strings.HasSuffix(e.Name(), ".jer") {
+						srcs = append(srcs, filepath.Join(a, e.Name()))
+					}
+				}
+			}
+			i++
+			continue
+		}
+		break
 	}
 	rest = args[i:]
 	return
