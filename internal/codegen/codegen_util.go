@@ -232,6 +232,54 @@ func bareStringLit(e *ast.Expr) *string {
 	return prim.String
 }
 
+// endsWithIndex returns true if expr is a bare postfix expression whose last
+// operation is an array index (e.g. names[0]). Used by genVarDecl to detect
+// borrowed references from arrays so a retain can be issued before the
+// variable takes ownership.
+func endsWithIndex(e *ast.Expr) bool {
+	if e == nil {
+		return false
+	}
+	a := e.Assignment
+	if a == nil || a.Right != nil {
+		return false
+	}
+	or := a.Left
+	if or == nil || len(or.Rest) != 0 {
+		return false
+	}
+	and := or.Left
+	if and == nil || len(and.Rest) != 0 {
+		return false
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return false
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return false
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return false
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return false
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return false
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) == 0 {
+		return false
+	}
+	lastOp := post.Ops[len(post.Ops)-1]
+	return lastOp.Index != nil
+}
+
 // simpleIdent returns the variable name if expr is a bare identifier with no
 // operators or postfix operations, or "" otherwise. Used by genReturn to
 // determine whether the return value is a heap local (and should be exempted

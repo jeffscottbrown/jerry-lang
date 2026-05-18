@@ -78,3 +78,22 @@ fn test_multi_push() {
     assert_eq_int(len(xs), 4, "length after three pushes");
     assert_eq_int(xs[3], 4, "last pushed element");
 }
+
+fn test_string_references() {
+    let names: string[] = ["Donna", "Keith"];
+
+    if(true) {
+        // this was triggering heap corruption detection
+        // when names[0] is referenced after the if
+        // block completes because when the reference
+        // defined here goes out of scope the string
+        // was being released. Now the compiler detects
+        // array-index expressions like this and emits
+        // a retain.
+        let _: string = names[0];
+    }
+
+    let name: string = names[0];
+
+    assert_eq_string(name, "Donna", "first element in names array is wrong");
+}

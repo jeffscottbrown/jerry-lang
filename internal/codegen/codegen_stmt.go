@@ -92,6 +92,12 @@ func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	// (function call result, new-expr, concat, etc.). A bare variable load is a
 	// borrow — the source variable remains the owner and will release it.
 	if isHeapType(ty) && simpleIdent(vd.Value) == "" {
+		if endsWithIndex(vd.Value) {
+			// Array element access returns a borrowed pointer (no implicit retain).
+			// Retain here so this variable owns its reference and the paired release
+			// at scope exit is balanced.
+			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", val)
+		}
 		g.registerHeapLocal(reg, ty)
 	}
 	return nil
