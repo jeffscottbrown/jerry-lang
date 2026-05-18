@@ -26,12 +26,20 @@ typedef struct {
     void* env_ptr;
 } JerryClosure;
 
-/* ── Memory ─────────────────────────────────────────────────────────────────── */
-/* Simple malloc wrapper — no GC in this version. Allocations are never freed.
-   This is fine for a compiler (short-lived process) and simplifies the
-   implementation. A mark-and-sweep GC is a good follow-up project to write
-   in Jerry once the language is capable enough.                              */
+/* ── Memory and reference counting ──────────────────────────────────────────── */
+/* Every jerry_alloc allocation is preceded by a 16-byte JerryHeader (stored
+   internally in runtime.c).  External code never touches the header directly;
+   use jerry_retain / jerry_release to manage object lifetimes.
+
+   Ownership rules:
+   - jerry_alloc returns a pointer with refcount = 1.  The caller owns it.
+   - Passing a value to a function is a *borrow* — callee must not release it
+     unless it also called jerry_retain first.
+   - Functions that return newly allocated objects (jerry_string_new, new-expr,
+     etc.) return a +1 retained reference; the caller owns it.            */
 void* jerry_alloc(int64_t size);
+void  jerry_retain(void* ptr);   /* increment refcount (no-op on NULL)         */
+void  jerry_release(void* ptr);  /* decrement refcount; free when it reaches 0 */
 
 /* ── Strings ────────────────────────────────────────────────────────────────── */
 JerryStr* jerry_string_new(const char* data, int64_t len);

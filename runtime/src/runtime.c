@@ -4,39 +4,86 @@
 #include <string.h>
 #include <time.h>
 
-/* ── Memory ─────────────────────────────────────────────────────────────────── */
+/* ── Reference-counted allocator ────────────────────────────────────────────── */
+/* Every allocation is preceded by a 16-byte header:
+     [0..7]  int64_t  refcount    (starts at 1)
+     [8..15] void*    destructor  (called just before the object is freed; may be NULL)
+   jerry_alloc() returns a pointer 16 bytes past the start of the malloc'd block,
+   so callers see only the object bytes.                                          */
+
+typedef struct {
+    int64_t  refcount;
+    void   (*destructor)(void*);
+} JerryHeader;
 
 void* jerry_alloc(int64_t size) {
-    void* p = malloc((size_t)size);
-    if (!p) {
+    JerryHeader* h = malloc(sizeof(JerryHeader) + (size_t)size);
+    if (!h) {
         fprintf(stderr, "jerry: out of memory\n");
         exit(1);
     }
-    memset(p, 0, (size_t)size);
-    return p;
+    memset(h, 0, sizeof(JerryHeader) + (size_t)size);
+    h->refcount = 1;
+    return h + 1; /* object starts immediately after the header */
+}
+
+void jerry_retain(void* ptr) {
+    if (!ptr) return;
+    JerryHeader* h = (JerryHeader*)ptr - 1;
+    h->refcount++;
+}
+
+void jerry_release(void* ptr) {
+    if (!ptr) return;
+    JerryHeader* h = (JerryHeader*)ptr - 1;
+    h->refcount--;
+    if (h->refcount <= 0) {
+        if (h->destructor) h->destructor(ptr);
+        free(h);
+    }
+}
+
+/* ── String destructor ───────────────────────────────────────────────────────── */
+
+static void jerry_str_destructor(void* self) {
+    JerryStr* s = (JerryStr*)self;
+    free(s->data); /* data is a plain malloc'd buffer, not jerry_alloc'd */
+}
+
+/* Helper: allocate a JerryStr with its destructor installed. */
+static JerryStr* alloc_str(int64_t len) {
+    JerryStr* s = jerry_alloc(sizeof(JerryStr));
+    JerryHeader* h = (JerryHeader*)s - 1;
+    h->destructor = jerry_str_destructor;
+    s->len  = len;
+    s->data = malloc((size_t)(len + 1));
+    if (!s->data) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    s->data[len] = '\0';
+    return s;
+}
+
+/* ── Array destructor ────────────────────────────────────────────────────────── */
+
+static void jerry_arr_destructor(void* self) {
+    JerryArray* arr = (JerryArray*)self;
+    free(arr->data); /* data is a plain malloc'd buffer */
 }
 
 /* ── Strings ────────────────────────────────────────────────────────────────── */
 
 JerryStr* jerry_string_new(const char* data, int64_t len) {
-    JerryStr* s = jerry_alloc(sizeof(JerryStr));
-    s->len  = len;
-    s->data = jerry_alloc(len + 1);
+    JerryStr* s = alloc_str(len);
     if (len > 0 && data != NULL) {
         memcpy(s->data, data, (size_t)len);
     }
-    s->data[len] = '\0';
     return s;
 }
 
 JerryStr* jerry_string_concat(JerryStr* a, JerryStr* b) {
-    int64_t    len = a->len + b->len;
-    JerryStr* s   = jerry_alloc(sizeof(JerryStr));
-    s->len  = len;
-    s->data = jerry_alloc(len + 1);
+    int64_t len = a->len + b->len;
+    JerryStr* s = alloc_str(len);
     memcpy(s->data,          a->data, (size_t)a->len);
     memcpy(s->data + a->len, b->data, (size_t)b->len);
-    s->data[len] = '\0';
     return s;
 }
 
@@ -111,10 +158,6 @@ void jerry_print_string(JerryStr* s) {
 }
 
 void jerry_print_array(JerryArray* arr) {
-    /* Generic array printing — prints raw element bytes as hex.
-       Type-specific printing would require runtime type tags.
-       For now this is a placeholder; override in Jerry code with
-       a manual loop.                                                  */
     if (arr == NULL) {
         fputs("null", stdout);
         return;
@@ -139,14 +182,11 @@ JerryStr* jerry_read_file(JerryStr* path) {
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    JerryStr* s = jerry_alloc(sizeof(JerryStr));
-    s->len  = (int64_t)size;
-    s->data = jerry_alloc(size + 1);
+    JerryStr* s = alloc_str((int64_t)size);
     if (size > 0) {
         size_t n = fread(s->data, 1, (size_t)size, f);
         (void)n;
     }
-    s->data[size] = '\0';
     fclose(f);
     return s;
 }
@@ -181,23 +221,13 @@ void jerry_each_line(JerryStr* path, JerryClosure* closure) {
     size_t cap = 0;
     ssize_t len;
 
-    // Read file line by line safely handling dynamic string buffers via getline
     while ((len = getline(&line, &cap, f)) != -1) {
-        // Strip trailing line configurations (\n and \r)
-        if (len > 0 && line[len - 1] == '\n') {
-            line[len - 1] = '\0';
-            len--;
-        }
-        if (len > 0 && line[len - 1] == '\r') {
-            line[len - 1] = '\0';
-            len--;
-        }
+        if (len > 0 && line[len - 1] == '\n') { line[len - 1] = '\0'; len--; }
+        if (len > 0 && line[len - 1] == '\r') { line[len - 1] = '\0'; len--; }
 
-        // Allocate dynamic JerryStr context for the line read
         JerryStr* jerry_line = jerry_string_new(line, (int64_t)len);
-
-        // Call user closure function passing the environment space pointer and string payload
         closure->fn_ptr(closure->env_ptr, jerry_line);
+        jerry_release(jerry_line); /* callback borrows; we own and release */
     }
 
     free(line);
@@ -208,10 +238,13 @@ void jerry_each_line(JerryStr* path, JerryClosure* closure) {
 
 JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap) {
     JerryArray* arr = jerry_alloc(sizeof(JerryArray));
+    JerryHeader* h = (JerryHeader*)arr - 1;
+    h->destructor = jerry_arr_destructor;
     arr->elem_size = elem_size;
     arr->len       = 0;
     arr->cap       = initial_cap > 0 ? initial_cap : 8;
-    arr->data      = jerry_alloc(arr->cap * elem_size);
+    arr->data      = malloc((size_t)(arr->cap * elem_size));
+    if (!arr->data) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
     return arr;
 }
 
@@ -337,6 +370,5 @@ JerryStr* jerry_now_string(void) {
     struct tm* tm_info = localtime(&t);
     char buf[32];
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);
-    int64_t slen = (int64_t)strlen(buf);
-    return jerry_string_new(buf, slen);
+    return jerry_string_new(buf, (int64_t)strlen(buf));
 }

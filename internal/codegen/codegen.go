@@ -42,6 +42,13 @@ type Generator struct {
 	// Name of the current basic block (without %)
 	curBlock string
 
+	// Reference-counting: heap locals to release at block exit.
+	// Each entry is one scope level; genBlock pushes/pops.
+	releaseScopes [][]releaseEntry
+	// For each active loop, the releaseScopes depth at loop entry.
+	// Used by break/continue to know which scopes to clean up.
+	loopScopeDepth []int
+
 	globals     map[string]*localVar // global variable slots, name → @name
 	globalDecls strings.Builder      // LLVM global variable declarations
 }
@@ -91,6 +98,17 @@ func (g *Generator) genPrograms(progs []*ast.Program) error {
 		zero := g.zeroValue(ty)
 		fmt.Fprintf(&g.globalDecls, "@%s = global %s %s\n", vd.Name, lt, zero)
 		g.globals[vd.Name] = &localVar{reg: "@" + vd.Name, llvmTy: lt, altType: ty}
+	}
+
+	// Generate class destructor functions (needed before any new-expr can reference them).
+	for _, prog := range progs {
+		for _, tl := range prog.Stmts {
+			if tl.Class != nil {
+				if err := g.genClassDestructor(tl.Class, &fnBuf); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// Generate function bodies from all programs in order.
@@ -181,6 +199,8 @@ declare i64  @jerry_array_len(ptr)
 declare void @jerry_array_push(ptr, ptr)
 declare void @jerry_panic(ptr)
 declare void @jerry_exit(i64)
+declare void @jerry_retain(ptr)
+declare void @jerry_release(ptr)
 declare ptr  @jerry_alloc(i64)
 declare ptr  @jerry_read_file(ptr)
 declare void @jerry_write_file(ptr, ptr)

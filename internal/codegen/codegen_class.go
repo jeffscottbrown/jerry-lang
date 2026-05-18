@@ -10,6 +10,39 @@ import (
 
 // ── Class code generation ─────────────────────────────────────────────────────
 
+// genClassDestructor emits a destructor function for cl that releases all
+// heap-type fields. Its signature matches the JerryHeader destructor slot:
+// void (*destructor)(void*). Always emitted (even if no heap fields) so that
+// genNewExpr can unconditionally store a pointer to it.
+func (g *Generator) genClassDestructor(cl *ast.ClassDecl, out *strings.Builder) error {
+	ci := g.info.Classes[cl.Name]
+	if ci == nil {
+		return fmt.Errorf("class %q not in type info", cl.Name)
+	}
+
+	fnName := cl.Name + "_destroy_jerry"
+	fmt.Fprintf(out, "define private void @%s(ptr %%self) {\n", fnName)
+	fmt.Fprintf(out, "entry:\n")
+
+	for idx, fname := range ci.FieldOrder {
+		fty := ci.Fields[fname]
+		if !isHeapType(fty) {
+			continue
+		}
+		// Struct layout: field 0 = vtable ptr, so field N is at index N+1.
+		fieldSlot := g.newTmp()
+		fieldVal := g.newTmp()
+		fmt.Fprintf(out, "  %s = getelementptr %%%s, ptr %%self, i32 0, i32 %d\n",
+			fieldSlot, cl.Name, idx+1)
+		fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", fieldVal, fieldSlot)
+		fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", fieldVal)
+	}
+
+	fmt.Fprintf(out, "  ret void\n")
+	fmt.Fprintf(out, "}\n\n")
+	return nil
+}
+
 func (g *Generator) genClassDecl(cl *ast.ClassDecl, out *strings.Builder) error {
 	ci := g.info.Classes[cl.Name]
 	if ci == nil {
@@ -49,6 +82,8 @@ func (g *Generator) genClassDecl(cl *ast.ClassDecl, out *strings.Builder) error 
 		g.retType = mt.Return
 		g.locals = make(map[string]*localVar)
 		g.terminated = false
+		g.releaseScopes = nil
+		g.loopScopeDepth = nil
 
 		// 'this' refers to self
 		selfReg := g.allocaInto(out, "this", "ptr")
@@ -137,6 +172,11 @@ func (g *Generator) genNewExpr(n *ast.NewExpr, out *strings.Builder) (string, er
 	sizeInt := g.newTmp()
 	fmt.Fprintf(out, "  %s = ptrtoint ptr %s to i64\n", sizeInt, sizeReg)
 	fmt.Fprintf(out, "  %s = call ptr @jerry_alloc(i64 %s)\n", objReg, sizeInt)
+
+	// Store the destructor pointer in the JerryHeader (8 bytes before the object).
+	dtorSlot := g.newTmp()
+	fmt.Fprintf(out, "  %s = getelementptr i8, ptr %s, i64 -8\n", dtorSlot, objReg)
+	fmt.Fprintf(out, "  store ptr @%s_destroy_jerry, ptr %s\n", n.ClassName, dtorSlot)
 
 	// Set vtable pointer.
 	vtableSlot := g.newTmp()

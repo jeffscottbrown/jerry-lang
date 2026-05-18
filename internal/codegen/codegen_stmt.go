@@ -15,6 +15,7 @@ func (g *Generator) genBlock(b *ast.Block, out *strings.Builder) error {
 		return nil
 	}
 	savedLocals := g.cloneLocals()
+	g.pushReleaseScope()
 	for _, s := range b.Stmts {
 		if g.terminated {
 			break
@@ -23,6 +24,10 @@ func (g *Generator) genBlock(b *ast.Block, out *strings.Builder) error {
 			return err
 		}
 	}
+	if !g.terminated {
+		g.emitCurrentScopeReleases(out)
+	}
+	g.popReleaseScope()
 	// Restore locals that existed before the block (inner bindings go out of scope).
 	g.locals = savedLocals
 	return nil
@@ -44,6 +49,8 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 		if len(g.labelStack) == 0 {
 			return fmt.Errorf("break outside loop")
 		}
+		loopDepth := g.loopScopeDepth[len(g.loopScopeDepth)-1]
+		g.emitLoopBoundaryReleases(loopDepth, out)
 		top := g.labelStack[len(g.labelStack)-1]
 		fmt.Fprintf(out, "  br label %%%s\n", top.endLabel)
 		g.terminated = true
@@ -51,6 +58,8 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 		if len(g.labelStack) == 0 {
 			return fmt.Errorf("continue outside loop")
 		}
+		loopDepth := g.loopScopeDepth[len(g.loopScopeDepth)-1]
+		g.emitLoopBoundaryReleases(loopDepth, out)
 		top := g.labelStack[len(g.labelStack)-1]
 		fmt.Fprintf(out, "  br label %%%s\n", top.condLabel)
 		g.terminated = true
@@ -71,11 +80,15 @@ func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	reg := g.allocaInto(out, vd.Name, lt)
 	g.storeInto(out, lt, val, reg)
 	g.locals[vd.Name] = &localVar{reg: reg, llvmTy: lt, altType: ty}
+	if isHeapType(ty) {
+		g.registerHeapLocal(reg, ty)
+	}
 	return nil
 }
 
 func (g *Generator) genReturn(r *ast.ReturnStmt, out *strings.Builder) error {
 	if r.Value == nil {
+		g.emitAllReleases("", out)
 		fmt.Fprintf(out, "  ret void\n")
 		g.terminated = true
 		return nil
@@ -84,6 +97,17 @@ func (g *Generator) genReturn(r *ast.ReturnStmt, out *strings.Builder) error {
 	if err != nil {
 		return err
 	}
+	// If returning a heap-type bare local variable, exempt its alloca from release
+	// so the caller receives the reference we were holding (transfer of ownership).
+	exemptAllocaReg := ""
+	if isHeapType(g.retType) {
+		if ident := simpleIdent(r.Value); ident != "" {
+			if lv, ok := g.locals[ident]; ok && isHeapType(lv.altType) {
+				exemptAllocaReg = lv.reg
+			}
+		}
+	}
+	g.emitAllReleases(exemptAllocaReg, out)
 	retLLVM := g.llvmType(g.retType)
 	fmt.Fprintf(out, "  ret %s %s\n", retLLVM, val)
 	g.terminated = true
@@ -154,11 +178,13 @@ func (g *Generator) genWhile(s *ast.WhileStmt, out *strings.Builder) error {
 	fmt.Fprintf(out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLbl, endLbl)
 
 	g.emitBlockLabel(bodyLbl, out)
+	g.loopScopeDepth = append(g.loopScopeDepth, len(g.releaseScopes))
 	g.labelStack = append(g.labelStack, loopLabels{condLbl, endLbl})
 	if err := g.genBlock(s.Body, out); err != nil {
 		return err
 	}
 	g.labelStack = g.labelStack[:len(g.labelStack)-1]
+	g.loopScopeDepth = g.loopScopeDepth[:len(g.loopScopeDepth)-1]
 	if !g.terminated {
 		fmt.Fprintf(out, "  br label %%%s\n", condLbl)
 	}
@@ -174,6 +200,7 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	endLbl := g.newLabel("for.end")
 
 	savedLocals := g.cloneLocals()
+	g.pushReleaseScope() // scope for for-init heap variables
 
 	// Init
 	if s.Init != nil {
@@ -188,12 +215,19 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 			reg := g.allocaInto(out, vd.Name, lt)
 			g.storeInto(out, lt, val, reg)
 			g.locals[vd.Name] = &localVar{reg: reg, llvmTy: lt, altType: ty}
+			if isHeapType(ty) {
+				g.registerHeapLocal(reg, ty)
+			}
 		} else if s.Init.Expr != nil {
 			if _, err := g.genExpr(s.Init.Expr, out); err != nil {
 				return err
 			}
 		}
 	}
+
+	// Record depth after for-init scope so break/continue release body scopes only;
+	// the for-init scope is released at endLbl (persists across iterations).
+	g.loopScopeDepth = append(g.loopScopeDepth, len(g.releaseScopes))
 
 	fmt.Fprintf(out, "  br label %%%s\n", condLbl)
 	g.emitBlockLabel(condLbl, out)
@@ -229,7 +263,11 @@ func (g *Generator) genFor(s *ast.ForStmt, out *strings.Builder) error {
 	}
 	fmt.Fprintf(out, "  br label %%%s\n", condLbl)
 
+	// End: release any for-init heap variables, then pop the scope.
 	g.emitBlockLabel(endLbl, out)
+	g.emitCurrentScopeReleases(out)
+	g.popReleaseScope()
+	g.loopScopeDepth = g.loopScopeDepth[:len(g.loopScopeDepth)-1]
 	g.locals = savedLocals
 	return nil
 }

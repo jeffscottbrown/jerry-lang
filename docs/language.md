@@ -363,9 +363,17 @@ shared references.
 | Class instances (`new Foo(...)`) | **Heap** — allocated with `jerry_alloc` |
 | Function values / closures | **Heap** — a small struct holding a function pointer |
 
-There is no garbage collector. Heap memory is not freed during a program's
-lifetime. This is a deliberate trade-off: Jerry programs are expected to be
-short-lived CLI tools and scripts where the OS reclaims memory on exit.
+Jerry manages heap memory with **reference counting**. Every heap-allocated
+value (string, array, class instance, closure) carries a hidden reference count.
+When a variable goes out of scope the compiler emits a `jerry_release` call; when
+the count reaches zero the object is freed immediately. There is no garbage
+collector and no stop-the-world pause.
+
+**Current limitations** — the following cases do not yet release memory:
+- String temporaries that are never stored in a named variable (e.g. the
+  intermediate result of `"a" + "b" + "c"`)
+- Reassigning a heap-type variable leaks the old value
+- Global variables are not released at program exit (the OS reclaims them)
 
 ### Pass by value vs pass by reference
 

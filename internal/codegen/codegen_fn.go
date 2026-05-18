@@ -41,6 +41,8 @@ func (g *Generator) genFnDecl(fn *ast.FnDecl, out *strings.Builder) error {
 	g.retType = ft.Return
 	g.locals = make(map[string]*localVar)
 	g.terminated = false
+	g.releaseScopes = nil
+	g.loopScopeDepth = nil
 
 	// Allocate locals for parameters so they're mutable.
 	for i, p := range fn.Params {
@@ -100,6 +102,8 @@ func (g *Generator) genFnExpr(fn *ast.FnExpr, out *strings.Builder) (string, err
 	g.retType = retTy
 	g.locals = make(map[string]*localVar)
 	g.terminated = false
+	g.releaseScopes = nil
+	g.loopScopeDepth = nil
 
 	for i, p := range fn.Params {
 		lt := g.llvmType(paramTypes[i])
