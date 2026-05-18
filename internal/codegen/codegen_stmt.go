@@ -88,7 +88,10 @@ func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	reg := g.allocaInto(out, vd.Name, lt)
 	g.storeInto(out, lt, val, reg)
 	g.locals[vd.Name] = &localVar{reg: reg, llvmTy: lt, altType: ty}
-	if isHeapType(ty) {
+	// Only register for release if the initializer is a fresh heap allocation
+	// (function call result, new-expr, concat, etc.). A bare variable load is a
+	// borrow — the source variable remains the owner and will release it.
+	if isHeapType(ty) && simpleIdent(vd.Value) == "" {
 		g.registerHeapLocal(reg, ty)
 	}
 	return nil
