@@ -369,9 +369,16 @@ When a variable goes out of scope the compiler emits a `jerry_release` call; whe
 the count reaches zero the object is freed immediately. There is no garbage
 collector and no stop-the-world pause.
 
+String literals passed directly as function arguments are released immediately
+after the call returns:
+
+```jerry
+doit("hello");   // "hello" is allocated, passed, then freed — no leak
+```
+
 **Current limitations** — the following cases do not yet release memory:
-- String temporaries that are never stored in a named variable (e.g. the
-  intermediate result of `"a" + "b" + "c"`)
+- Intermediate string temporaries in expressions (e.g. the `"a"` and `"b"`
+  in `"a" + "b" + "c"` before they are consumed by concatenation)
 - Reassigning a heap-type variable leaks the old value
 - Global variables are not released at program exit (the OS reclaims them)
 

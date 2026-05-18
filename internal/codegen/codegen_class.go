@@ -132,6 +132,7 @@ func (g *Generator) genMethodCall(
 		return "", nil, fmt.Errorf("class %s has no method %q", className, method)
 	}
 
+	var argVals []string
 	var argLLVM []string
 	argLLVM = append(argLLVM, "ptr "+objVal)
 	for i, a := range args {
@@ -139,6 +140,7 @@ func (g *Generator) genMethodCall(
 		if err != nil {
 			return "", nil, err
 		}
+		argVals = append(argVals, av)
 		if i < len(mt.Params) {
 			argLLVM = append(argLLVM, g.llvmType(mt.Params[i])+" "+av)
 		} else {
@@ -151,10 +153,12 @@ func (g *Generator) genMethodCall(
 	retLLVM := g.llvmType(mt.Return)
 	if retLLVM == "void" {
 		fmt.Fprintf(out, "  call void @%s(%s)\n", fnName, strings.Join(argLLVM, ", "))
+		g.releaseStrLitArgs(args, argVals, out)
 		return "0", checker.Void, nil
 	}
 	res := g.newTmp()
 	fmt.Fprintf(out, "  %s = call %s @%s(%s)\n", res, retLLVM, fnName, strings.Join(argLLVM, ", "))
+	g.releaseStrLitArgs(args, argVals, out)
 	return res, mt.Return, nil
 }
 

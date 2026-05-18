@@ -181,6 +181,57 @@ func (g *Generator) emitLoopBoundaryReleases(loopDepth int, out *strings.Builder
 	}
 }
 
+// bareStringLit returns the string value if expr is a bare string literal with
+// no operators or postfix operations, or nil otherwise. Used to detect cases
+// where a string literal's lifetime is managed directly by the caller (var
+// initializer, return statement) rather than needing a hidden release scope.
+func bareStringLit(e *ast.Expr) *string {
+	if e == nil {
+		return nil
+	}
+	a := e.Assignment
+	if a == nil || a.Right != nil {
+		return nil
+	}
+	or := a.Left
+	if or == nil || len(or.Rest) != 0 {
+		return nil
+	}
+	and := or.Left
+	if and == nil || len(and.Rest) != 0 {
+		return nil
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return nil
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return nil
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return nil
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return nil
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return nil
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) != 0 {
+		return nil
+	}
+	prim := post.Base
+	if prim == nil {
+		return nil
+	}
+	return prim.String
+}
+
 // simpleIdent returns the variable name if expr is a bare identifier with no
 // operators or postfix operations, or "" otherwise. Used by genReturn to
 // determine whether the return value is a heap local (and should be exempted

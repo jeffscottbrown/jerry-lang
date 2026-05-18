@@ -448,6 +448,7 @@ func (g *Generator) genCall(
 			argTy := g.exprType(call.Args[0])
 			noNewline := base.Ident == "write"
 			g.emitPrint(argVal, argTy, noNewline, out)
+			g.releaseStrLitArgs(call.Args, []string{argVal}, out)
 			return "0", checker.Void, nil
 
 		case "println":
@@ -573,6 +574,7 @@ func (g *Generator) genCall(
 				return "", nil, err
 			}
 			fmt.Fprintf(out, "  call void @jerry_write_file(ptr %s, ptr %s)\n", pathVal, contentVal)
+			g.releaseStrLitArgs(call.Args, []string{pathVal, contentVal}, out)
 			return "0", checker.Void, nil
 
 		case "exit":
@@ -599,6 +601,7 @@ func (g *Generator) genCall(
 				return "", nil, err
 			}
 			fmt.Fprintf(out, "  call void @jerry_print_err(ptr %s)\n", argVal)
+			g.releaseStrLitArgs(call.Args, []string{argVal}, out)
 			return "0", checker.Void, nil
 
 		case "read_stdin":
@@ -641,6 +644,7 @@ func (g *Generator) genCall(
 			if err != nil {
 				return "", nil, err
 			}
+			// Note: no release needed here — jerry_panic never returns.
 			fmt.Fprintf(out, "  call void @jerry_panic(ptr %s)\n", argVal)
 			fmt.Fprintf(out, "  unreachable\n")
 			g.terminated = true
@@ -656,12 +660,14 @@ func (g *Generator) genCall(
 		// Named top-level function call.
 		{
 			fnName := base.Ident + "_jerry"
+			var argVals []string
 			var argLLVM []string
 			for i, a := range call.Args {
 				av, err := g.genExpr(a, out)
 				if err != nil {
 					return "", nil, err
 				}
+				argVals = append(argVals, av)
 				at := g.exprType(a)
 				if i < len(calleeTy.Params) {
 					argLLVM = append(argLLVM, g.llvmType(calleeTy.Params[i])+" "+av)
@@ -676,10 +682,12 @@ func (g *Generator) genCall(
 			retLLVM := g.llvmType(retTy)
 			if retLLVM == "void" {
 				fmt.Fprintf(out, "  call void @%s(%s)\n", fnName, strings.Join(argLLVM, ", "))
+				g.releaseStrLitArgs(call.Args, argVals, out)
 				return "0", checker.Void, nil
 			}
 			res := g.newTmp()
 			fmt.Fprintf(out, "  %s = call %s @%s(%s)\n", res, retLLVM, fnName, strings.Join(argLLVM, ", "))
+			g.releaseStrLitArgs(call.Args, argVals, out)
 			return res, retTy, nil
 		}
 	}
@@ -697,6 +705,7 @@ closureCall:
 		fmt.Fprintf(out, "  %s = getelementptr %%JerryClosure, ptr %s, i32 0, i32 1\n", envSlot, calleeVal)
 		fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", envPtr, envSlot)
 
+		var argVals []string
 		var argLLVM []string
 		argLLVM = append(argLLVM, "ptr "+envPtr)
 		for i, a := range call.Args {
@@ -704,6 +713,7 @@ closureCall:
 			if err != nil {
 				return "", nil, err
 			}
+			argVals = append(argVals, av)
 			if i < len(calleeTy.Params) {
 				argLLVM = append(argLLVM, g.llvmType(calleeTy.Params[i])+" "+av)
 			} else {
@@ -726,10 +736,12 @@ closureCall:
 
 		if retLLVM == "void" {
 			fmt.Fprintf(out, "  call %s %s(%s)\n", fnTySig, fnPtr, strings.Join(argLLVM, ", "))
+			g.releaseStrLitArgs(call.Args, argVals, out)
 			return "0", checker.Void, nil
 		}
 		res := g.newTmp()
 		fmt.Fprintf(out, "  %s = call %s %s(%s)\n", res, fnTySig, fnPtr, strings.Join(argLLVM, ", "))
+		g.releaseStrLitArgs(call.Args, argVals, out)
 		return res, retTy, nil
 	}
 
@@ -816,6 +828,18 @@ func (g *Generator) genStringLit(s string, out *strings.Builder) string {
 	fmt.Fprintf(out, "  %s = call ptr @jerry_string_new(ptr @.str.%d, i64 %d)\n",
 		res, id, len(s))
 	return res
+}
+
+// releaseStrLitArgs emits a jerry_release for each argument in args whose
+// expression was a bare string literal. Call this immediately after emitting
+// a function call so that string literals used as arguments are freed once the
+// callee is done with them.
+func (g *Generator) releaseStrLitArgs(args []*ast.Expr, argVals []string, out *strings.Builder) {
+	for i, a := range args {
+		if i < len(argVals) && bareStringLit(a) != nil {
+			fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", argVals[i])
+		}
+	}
 }
 
 func (g *Generator) genArrayLit(a *ast.ArrayLit, out *strings.Builder) (string, error) {

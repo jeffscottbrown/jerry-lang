@@ -71,11 +71,19 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 }
 
 func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
-	val, err := g.genExpr(vd.Value, out)
-	if err != nil {
-		return err
-	}
 	ty := g.exprType(vd.Value)
+	var val string
+	if lit := bareStringLit(vd.Value); lit != nil {
+		// Bare string literal: the named alloca below owns the reference directly;
+		// no hidden alloca needed.
+		val = g.genStringLit(*lit, out)
+	} else {
+		var err error
+		val, err = g.genExpr(vd.Value, out)
+		if err != nil {
+			return err
+		}
+	}
 	lt := g.llvmType(ty)
 	reg := g.allocaInto(out, vd.Name, lt)
 	g.storeInto(out, lt, val, reg)
@@ -93,7 +101,19 @@ func (g *Generator) genReturn(r *ast.ReturnStmt, out *strings.Builder) error {
 		g.terminated = true
 		return nil
 	}
-	val, err := g.genExpr(r.Value, out)
+	// Bare string literal return: call genStringLit directly so no hidden alloca
+	// is created. The raw +1 pointer is transferred to the caller; emitAllReleases
+	// won't touch it since it was never registered.
+	var val string
+	if lit := bareStringLit(r.Value); lit != nil && isHeapType(g.retType) {
+		val = g.genStringLit(*lit, out)
+		g.emitAllReleases("", out)
+		fmt.Fprintf(out, "  ret ptr %s\n", val)
+		g.terminated = true
+		return nil
+	}
+	var err error
+	val, err = g.genExpr(r.Value, out)
 	if err != nil {
 		return err
 	}
