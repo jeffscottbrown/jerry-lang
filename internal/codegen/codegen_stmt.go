@@ -131,7 +131,11 @@ func (g *Generator) genIf(s *ast.IfStmt, out *strings.Builder) error {
 
 	// merge
 	g.emitBlockLabel(mergeLbl, out)
-	g.terminated = thenTerminated && elseTerminated
+	if thenTerminated && elseTerminated {
+		// Both branches terminated; merge block is unreachable but must have a terminator.
+		fmt.Fprintf(out, "  unreachable\n")
+		g.terminated = true
+	}
 	return nil
 }
 

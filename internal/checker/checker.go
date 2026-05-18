@@ -106,9 +106,19 @@ func CheckAll(
 			}
 		}
 	}
+	// Pre-check all project-file global variable declarations into projectScope
+	// so they are visible across all project files (like functions and classes are).
+	for _, prog := range projectProgs {
+		for _, tl := range prog.Stmts {
+			if tl.VarDecl != nil {
+				projectChecker.checkVarDecl(tl.VarDecl)
+			}
+		}
+	}
 	projectScope := projectChecker.scope
 
 	var allErrors []CheckError
+	allErrors = append(allErrors, projectChecker.errors...)
 
 	// ── Check core.jer bodies ─────────────────────────────────────────────────
 	if coreAST != nil {
@@ -292,9 +302,8 @@ func CheckAll(
 				fc.checkFnDecl(tl.FnDecl)
 			case tl.Class != nil:
 				fc.checkClassDecl(tl.Class)
-			case tl.VarDecl != nil:
-				fc.checkVarDecl(tl.VarDecl)
-				// tl.Include: no body to check
+			// tl.VarDecl: already pre-checked into projectScope; skip.
+			// tl.Include: no body to check.
 			}
 		}
 		allErrors = append(allErrors, fc.errors...)
