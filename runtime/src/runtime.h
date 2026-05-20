@@ -70,6 +70,32 @@ void         jerry_array_set(JerryArray* arr, int64_t idx, void* elem);
 int64_t      jerry_array_len(JerryArray* arr);
 void         jerry_array_push(JerryArray* arr, void* elem);
 
+/* ── Maps ────────────────────────────────────────────────────────────────────── */
+/* JerryMap: hash map with string or int64 keys, fixed-size values.
+   string_keys=1 → keys are JerryStr* compared by content.
+   string_keys=0 → keys are int64 compared by value.                            */
+typedef struct JerryMapNode {
+    uint8_t              key[8];   /* raw key bytes (JerryStr* or int64)         */
+    uint8_t*             value;    /* malloc'd copy of value bytes               */
+    struct JerryMapNode* next;
+} JerryMapNode;
+
+typedef struct {
+    JerryMapNode** buckets;
+    int64_t        bucket_count;
+    int64_t        len;
+    int64_t        value_size;
+    int8_t         string_keys;
+} JerryMap;
+
+JerryMap*   jerry_map_new(int8_t string_keys, int64_t value_size);
+void        jerry_map_set(JerryMap* m, void* key, void* value);
+void*       jerry_map_get(JerryMap* m, void* key);   /* panics if key absent     */
+int8_t      jerry_map_has(JerryMap* m, void* key);
+void        jerry_map_delete(JerryMap* m, void* key);
+int64_t     jerry_map_len(JerryMap* m);
+JerryArray* jerry_map_keys(JerryMap* m);             /* returns array of keys    */
+
 /* ── Control ────────────────────────────────────────────────────────────────── */
 void jerry_panic(JerryStr* msg) __attribute__((noreturn));
 void jerry_exit(int64_t code)   __attribute__((noreturn));

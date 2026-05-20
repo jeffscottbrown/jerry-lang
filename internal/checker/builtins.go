@@ -72,4 +72,22 @@ func installBuiltins(s *Scope) {
 	// now_string(): string — local time as "YYYY-MM-DD HH:MM:SS"
 	s.Define(&Symbol{Name: "now_string", Kind: SymFunc,
 		Type: FuncType([]*Type{}, String)})
+	// map_set(m, key, val): void
+	s.Define(&Symbol{Name: "map_set", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void), Void, Void}, Void)})
+	// map_get(m, key): V  — return type is map's value type; checked per-call
+	s.Define(&Symbol{Name: "map_get", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void), Void}, Void)})
+	// map_has(m, key): bool
+	s.Define(&Symbol{Name: "map_has", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void), Void}, Bool)})
+	// map_delete(m, key): void
+	s.Define(&Symbol{Name: "map_delete", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void), Void}, Void)})
+	// map_len(m): int
+	s.Define(&Symbol{Name: "map_len", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void)}, Int)})
+	// map_keys(m): K[]  — return type is array of key type; checked per-call
+	s.Define(&Symbol{Name: "map_keys", Kind: SymFunc,
+		Type: FuncType([]*Type{MapOf(Void, Void)}, ArrayOf(Void))})
 }

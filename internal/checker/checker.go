@@ -341,6 +341,12 @@ func (c *Checker) resolveTypeExpr(te *ast.TypeExpr) *Type {
 	if te == nil {
 		return Void
 	}
+	// Map type: map<K, V>
+	if te.MapType != nil {
+		keyTy := c.resolveTypeExpr(te.MapType.Key)
+		valTy := c.resolveTypeExpr(te.MapType.Value)
+		return MapOf(keyTy, valTy)
+	}
 	// Function type: fn(T, T): T
 	if te.FnType != nil {
 		var params []*Type
@@ -465,11 +471,19 @@ func (c *Checker) checkVarDecl(vd *ast.VarDecl) {
 	var declTy *Type
 	if vd.Ann != nil {
 		declTy = c.resolveTypeExpr(vd.Ann)
-		// Allow [] (void[]) to satisfy any array annotation, and
-		// allow "" (void, from empty string literal) to satisfy string.
+		// Allow [] (void[]) to satisfy any array annotation.
 		emptyArray := valTy.Kind == KindArray && valTy.Elem.Kind == KindVoid &&
 			declTy.Kind == KindArray
-		if !emptyArray && !declTy.Equal(valTy) {
+		// Allow {} (map<void,void>) to satisfy any map annotation.
+		emptyMap := valTy.Kind == KindMap && valTy.Key.Kind == KindVoid &&
+			declTy.Kind == KindMap
+		if emptyMap {
+			// Propagate annotation type into the MapLit so codegen knows key/value types.
+			if ml := extractMapLit(vd.Value); ml != nil {
+				ml.ResolvedType = declTy
+			}
+		}
+		if !emptyArray && !emptyMap && !declTy.Equal(valTy) {
 			c.errorf(vd.Pos, "variable %q: declared type %s but got %s",
 				vd.Name, declTy, valTy)
 		}
@@ -477,6 +491,46 @@ func (c *Checker) checkVarDecl(vd *ast.VarDecl) {
 		declTy = valTy
 	}
 	c.scope.Define(&Symbol{Name: vd.Name, Kind: SymVar, Type: declTy})
+}
+
+// extractMapLit walks a bare expression tree to find a MapLit with no operators.
+func extractMapLit(e *ast.Expr) *ast.MapLit {
+	if e == nil || e.Assignment == nil || e.Assignment.Right != nil {
+		return nil
+	}
+	o := e.Assignment.Left
+	if o == nil || len(o.Rest) != 0 {
+		return nil
+	}
+	and := o.Left
+	if and == nil || len(and.Rest) != 0 {
+		return nil
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return nil
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return nil
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return nil
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return nil
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return nil
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) != 0 {
+		return nil
+	}
+	return post.Base.MapLit
 }
 
 // ── Statement checking ───────────────────────────────────────────────────────
@@ -721,15 +775,21 @@ func (c *Checker) checkPostfix(p *ast.PostfixExpr) *Type {
 		case op.Field != "":
 			t = c.checkFieldAccess(t, op.Field, op.Pos)
 		case op.Index != nil:
-			if t.Kind != KindArray {
-				c.errorf(op.Pos, "index on non-array type %s", t)
-				t = Void
-			} else {
+			if t.Kind == KindArray {
 				idxTy := c.checkExpr(op.Index)
 				if idxTy.Kind != KindInt {
 					c.errorf(op.Pos, "array index must be int, got %s", idxTy)
 				}
 				t = t.Elem
+			} else if t.Kind == KindMap {
+				idxTy := c.checkExpr(op.Index)
+				if !idxTy.Equal(t.Key) {
+					c.errorf(op.Pos, "map key type mismatch: expected %s, got %s", t.Key, idxTy)
+				}
+				t = t.Value
+			} else {
+				c.errorf(op.Pos, "index on non-array/non-map type %s", t)
+				t = Void
 			}
 		case op.PlusPlus || op.MinusMinus:
 			if t.Kind != KindInt && t.Kind != KindFloat {
@@ -828,6 +888,60 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 			return Void
 		case "read_stdin":
 			return String
+
+		case "map_set":
+			if len(call.Args) != 3 {
+				c.errorf(call.Pos, "map_set() takes 3 arguments (map, key, value)")
+			} else {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+				c.checkExpr(call.Args[2])
+			}
+			return Void
+		case "map_get":
+			if len(call.Args) != 2 {
+				c.errorf(call.Pos, "map_get() takes 2 arguments (map, key)")
+				return Void
+			}
+			mt := c.checkExpr(call.Args[0])
+			c.checkExpr(call.Args[1])
+			if mt.Kind == KindMap {
+				return mt.Value
+			}
+			return Void
+		case "map_has":
+			if len(call.Args) != 2 {
+				c.errorf(call.Pos, "map_has() takes 2 arguments (map, key)")
+			} else {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Bool
+		case "map_delete":
+			if len(call.Args) != 2 {
+				c.errorf(call.Pos, "map_delete() takes 2 arguments (map, key)")
+			} else {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Void
+		case "map_len":
+			if len(call.Args) != 1 {
+				c.errorf(call.Pos, "map_len() takes 1 argument")
+			} else {
+				c.checkExpr(call.Args[0])
+			}
+			return Int
+		case "map_keys":
+			if len(call.Args) != 1 {
+				c.errorf(call.Pos, "map_keys() takes 1 argument")
+				return ArrayOf(Void)
+			}
+			mt := c.checkExpr(call.Args[0])
+			if mt.Kind == KindMap {
+				return ArrayOf(mt.Key)
+			}
+			return ArrayOf(Void)
 		}
 	}
 
@@ -894,6 +1008,10 @@ func (c *Checker) checkPrimary(p *ast.PrimaryExpr) *Type {
 		return sym.Type
 	case p.Array != nil:
 		return c.checkArrayLit(p.Array)
+	case p.MapLit != nil:
+		t := c.checkMapLit(p.MapLit)
+		p.MapLit.ResolvedType = t
+		return t
 	case p.FnExpr != nil:
 		return c.checkFnExpr(p.FnExpr)
 	case p.NewExpr != nil:
@@ -902,6 +1020,25 @@ func (c *Checker) checkPrimary(p *ast.PrimaryExpr) *Type {
 		return c.checkExpr(p.Paren)
 	}
 	return Void
+}
+
+func (c *Checker) checkMapLit(m *ast.MapLit) *Type {
+	if len(m.Entries) == 0 {
+		return MapOf(Void, Void) // type inferred from annotation in checkVarDecl
+	}
+	keyTy := c.checkExpr(m.Entries[0].Key)
+	valTy := c.checkExpr(m.Entries[0].Value)
+	for _, e := range m.Entries[1:] {
+		kt := c.checkExpr(e.Key)
+		vt := c.checkExpr(e.Value)
+		if !keyTy.Equal(kt) {
+			c.errorf(m.Pos, "map literal has mixed key types: %s and %s", keyTy, kt)
+		}
+		if !valTy.Equal(vt) {
+			c.errorf(m.Pos, "map literal has mixed value types: %s and %s", valTy, vt)
+		}
+	}
+	return MapOf(keyTy, valTy)
 }
 
 func (c *Checker) checkArrayLit(a *ast.ArrayLit) *Type {

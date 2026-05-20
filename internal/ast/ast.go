@@ -160,14 +160,23 @@ type ExprStmt struct {
 // ── Type expressions ─────────────────────────────────────────────────────────
 
 // TypeExpr represents a type annotation.
-// Examples: int, string, MyClass, int[], fn(int): bool
+// Examples: int, string, MyClass, int[], fn(int): bool, map<string, int>
 type TypeExpr struct {
 	Pos     lexer.Position
+	// Map type: map<K, V>
+	MapType *MapTypeExpr `( @@`
 	// Named type (possibly array): int, string, MyClass, int[]
-	Name    string       `( @Ident`
+	Name    string       `| @Ident`
 	IsArray []string     `  { "[" @"]" }`
 	// Function type: fn(T, T): T
 	FnType  *FnTypeExpr  `| @@ )`
+}
+
+// MapTypeExpr represents a map type annotation: map<K, V>
+type MapTypeExpr struct {
+	Pos   lexer.Position
+	Key   *TypeExpr `"map" "<" @@`
+	Value *TypeExpr `"," @@ ">"`
 }
 
 // FnTypeExpr represents a function type: fn(ParamTypes...): ReturnType
@@ -181,6 +190,9 @@ func (t *TypeExpr) Array() bool { return t != nil && len(t.IsArray) > 0 }
 func (t *TypeExpr) String() string {
 	if t == nil {
 		return "void"
+	}
+	if t.MapType != nil {
+		return "map<" + t.MapType.Key.String() + ", " + t.MapType.Value.String() + ">"
 	}
 	if t.FnType != nil {
 		s := "fn("
@@ -313,6 +325,7 @@ type PrimaryExpr struct {
 	// Ordered: most specific first to avoid ambiguity
 	FnExpr  *FnExpr   `( @@`
 	NewExpr *NewExpr  `| @@`
+	MapLit  *MapLit   `| @@`
 	Array   *ArrayLit `| @@`
 	Paren   *Expr     `| "(" @@ ")"`
 	This    bool      `| @"this"`
@@ -340,4 +353,18 @@ type NewExpr struct {
 type ArrayLit struct {
 	Pos   lexer.Position
 	Elems []*Expr `"[" [ @@ { "," @@ } ] "]"`
+}
+
+// MapLit is a map literal: {} or { key: val, key: val, ... }
+// ResolvedType is set by the checker so codegen knows key/value types for empty literals.
+type MapLit struct {
+	Pos          lexer.Position
+	Entries      []*MapEntry `"{" [ @@ { "," @@ } ] "}"`
+	ResolvedType interface{} // *checker.Type — avoid import cycle; cast at use
+}
+
+type MapEntry struct {
+	Pos   lexer.Position
+	Key   *Expr `@@`
+	Value *Expr `":" @@`
 }

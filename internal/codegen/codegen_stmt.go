@@ -72,12 +72,13 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 
 func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	ty := g.exprType(vd.Value)
-	// When the initializer is an empty [] literal, exprType returns ArrayOf(Void).
-	// If there is an explicit type annotation, use it instead so downstream
-	// element-type loads get the correct LLVM type.
+	// When the initializer is an empty [] or {} literal, exprType returns
+	// ArrayOf(Void) or MapOf(Void,Void). Use the explicit annotation instead so
+	// downstream element/key/value-type loads get the correct LLVM type.
 	if vd.Ann != nil {
 		if ty.Kind == checker.KindVoid ||
-			(ty.Kind == checker.KindArray && ty.Elem.Kind == checker.KindVoid) {
+			(ty.Kind == checker.KindArray && ty.Elem.Kind == checker.KindVoid) ||
+			(ty.Kind == checker.KindMap && ty.Key.Kind == checker.KindVoid) {
 			ty = g.resolveTypeExpr(vd.Ann)
 		}
 	}

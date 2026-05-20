@@ -26,16 +26,19 @@ const (
 	KindBool
 	KindString
 	KindArray
+	KindMap
 	KindFunc
 	KindClass
 	KindNull
 )
 
 type Type struct {
-	Kind     TypeKind
-	Elem     *Type   // KindArray element type
-	Params   []*Type // KindFunc parameter types
-	Return   *Type   // KindFunc return type
+	Kind      TypeKind
+	Elem      *Type   // KindArray element type
+	Key       *Type   // KindMap key type
+	Value     *Type   // KindMap value type
+	Params    []*Type // KindFunc parameter types
+	Return    *Type   // KindFunc return type
 	ClassName string  // KindClass name
 }
 
@@ -48,8 +51,9 @@ var (
 	Null   = &Type{Kind: KindNull}
 )
 
-func ArrayOf(elem *Type) *Type    { return &Type{Kind: KindArray, Elem: elem} }
-func ClassType(name string) *Type { return &Type{Kind: KindClass, ClassName: name} }
+func ArrayOf(elem *Type) *Type           { return &Type{Kind: KindArray, Elem: elem} }
+func MapOf(key, val *Type) *Type         { return &Type{Kind: KindMap, Key: key, Value: val} }
+func ClassType(name string) *Type        { return &Type{Kind: KindClass, ClassName: name} }
 func FuncType(params []*Type, ret *Type) *Type {
 	return &Type{Kind: KindFunc, Params: params, Return: ret}
 }
@@ -71,6 +75,8 @@ func (t *Type) String() string {
 		return "string"
 	case KindArray:
 		return t.Elem.String() + "[]"
+	case KindMap:
+		return "map<" + t.Key.String() + ", " + t.Value.String() + ">"
 	case KindFunc:
 		s := "fn("
 		for i, p := range t.Params {
@@ -112,6 +118,8 @@ func (t *Type) Equal(other *Type) bool {
 	switch t.Kind {
 	case KindArray:
 		return t.Elem.Equal(other.Elem)
+	case KindMap:
+		return t.Key.Equal(other.Key) && t.Value.Equal(other.Value)
 	case KindFunc:
 		if len(t.Params) != len(other.Params) {
 			return false

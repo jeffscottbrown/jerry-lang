@@ -103,18 +103,29 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 			gepReg, baseTy.ClassName, baseVal, fieldIdx)
 		fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, gepReg)
 	case lastOp.Index != nil:
-		if baseTy.Kind != checker.KindArray {
-			return fmt.Errorf("index assignment on non-array")
-		}
 		idxVal, err := g.genExpr(lastOp.Index, out)
 		if err != nil {
 			return err
 		}
-		tmpAlloca := g.newTmp() + ".slot"
-		fmt.Fprintf(out, "  %s = alloca %s\n", tmpAlloca, lt)
-		fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, tmpAlloca)
-		fmt.Fprintf(out, "  call void @jerry_array_set(ptr %s, i64 %s, ptr %s)\n",
-			baseVal, idxVal, tmpAlloca)
+		if baseTy.Kind == checker.KindArray {
+			tmpAlloca := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", tmpAlloca, lt)
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, tmpAlloca)
+			fmt.Fprintf(out, "  call void @jerry_array_set(ptr %s, i64 %s, ptr %s)\n",
+				baseVal, idxVal, tmpAlloca)
+		} else if baseTy.Kind == checker.KindMap {
+			keyTy := baseTy.Key
+			keySlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), idxVal, keySlot)
+			valSlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", valSlot, lt)
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, valSlot)
+			fmt.Fprintf(out, "  call void @jerry_map_set(ptr %s, ptr %s, ptr %s)\n",
+				baseVal, keySlot, valSlot)
+		} else {
+			return fmt.Errorf("index assignment on non-array/non-map type %s", baseTy)
+		}
 	default:
 		return fmt.Errorf("invalid assignment target")
 	}
@@ -377,22 +388,37 @@ func (g *Generator) genPostfixVal(p *ast.PostfixExpr, out *strings.Builder) (str
 			}
 
 		case op.Index != nil:
-			if ty.Kind != checker.KindArray {
-				return "", nil, fmt.Errorf("index on non-array")
-			}
 			idxVal, err := g.genExpr(op.Index, out)
 			if err != nil {
 				return "", nil, err
 			}
-			ptrReg := g.newTmp()
-			fmt.Fprintf(out, "  %s = call ptr @jerry_array_get(ptr %s, i64 %s)\n",
-				ptrReg, val, idxVal)
-			loadReg := g.newTmp()
-			elemTy := ty.Elem
-			fmt.Fprintf(out, "  %s = load %s, ptr %s\n",
-				loadReg, g.llvmType(elemTy), ptrReg)
-			val = loadReg
-			ty = elemTy
+			if ty.Kind == checker.KindArray {
+				ptrReg := g.newTmp()
+				fmt.Fprintf(out, "  %s = call ptr @jerry_array_get(ptr %s, i64 %s)\n",
+					ptrReg, val, idxVal)
+				loadReg := g.newTmp()
+				elemTy := ty.Elem
+				fmt.Fprintf(out, "  %s = load %s, ptr %s\n",
+					loadReg, g.llvmType(elemTy), ptrReg)
+				val = loadReg
+				ty = elemTy
+			} else if ty.Kind == checker.KindMap {
+				keyTy := ty.Key
+				keySlot := g.newTmp() + ".slot"
+				fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+				fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), idxVal, keySlot)
+				ptrReg := g.newTmp()
+				fmt.Fprintf(out, "  %s = call ptr @jerry_map_get(ptr %s, ptr %s)\n",
+					ptrReg, val, keySlot)
+				valTy := ty.Value
+				loadReg := g.newTmp()
+				fmt.Fprintf(out, "  %s = load %s, ptr %s\n",
+					loadReg, g.llvmType(valTy), ptrReg)
+				val = loadReg
+				ty = valTy
+			} else {
+				return "", nil, fmt.Errorf("index on non-array/non-map type %s", ty)
+			}
 
 		case op.PlusPlus, op.MinusMinus:
 			varName := p.Base.Ident
@@ -649,6 +675,130 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  unreachable\n")
 			g.terminated = true
 			return "0", checker.Void, nil
+
+		case "map_set":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			mapTy := g.exprType(call.Args[0])
+			keyVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			valVal, err := g.genExpr(call.Args[2], out)
+			if err != nil {
+				return "", nil, err
+			}
+			keyTy := checker.String
+			valTy := checker.Int
+			if mapTy.Kind == checker.KindMap {
+				keyTy = mapTy.Key
+				valTy = mapTy.Value
+			}
+			keySlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), keyVal, keySlot)
+			valSlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", valSlot, g.llvmType(valTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(valTy), valVal, valSlot)
+			fmt.Fprintf(out, "  call void @jerry_map_set(ptr %s, ptr %s, ptr %s)\n",
+				mapVal, keySlot, valSlot)
+			return "0", checker.Void, nil
+
+		case "map_get":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			mapTy := g.exprType(call.Args[0])
+			keyVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			keyTy := checker.String
+			retTy := checker.Void
+			if mapTy.Kind == checker.KindMap {
+				keyTy = mapTy.Key
+				retTy = mapTy.Value
+			}
+			keySlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), keyVal, keySlot)
+			vptr := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_map_get(ptr %s, ptr %s)\n",
+				vptr, mapVal, keySlot)
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = load %s, ptr %s\n", res, g.llvmType(retTy), vptr)
+			return res, retTy, nil
+
+		case "map_has":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			mapTy := g.exprType(call.Args[0])
+			keyVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			keyTy := checker.String
+			if mapTy.Kind == checker.KindMap {
+				keyTy = mapTy.Key
+			}
+			keySlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), keyVal, keySlot)
+			raw := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i8 @jerry_map_has(ptr %s, ptr %s)\n",
+				raw, mapVal, keySlot)
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = icmp ne i8 %s, 0\n", res, raw)
+			return res, checker.Bool, nil
+
+		case "map_delete":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			mapTy := g.exprType(call.Args[0])
+			keyVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			keyTy := checker.String
+			if mapTy.Kind == checker.KindMap {
+				keyTy = mapTy.Key
+			}
+			keySlot := g.newTmp() + ".slot"
+			fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), keyVal, keySlot)
+			fmt.Fprintf(out, "  call void @jerry_map_delete(ptr %s, ptr %s)\n",
+				mapVal, keySlot)
+			return "0", checker.Void, nil
+
+		case "map_len":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_map_len(ptr %s)\n", res, mapVal)
+			return res, checker.Int, nil
+
+		case "map_keys":
+			mapVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			mapTy := g.exprType(call.Args[0])
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_map_keys(ptr %s)\n", res, mapVal)
+			retTy := checker.ArrayOf(checker.String)
+			if mapTy.Kind == checker.KindMap {
+				retTy = checker.ArrayOf(mapTy.Key)
+			}
+			return res, retTy, nil
 		}
 
 		// Is it a local variable with function type (closure stored in a variable)?
@@ -808,6 +958,8 @@ func (g *Generator) genPrimary(p *ast.PrimaryExpr, out *strings.Builder) (string
 			return res, nil
 		}
 		return "%" + p.Ident + ".fnref", nil
+	case p.MapLit != nil:
+		return g.genMapLit(p.MapLit, out)
 	case p.Array != nil:
 		return g.genArrayLit(p.Array, out)
 	case p.FnExpr != nil:
@@ -840,6 +992,52 @@ func (g *Generator) releaseStrLitArgs(args []*ast.Expr, argVals []string, out *s
 			fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", argVals[i])
 		}
 	}
+}
+
+func (g *Generator) genMapLit(m *ast.MapLit, out *strings.Builder) (string, error) {
+	// Determine key and value types.
+	var keyTy, valTy *checker.Type
+	if len(m.Entries) > 0 {
+		keyTy = g.exprType(m.Entries[0].Key)
+		valTy = g.exprType(m.Entries[0].Value)
+	} else if rt, ok := m.ResolvedType.(*checker.Type); ok && rt != nil && rt.Kind == checker.KindMap {
+		keyTy = rt.Key
+		valTy = rt.Value
+	} else {
+		// Empty map without annotation context — default to string/int (safe fallback).
+		keyTy = checker.String
+		valTy = checker.Int
+	}
+
+	stringKeys := int8(0)
+	if keyTy.Kind == checker.KindString {
+		stringKeys = 1
+	}
+	valSize := g.typeSize(valTy)
+
+	mapReg := g.newTmp()
+	fmt.Fprintf(out, "  %s = call ptr @jerry_map_new(i8 %d, i64 %d)\n",
+		mapReg, stringKeys, valSize)
+
+	for _, e := range m.Entries {
+		kv, err := g.genExpr(e.Key, out)
+		if err != nil {
+			return "", err
+		}
+		vv, err := g.genExpr(e.Value, out)
+		if err != nil {
+			return "", err
+		}
+		keySlot := g.newTmp() + ".slot"
+		valSlot := g.newTmp() + ".slot"
+		fmt.Fprintf(out, "  %s = alloca %s\n", keySlot, g.llvmType(keyTy))
+		fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(keyTy), kv, keySlot)
+		fmt.Fprintf(out, "  %s = alloca %s\n", valSlot, g.llvmType(valTy))
+		fmt.Fprintf(out, "  store %s %s, ptr %s\n", g.llvmType(valTy), vv, valSlot)
+		fmt.Fprintf(out, "  call void @jerry_map_set(ptr %s, ptr %s, ptr %s)\n",
+			mapReg, keySlot, valSlot)
+	}
+	return mapReg, nil
 }
 
 func (g *Generator) genArrayLit(a *ast.ArrayLit, out *strings.Builder) (string, error) {

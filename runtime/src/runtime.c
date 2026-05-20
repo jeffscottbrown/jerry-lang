@@ -338,6 +338,162 @@ JerryStr* jerry_read_stdin(void) {
     return s;
 }
 
+/* ── Maps ────────────────────────────────────────────────────────────────────── */
+
+static uint64_t map_hash(const void* key, int8_t string_keys) {
+    if (string_keys) {
+        JerryStr* s;
+        memcpy(&s, key, sizeof(JerryStr*));
+        /* FNV-1a over string bytes */
+        uint64_t h = 14695981039346656037ULL;
+        for (int64_t i = 0; i < s->len; i++) {
+            h ^= (uint8_t)s->data[i];
+            h *= 1099511628211ULL;
+        }
+        return h;
+    } else {
+        uint64_t h;
+        memcpy(&h, key, 8);
+        /* Murmur-inspired finaliser */
+        h ^= h >> 33;
+        h *= 0xff51afd7ed558ccdULL;
+        h ^= h >> 33;
+        h *= 0xc4ceb9fe1a85ec53ULL;
+        h ^= h >> 33;
+        return h;
+    }
+}
+
+static int map_key_eq(const void* a, const void* b, int8_t string_keys) {
+    if (string_keys) {
+        JerryStr* sa; JerryStr* sb;
+        memcpy(&sa, a, sizeof(JerryStr*));
+        memcpy(&sb, b, sizeof(JerryStr*));
+        return (int)jerry_string_eq(sa, sb);
+    }
+    return memcmp(a, b, 8) == 0;
+}
+
+static void jerry_map_destructor(void* self) {
+    JerryMap* m = (JerryMap*)self;
+    for (int64_t i = 0; i < m->bucket_count; i++) {
+        JerryMapNode* node = m->buckets[i];
+        while (node) {
+            JerryMapNode* next = node->next;
+            free(node->value);
+            free(node);
+            node = next;
+        }
+    }
+    free(m->buckets);
+}
+
+JerryMap* jerry_map_new(int8_t string_keys, int64_t value_size) {
+    JerryMap* m = jerry_alloc(sizeof(JerryMap));
+    JerryHeader* h = (JerryHeader*)m - 1;
+    h->destructor = jerry_map_destructor;
+    m->bucket_count = 16;
+    m->len          = 0;
+    m->value_size   = value_size;
+    m->string_keys  = string_keys;
+    m->buckets = calloc((size_t)m->bucket_count, sizeof(JerryMapNode*));
+    if (!m->buckets) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    return m;
+}
+
+void jerry_map_set(JerryMap* m, void* key, void* value) {
+    uint64_t h   = map_hash(key, m->string_keys);
+    int64_t  idx = (int64_t)(h % (uint64_t)m->bucket_count);
+
+    /* Update if key already exists */
+    for (JerryMapNode* n = m->buckets[idx]; n; n = n->next) {
+        if (map_key_eq(n->key, key, m->string_keys)) {
+            memcpy(n->value, value, (size_t)m->value_size);
+            return;
+        }
+    }
+
+    /* Insert new node */
+    JerryMapNode* node = malloc(sizeof(JerryMapNode));
+    if (!node) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    memcpy(node->key, key, 8);
+    node->value = malloc((size_t)m->value_size);
+    if (!node->value) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    memcpy(node->value, value, (size_t)m->value_size);
+    node->next       = m->buckets[idx];
+    m->buckets[idx]  = node;
+    m->len++;
+
+    /* Rehash when load factor exceeds 0.75 */
+    if (m->len > m->bucket_count * 3 / 4) {
+        int64_t        new_count   = m->bucket_count * 2;
+        JerryMapNode** new_buckets = calloc((size_t)new_count, sizeof(JerryMapNode*));
+        if (!new_buckets) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+        for (int64_t i = 0; i < m->bucket_count; i++) {
+            JerryMapNode* n = m->buckets[i];
+            while (n) {
+                JerryMapNode* next = n->next;
+                uint64_t nh  = map_hash(n->key, m->string_keys);
+                int64_t  ni  = (int64_t)(nh % (uint64_t)new_count);
+                n->next          = new_buckets[ni];
+                new_buckets[ni]  = n;
+                n = next;
+            }
+        }
+        free(m->buckets);
+        m->buckets      = new_buckets;
+        m->bucket_count = new_count;
+    }
+}
+
+void* jerry_map_get(JerryMap* m, void* key) {
+    uint64_t h   = map_hash(key, m->string_keys);
+    int64_t  idx = (int64_t)(h % (uint64_t)m->bucket_count);
+    for (JerryMapNode* n = m->buckets[idx]; n; n = n->next) {
+        if (map_key_eq(n->key, key, m->string_keys)) {
+            return n->value;
+        }
+    }
+    fprintf(stderr, "jerry: map_get: key not found\n");
+    exit(1);
+}
+
+int8_t jerry_map_has(JerryMap* m, void* key) {
+    uint64_t h   = map_hash(key, m->string_keys);
+    int64_t  idx = (int64_t)(h % (uint64_t)m->bucket_count);
+    for (JerryMapNode* n = m->buckets[idx]; n; n = n->next) {
+        if (map_key_eq(n->key, key, m->string_keys)) return 1;
+    }
+    return 0;
+}
+
+void jerry_map_delete(JerryMap* m, void* key) {
+    uint64_t       h    = map_hash(key, m->string_keys);
+    int64_t        idx  = (int64_t)(h % (uint64_t)m->bucket_count);
+    JerryMapNode** prev = &m->buckets[idx];
+    for (JerryMapNode* n = *prev; n; prev = &n->next, n = n->next) {
+        if (map_key_eq(n->key, key, m->string_keys)) {
+            *prev = n->next;
+            free(n->value);
+            free(n);
+            m->len--;
+            return;
+        }
+    }
+}
+
+int64_t jerry_map_len(JerryMap* m) { return m->len; }
+
+JerryArray* jerry_map_keys(JerryMap* m) {
+    JerryArray* arr = jerry_array_new(8, m->len > 0 ? m->len : 1);
+    for (int64_t i = 0; i < m->bucket_count; i++) {
+        for (JerryMapNode* n = m->buckets[i]; n; n = n->next) {
+            jerry_array_push(arr, n->key);
+        }
+    }
+    return arr;
+}
+
 /* ── Control ────────────────────────────────────────────────────────────────── */
 
 void jerry_exit(int64_t code) {

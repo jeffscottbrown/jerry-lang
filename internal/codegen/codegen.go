@@ -166,8 +166,10 @@ func (g *Generator) moduleHeader() string {
 ; ── Jerry runtime types ──────────────────────────────────────────────────────
 ; JerryStr  = { i64 len, ptr data }
 ; JerryArray = { i64 len, i64 cap, ptr data, i64 elem_size }
+; JerryMap  = { ptr buckets, i64 bucket_count, i64 len, i64 value_size, i8 string_keys }
 %JerryStr   = type { i64, ptr }
 %JerryArray = type { i64, i64, ptr, i64 }
+%JerryMap   = type { ptr, i64, i64, i64, i8 }
 ; JerryClosure = { ptr fn_ptr, ptr env_ptr }
 %JerryClosure = type { ptr, ptr }
 
@@ -212,6 +214,13 @@ declare ptr  @jerry_read_stdin()
 declare i64  @jerry_now_millis()
 declare i64  @jerry_now_seconds()
 declare ptr  @jerry_now_string()
+declare ptr  @jerry_map_new(i8, i64)
+declare void @jerry_map_set(ptr, ptr, ptr)
+declare ptr  @jerry_map_get(ptr, ptr)
+declare i8   @jerry_map_has(ptr, ptr)
+declare void @jerry_map_delete(ptr, ptr)
+declare i64  @jerry_map_len(ptr)
+declare ptr  @jerry_map_keys(ptr)
 
 `
 }

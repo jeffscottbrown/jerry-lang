@@ -112,7 +112,7 @@ func isHeapType(ty *checker.Type) bool {
 		return false
 	}
 	switch ty.Kind {
-	case checker.KindString, checker.KindArray, checker.KindClass:
+	case checker.KindString, checker.KindArray, checker.KindMap, checker.KindClass:
 		return true
 	}
 	return false

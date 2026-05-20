@@ -24,6 +24,8 @@ func (g *Generator) llvmType(t *checker.Type) string {
 		return "ptr" // JerryStr*
 	case checker.KindArray:
 		return "ptr" // JerryArray*
+	case checker.KindMap:
+		return "ptr" // JerryMap*
 	case checker.KindClass:
 		return "ptr" // ClassName*
 	case checker.KindFunc:
@@ -66,6 +68,11 @@ func (g *Generator) zeroValue(t *checker.Type) string {
 func (g *Generator) resolveTypeExpr(te *ast.TypeExpr) *checker.Type {
 	if te == nil {
 		return checker.Void
+	}
+	if te.MapType != nil {
+		keyTy := g.resolveTypeExpr(te.MapType.Key)
+		valTy := g.resolveTypeExpr(te.MapType.Value)
+		return checker.MapOf(keyTy, valTy)
 	}
 	if te.FnType != nil {
 		var params []*checker.Type
@@ -178,6 +185,8 @@ func (g *Generator) postfixType(p *ast.PostfixExpr) *checker.Type {
 		case op.Index != nil:
 			if ty.Kind == checker.KindArray {
 				ty = ty.Elem
+			} else if ty.Kind == checker.KindMap {
+				ty = ty.Value
 			}
 		}
 	}
@@ -222,6 +231,17 @@ func (g *Generator) primaryType(p *ast.PrimaryExpr) *checker.Type {
 			return checker.ArrayOf(g.exprType(p.Array.Elems[0]))
 		}
 		return checker.ArrayOf(checker.Void)
+	case p.MapLit != nil:
+		if len(p.MapLit.Entries) > 0 {
+			return checker.MapOf(
+				g.exprType(p.MapLit.Entries[0].Key),
+				g.exprType(p.MapLit.Entries[0].Value),
+			)
+		}
+		if rt, ok := p.MapLit.ResolvedType.(*checker.Type); ok && rt != nil {
+			return rt
+		}
+		return checker.MapOf(checker.Void, checker.Void)
 	case p.FnExpr != nil:
 		var params []*checker.Type
 		for _, param := range p.FnExpr.Params {
@@ -261,4 +281,10 @@ var builtinReturnType = map[string]*checker.Type{
 	"now_millis":      checker.Int,
 	"now_seconds":     checker.Int,
 	"now_string":      checker.String,
+	"map_set":         checker.Void,
+	"map_get":         checker.Void, // actual return type inferred from map type in genCall
+	"map_has":         checker.Bool,
+	"map_delete":      checker.Void,
+	"map_len":         checker.Int,
+	"map_keys":        checker.ArrayOf(checker.Void), // actual key type inferred in genCall
 }
