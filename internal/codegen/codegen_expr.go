@@ -1062,9 +1062,13 @@ func (g *Generator) genArrayLit(a *ast.ArrayLit, out *strings.Builder) (string, 
 		elemLLVM = "i64"
 	}
 	elemSize := g.typeSize(elemTy)
+	heapElems := int8(0)
+	if isHeapType(elemTy) {
+		heapElems = 1
+	}
 	arrReg := g.newTmp()
-	fmt.Fprintf(out, "  %s = call ptr @jerry_array_new(i64 %d, i64 %d)\n",
-		arrReg, elemSize, len(a.Elems))
+	fmt.Fprintf(out, "  %s = call ptr @jerry_array_new(i64 %d, i64 %d, i8 %d)\n",
+		arrReg, elemSize, len(a.Elems), heapElems)
 	for _, e := range a.Elems {
 		ev, err := g.genExpr(e, out)
 		if err != nil {

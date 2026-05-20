@@ -331,6 +331,53 @@ func simpleIdent(e *ast.Expr) string {
 	return prim.Ident
 }
 
+// isEmptyArrayLit returns true when expr is an empty array literal `[]`.
+// Used to detect `let xs: T[] = []` so codegen can mark the array heap-elems
+// when T is a heap type (the empty literal itself doesn't know its element type).
+func isEmptyArrayLit(e *ast.Expr) bool {
+	if e == nil {
+		return false
+	}
+	a := e.Assignment
+	if a == nil || a.Right != nil {
+		return false
+	}
+	or := a.Left
+	if or == nil || len(or.Rest) != 0 {
+		return false
+	}
+	and := or.Left
+	if and == nil || len(and.Rest) != 0 {
+		return false
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return false
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return false
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return false
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return false
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return false
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) != 0 {
+		return false
+	}
+	prim := post.Base
+	return prim != nil && prim.Array != nil && len(prim.Array.Elems) == 0
+}
+
 // ── String escaping ───────────────────────────────────────────────────────────
 
 // llvmEscapeString escapes a Go string for LLVM IR constant syntax.

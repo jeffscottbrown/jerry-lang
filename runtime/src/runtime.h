@@ -12,12 +12,17 @@ typedef struct {
     char*   data;
 } JerryStr;
 
-/* JerryArray: dynamic array (generic, element size tracked at runtime) */
+/* JerryArray: dynamic array (generic, element size tracked at runtime).
+   heap_elems=1 means each element slot holds a heap pointer (JerryStr*,
+   class instance, etc.) that participates in reference counting: push/set
+   retain the incoming pointer, the destructor releases all stored pointers,
+   and set releases the displaced pointer. */
 typedef struct {
     int64_t len;
     int64_t cap;
     char*   data;
     int64_t elem_size;
+    int8_t  heap_elems;
 } JerryArray;
 
 /* JerryClosure: first-class function value */
@@ -64,7 +69,8 @@ JerryStr* jerry_read_file(JerryStr* path);
 void       jerry_write_file(JerryStr* path, JerryStr* content);
 
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */
-JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap);
+JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap, int8_t heap_elems);
+void         jerry_array_mark_heap(JerryArray* arr);
 void*        jerry_array_get(JerryArray* arr, int64_t idx);
 void         jerry_array_set(JerryArray* arr, int64_t idx, void* elem);
 int64_t      jerry_array_len(JerryArray* arr);

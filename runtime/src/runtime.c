@@ -66,6 +66,13 @@ static JerryStr* alloc_str(int64_t len) {
 
 static void jerry_arr_destructor(void* self) {
     JerryArray* arr = (JerryArray*)self;
+    if (arr->heap_elems) {
+        for (int64_t i = 0; i < arr->len; i++) {
+            void* ptr;
+            memcpy(&ptr, arr->data + i * arr->elem_size, sizeof(void*));
+            jerry_release(ptr);
+        }
+    }
     free(arr->data); /* data is a plain malloc'd buffer */
 }
 
@@ -236,17 +243,23 @@ void jerry_each_line(JerryStr* path, JerryClosure* closure) {
 
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */
 
-JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap) {
+JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap, int8_t heap_elems) {
     JerryArray* arr = jerry_alloc(sizeof(JerryArray));
     JerryHeader* h = (JerryHeader*)arr - 1;
-    h->destructor = jerry_arr_destructor;
-    arr->elem_size = elem_size;
-    arr->len       = 0;
-    arr->cap       = initial_cap > 0 ? initial_cap : 8;
-    arr->data      = malloc((size_t)(arr->cap * elem_size));
+    h->destructor  = jerry_arr_destructor;
+    arr->elem_size  = elem_size;
+    arr->len        = 0;
+    arr->cap        = initial_cap > 0 ? initial_cap : 8;
+    arr->heap_elems = heap_elems;
+    arr->data       = malloc((size_t)(arr->cap * elem_size));
     if (!arr->data) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
     return arr;
 }
+
+/* Mark an existing array as holding heap-type elements.  Called by codegen
+   when an empty [] literal is annotated with a heap-element type (e.g.
+   Token[]) so that push/set/destructor manage reference counts correctly. */
+void jerry_array_mark_heap(JerryArray* arr) { arr->heap_elems = 1; }
 
 void* jerry_array_get(JerryArray* arr, int64_t idx) {
     if (idx < 0 || idx >= arr->len) {
@@ -265,7 +278,17 @@ void jerry_array_set(JerryArray* arr, int64_t idx, void* elem) {
             (long long)idx, (long long)arr->len);
         exit(1);
     }
-    memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+    if (arr->heap_elems) {
+        void* incoming;
+        memcpy(&incoming, elem, sizeof(void*));
+        void* old;
+        memcpy(&old, arr->data + idx * arr->elem_size, sizeof(void*));
+        jerry_retain(incoming);
+        memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+        jerry_release(old);
+    } else {
+        memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+    }
 }
 
 int64_t jerry_array_len(JerryArray* arr) {
@@ -283,6 +306,11 @@ void jerry_array_push(JerryArray* arr, void* elem) {
         arr->data = new_data;
         arr->cap  = new_cap;
     }
+    if (arr->heap_elems) {
+        void* ptr;
+        memcpy(&ptr, elem, sizeof(void*));
+        jerry_retain(ptr);
+    }
     memcpy(arr->data + arr->len * arr->elem_size, elem, (size_t)arr->elem_size);
     arr->len++;
 }
@@ -299,7 +327,7 @@ void jerry_capture_args(int64_t argc, char** argv) {
 
 JerryArray* jerry_args(void) {
     int64_t count = g_argc > 1 ? g_argc - 1 : 0;
-    JerryArray* arr = jerry_array_new(sizeof(void*), count > 0 ? count : 1);
+    JerryArray* arr = jerry_array_new(sizeof(void*), count > 0 ? count : 1, 1);
     for (int64_t i = 1; i < g_argc; i++) {
         int64_t slen = (int64_t)strlen(g_argv[i]);
         JerryStr* s = jerry_string_new(g_argv[i], slen);
@@ -485,7 +513,7 @@ void jerry_map_delete(JerryMap* m, void* key) {
 int64_t jerry_map_len(JerryMap* m) { return m->len; }
 
 JerryArray* jerry_map_keys(JerryMap* m) {
-    JerryArray* arr = jerry_array_new(8, m->len > 0 ? m->len : 1);
+    JerryArray* arr = jerry_array_new(8, m->len > 0 ? m->len : 1, m->string_keys);
     for (int64_t i = 0; i < m->bucket_count; i++) {
         for (JerryMapNode* n = m->buckets[i]; n; n = n->next) {
             jerry_array_push(arr, n->key);

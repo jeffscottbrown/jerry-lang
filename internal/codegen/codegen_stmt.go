@@ -98,6 +98,12 @@ func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	reg := g.allocaInto(out, vd.Name, lt)
 	g.storeInto(out, lt, val, reg)
 	g.locals[vd.Name] = &localVar{reg: reg, llvmTy: lt, altType: ty}
+	// For `let xs: T[] = []` where T is a heap type, the empty array literal
+	// doesn't know its element type.  Patch the array so push/set/destructor
+	// manage element reference counts correctly.
+	if ty.Kind == checker.KindArray && isHeapType(ty.Elem) && isEmptyArrayLit(vd.Value) {
+		fmt.Fprintf(out, "  call void @jerry_array_mark_heap(ptr %s)\n", val)
+	}
 	// Only register for release if the initializer is a fresh heap allocation
 	// (function call result, new-expr, concat, etc.). A bare variable load is a
 	// borrow — the source variable remains the owner and will release it.
