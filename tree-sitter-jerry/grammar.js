@@ -41,6 +41,9 @@ module.exports = grammar({
     // parser resolves this with look-ahead; we declare it here to suppress
     // the warning.
     [$._type, $.type_identifier],
+    // '{' at statement level is ambiguous: nested block vs map_expression
+    // (inside expression_statement). Tree-sitter resolves via GLR.
+    [$.block, $.map_expression],
   ],
 
   rules: {
@@ -137,6 +140,7 @@ module.exports = grammar({
     // -------------------------------------------------------------------------
 
     _type: $ => choice(
+      $.map_type,
       $.array_type,
       $.function_type,
       $.primitive_type,
@@ -153,6 +157,16 @@ module.exports = grammar({
     array_type: $ => seq(
       field('element', choice($.primitive_type, $.type_identifier)),
       '[]',
+    ),
+
+    // map<KeyType, ValueType>
+    map_type: $ => seq(
+      'map',
+      '<',
+      field('key', $._type),
+      ',',
+      field('value', $._type),
+      '>',
     ),
 
     // fn(T1, T2): ReturnType
@@ -263,6 +277,7 @@ module.exports = grammar({
       $.new_expression,
       $.function_expression,
       $.array_expression,
+      $.map_expression,
       $.parenthesized_expression,
       $.this,
       $.true,
@@ -359,6 +374,23 @@ module.exports = grammar({
         optional(','),
       )),
       ']',
+    ),
+
+    // { key: value, ... }  or  {}  (empty map)
+    map_expression: $ => seq(
+      '{',
+      optional(seq(
+        $.map_entry,
+        repeat(seq(',', $.map_entry)),
+        optional(','),
+      )),
+      '}',
+    ),
+
+    map_entry: $ => seq(
+      field('key', $._expression),
+      ':',
+      field('value', $._expression),
     ),
 
     parenthesized_expression: $ => seq('(', $._expression, ')'),

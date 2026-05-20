@@ -48,6 +48,10 @@
           "named": true
         },
         {
+          "type": "map_expression",
+          "named": true
+        },
+        {
           "type": "member_expression",
           "named": true
         },
@@ -132,6 +136,10 @@
         },
         {
           "type": "integer_literal",
+          "named": true
+        },
+        {
+          "type": "map_expression",
           "named": true
         },
         {
@@ -242,6 +250,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -321,6 +333,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -412,6 +428,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -491,6 +511,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -631,6 +655,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -796,6 +824,10 @@
           "named": true
         },
         {
+          "type": "map_expression",
+          "named": true
+        },
+        {
           "type": "member_expression",
           "named": true
         },
@@ -858,6 +890,10 @@
           },
           {
             "type": "function_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -928,6 +964,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -1010,6 +1050,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -1099,6 +1143,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -1185,6 +1233,10 @@
             "named": true
           },
           {
+            "type": "map_type",
+            "named": true
+          },
+          {
             "type": "primitive_type",
             "named": true
           },
@@ -1220,6 +1272,10 @@
           },
           {
             "type": "function_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -1261,6 +1317,10 @@
             "named": true
           },
           {
+            "type": "map_type",
+            "named": true
+          },
+          {
             "type": "primitive_type",
             "named": true
           },
@@ -1281,6 +1341,10 @@
         },
         {
           "type": "function_type",
+          "named": true
+        },
+        {
+          "type": "map_type",
           "named": true
         },
         {
@@ -1350,6 +1414,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -1477,6 +1545,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -1559,6 +1631,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -1592,6 +1668,257 @@
           },
           {
             "type": "update_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "map_entry",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "array_expression",
+            "named": true
+          },
+          {
+            "type": "assignment_expression",
+            "named": true
+          },
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "call_expression",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "float_literal",
+            "named": true
+          },
+          {
+            "type": "function_expression",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "index_expression",
+            "named": true
+          },
+          {
+            "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
+            "named": true
+          },
+          {
+            "type": "member_expression",
+            "named": true
+          },
+          {
+            "type": "new_expression",
+            "named": true
+          },
+          {
+            "type": "null",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "string_literal",
+            "named": true
+          },
+          {
+            "type": "this",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "update_expression",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "array_expression",
+            "named": true
+          },
+          {
+            "type": "assignment_expression",
+            "named": true
+          },
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "call_expression",
+            "named": true
+          },
+          {
+            "type": "false",
+            "named": true
+          },
+          {
+            "type": "float_literal",
+            "named": true
+          },
+          {
+            "type": "function_expression",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "index_expression",
+            "named": true
+          },
+          {
+            "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
+            "named": true
+          },
+          {
+            "type": "member_expression",
+            "named": true
+          },
+          {
+            "type": "new_expression",
+            "named": true
+          },
+          {
+            "type": "null",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "string_literal",
+            "named": true
+          },
+          {
+            "type": "this",
+            "named": true
+          },
+          {
+            "type": "true",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "update_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "map_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "map_entry",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "map_type",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "array_type",
+            "named": true
+          },
+          {
+            "type": "function_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "primitive_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "array_type",
+            "named": true
+          },
+          {
+            "type": "function_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "primitive_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
             "named": true
           }
         ]
@@ -1644,6 +1971,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -1743,6 +2074,10 @@
             "named": true
           },
           {
+            "type": "map_type",
+            "named": true
+          },
+          {
             "type": "primitive_type",
             "named": true
           },
@@ -1804,6 +2139,10 @@
           },
           {
             "type": "function_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -1879,6 +2218,10 @@
         },
         {
           "type": "integer_literal",
+          "named": true
+        },
+        {
+          "type": "map_expression",
           "named": true
         },
         {
@@ -1974,6 +2317,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -2016,6 +2363,7 @@
   {
     "type": "source_file",
     "named": true,
+    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
@@ -2105,6 +2453,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -2210,6 +2562,10 @@
             "named": true
           },
           {
+            "type": "map_expression",
+            "named": true
+          },
+          {
             "type": "member_expression",
             "named": true
           },
@@ -2290,6 +2646,10 @@
             "named": true
           },
           {
+            "type": "map_type",
+            "named": true
+          },
+          {
             "type": "primitive_type",
             "named": true
           },
@@ -2341,6 +2701,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -2439,6 +2803,10 @@
           },
           {
             "type": "integer_literal",
+            "named": true
+          },
+          {
+            "type": "map_expression",
             "named": true
           },
           {
@@ -2587,7 +2955,8 @@
   },
   {
     "type": "block_comment",
-    "named": true
+    "named": true,
+    "extra": true
   },
   {
     "type": "bool",
@@ -2659,7 +3028,12 @@
   },
   {
     "type": "line_comment",
-    "named": true
+    "named": true,
+    "extra": true
+  },
+  {
+    "type": "map",
+    "named": false
   },
   {
     "type": "new",
