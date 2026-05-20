@@ -1,0 +1,16 @@
+{
+  "grammars": [
+    {
+      "name": "jerry",
+      "scope": "source.jerry",
+      "file-types": ["jer"],
+      "highlights": "queries/highlights.scm",
+      "content-regex": "^\\s*(fn|class|let|include)\\b"
+    }
+  ],
+  "metadata": {
+    "package-name": "tree-sitter-jerry",
+    "version": "0.1.0",
+    "license": "MIT"
+  }
+}
