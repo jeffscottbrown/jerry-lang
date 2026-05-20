@@ -5,6 +5,8 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/jeffscottbrown/jerry-lang/internal/ast"
+	"github.com/jeffscottbrown/jerry-lang/internal/build"
 	"github.com/jeffscottbrown/jerry-lang/internal/checker"
 	"github.com/jeffscottbrown/jerry-lang/internal/parser"
 	"github.com/tliron/glsp"
@@ -22,15 +24,35 @@ func diagnoseAndPublish(ctx *glsp.Context, uri, src string) {
 }
 
 // diagnose parses and type-checks src, returning LSP diagnostics.
-// We run a single-file check (no cross-file or stdlib resolution) which catches
-// syntax errors, undefined variables, and type mismatches within the file.
+// It resolves include @stdlib statements so symbols from included modules
+// (e.g. assert_eq_int from @testing) are recognised during type-checking.
 func diagnose(uri, src string) []protocol.Diagnostic {
 	prog, parseErr := parser.Parse(filenameFromURI(uri), src)
 	if parseErr != nil {
 		return []protocol.Diagnostic{parseErrToDiagnostic(parseErr)}
 	}
 
-	_, checkErrs := checker.Check(prog)
+	fsys := build.StdlibFS()
+
+	// core.jer is always in scope.
+	coreAST, _ := build.ParseStdlibFile(fsys, "core")
+
+	// Load any explicitly included stdlib modules.
+	stdlibASTs := make(map[string]*ast.Program)
+	for _, tl := range prog.Stmts {
+		if tl.Include == nil || tl.Include.Stdlib == "" {
+			continue
+		}
+		name := tl.Include.Stdlib
+		if _, already := stdlibASTs[name]; already {
+			continue
+		}
+		if stdAST, err := build.ParseStdlibFile(fsys, name); err == nil {
+			stdlibASTs[name] = stdAST
+		}
+	}
+
+	_, checkErrs := checker.CheckAll([]*ast.Program{prog}, coreAST, stdlibASTs, nil)
 	diags := make([]protocol.Diagnostic, 0, len(checkErrs))
 	for _, ce := range checkErrs {
 		diags = append(diags, checkErrToDiagnostic(ce))
