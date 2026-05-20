@@ -101,7 +101,18 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 		gepReg := g.newTmp()
 		fmt.Fprintf(out, "  %s = getelementptr %%%s, ptr %s, i32 0, i32 %d\n",
 			gepReg, baseTy.ClassName, baseVal, fieldIdx)
-		fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, gepReg)
+		// For heap-type fields, retain the incoming value and release the
+		// displaced one.  jerry_retain/release are both null-safe, so this
+		// is correct even during construction (fields start zero-initialised).
+		if fieldTy := ci.Fields[lastOp.Field]; isHeapType(fieldTy) {
+			oldReg := g.newTmp()
+			fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", oldReg, gepReg)
+			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", rhs)
+			fmt.Fprintf(out, "  store ptr %s, ptr %s\n", rhs, gepReg)
+			fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", oldReg)
+		} else {
+			fmt.Fprintf(out, "  store %s %s, ptr %s\n", lt, rhs, gepReg)
+		}
 	case lastOp.Index != nil:
 		idxVal, err := g.genExpr(lastOp.Index, out)
 		if err != nil {
