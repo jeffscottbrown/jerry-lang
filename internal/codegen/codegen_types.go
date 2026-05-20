@@ -75,20 +75,25 @@ func (g *Generator) resolveTypeExpr(te *ast.TypeExpr) *checker.Type {
 		ret := g.resolveTypeExpr(te.FnType.Return)
 		return checker.FuncType(params, ret)
 	}
+	var base *checker.Type
 	switch te.Name {
 	case "void":
-		return checker.Void
+		base = checker.Void
 	case "int":
-		return checker.Int
+		base = checker.Int
 	case "float":
-		return checker.Float
+		base = checker.Float
 	case "bool":
-		return checker.Bool
+		base = checker.Bool
 	case "string":
-		return checker.String
+		base = checker.String
 	default:
-		return checker.ClassType(te.Name)
+		base = checker.ClassType(te.Name)
 	}
+	if te.Array() {
+		base = checker.ArrayOf(base)
+	}
+	return base
 }
 
 func (g *Generator) fieldIndex(ci *checker.ClassInfo, field string) int32 {
