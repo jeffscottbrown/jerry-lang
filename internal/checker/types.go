@@ -13,7 +13,12 @@ type CheckError struct {
 	Pos lexer.Position
 }
 
-func (e CheckError) Error() string { return e.Msg }
+func (e CheckError) Error() string {
+	if e.Pos.Filename != "" || e.Pos.Line > 0 {
+		return fmt.Sprintf("%s:%d:%d: %s", e.Pos.Filename, e.Pos.Line, e.Pos.Column, e.Msg)
+	}
+	return e.Msg
+}
 
 // ── Type definitions ─────────────────────────────────────────────────────────
 
