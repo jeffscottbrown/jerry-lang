@@ -5,6 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/jeffscottbrown/jerry-lang)](https://github.com/jeffscottbrown/jerry-lang/releases/latest)
 
 Jerry is a statically-typed, JavaScript-style language that compiles to native binaries via LLVM IR. The compiler is written in Go.
+The language is experimental and a proof of concept.
 
 📖 **[Read the Jerry Language Guide](docs/language.md)** for a full tour of the language, standard library, and remote modules.
 
