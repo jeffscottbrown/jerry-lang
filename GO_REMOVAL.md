@@ -17,23 +17,23 @@ The Go binary today uses `go:embed` to bundle `runtime.c` inside itself.
 The goal is to pre-compile the runtime to a static library (`jerry_runtime.a`)
 at install time so the jerry binary can find it by path instead.
 
-- [ ] **1a. Add `getenv(name: string): string` builtin**
+- [x] **1a. Add `getenv(name: string): string` builtin**
   Wire through all five layers: `runtime.c` (POSIX `getenv(3)`), `runtime.h`,
   Go IR declaration in `codegen.go`, Go codegen expr case in `codegen_expr.go`,
   Go `builtins.go`, self-hosted `codegen.jer`, self-hosted `checker.jer`.
 
-- [ ] **1b. Change `ExtractRuntime()` in `internal/build/build.go` to path-based discovery**
+- [x] **1b. Change `ExtractRuntime()` in `internal/build/build.go` to path-based discovery**
   Check in order:
   1. `JERRY_RUNTIME` env var (developer override)
   2. `<binary_dir>/../lib/jerry_runtime.a` (Homebrew install layout)
   3. Existing `go:embed` fallback (keeps everything working during transition)
 
-- [ ] **1c. Add `make install-runtime` target**
+- [x] **1c. Add `make install-runtime` target**
   Two commands: `clang -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o`
   then `ar rcs <dest>/jerry_runtime.a jerry_runtime.o`. Used by developers
   building from source who want to opt out of the embedded runtime.
 
-- [ ] **1d. Update Homebrew formula (`../homebrew-jerry/Formula/jerry.rb`)**
+- [x] **1d. Update Homebrew formula (`../homebrew-jerry/Formula/jerry.rb`)**
   In `def install`, after `go build`, add:
   ```ruby
   system ENV.cc, "-O2", "-c", "runtime/src/runtime.c",
@@ -44,8 +44,9 @@ at install time so the jerry binary can find it by path instead.
   available on macOS (Xcode CLT is a Homebrew prerequisite).
 
 - [ ] **1e. Verify `brew install` works end-to-end with the updated formula**
+  *(requires a tagged release to test against)*
 
-- [ ] **1f. Delete `runtime/runtime.go` and the `go:embed` directive**
+- [x] **1f. Delete `runtime/runtime.go` and the `go:embed` directive**
   Remove the go:embed fallback branch from `ExtractRuntime()`.
   The `runtime` Go package disappears from the module.
 
