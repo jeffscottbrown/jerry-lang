@@ -75,12 +75,31 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 		lvar, ok := g.locals[prim.Ident]
 		if !ok {
 			if gvar, ok2 := g.globals[prim.Ident]; ok2 {
-				g.storeInto(out, lt, rhs, gvar.reg)
+				if isHeapType(gvar.altType) {
+					oldReg := g.newTmp()
+					fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", oldReg, gvar.reg)
+					fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", rhs)
+					g.storeInto(out, lt, rhs, gvar.reg)
+					fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", oldReg)
+				} else {
+					g.storeInto(out, lt, rhs, gvar.reg)
+				}
 				return nil
 			}
 			return fmt.Errorf("undefined variable %q", prim.Ident)
 		}
-		g.storeInto(out, lt, rhs, lvar.reg)
+		// For heap-type locals, retain the new value and release the displaced one
+		// so the scope-exit release stays balanced regardless of how many times the
+		// variable has been reassigned.
+		if isHeapType(lvar.altType) {
+			oldReg := g.newTmp()
+			fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", oldReg, lvar.reg)
+			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", rhs)
+			g.storeInto(out, lt, rhs, lvar.reg)
+			fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", oldReg)
+		} else {
+			g.storeInto(out, lt, rhs, lvar.reg)
+		}
 		return nil
 	}
 	// Postfix: could be obj.field or arr[idx] — build the base then store.
