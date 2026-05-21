@@ -95,6 +95,8 @@ JerryStr* jerry_string_concat(JerryStr* a, JerryStr* b) {
 }
 
 int8_t jerry_string_eq(JerryStr* a, JerryStr* b) {
+    if (a == b) return 1;
+    if (!a || !b) return 0;
     if (a->len != b->len) return 0;
     return (int8_t)(memcmp(a->data, b->data, (size_t)a->len) == 0);
 }
