@@ -1,0 +1,517 @@
+// AST node types for the Jerry self-hosting parser.
+// Uses tagged-union classes with a `kind` discriminant; null fields are
+// unused for a given kind.  Factory functions build each variant cleanly.
+
+include @string
+
+// ── TypeExpr kinds ─────────────────────────────────────────────────────────────
+let TYPE_NAME:  int = 0;  // simple name: int, string, MyClass
+let TYPE_ARRAY: int = 1;  // T[]
+let TYPE_MAP:   int = 2;  // map<K, V>
+let TYPE_FN:    int = 3;  // fn(T...): T
+
+// ── Statement kinds ────────────────────────────────────────────────────────────
+let STMT_VAR:      int = 0;
+let STMT_RETURN:   int = 1;
+let STMT_IF:       int = 2;
+let STMT_WHILE:    int = 3;
+let STMT_FOR:      int = 4;
+let STMT_BREAK:    int = 5;
+let STMT_CONTINUE: int = 6;
+let STMT_EXPR:     int = 7;
+
+// ── Expression kinds ───────────────────────────────────────────────────────────
+let EXPR_INT:    int =  0;
+let EXPR_FLOAT:  int =  1;
+let EXPR_STRING: int =  2;
+let EXPR_BOOL:   int =  3;
+let EXPR_NULL:   int =  4;
+let EXPR_THIS:   int =  5;
+let EXPR_IDENT:  int =  6;
+let EXPR_UNARY:  int =  7;   // op + left
+let EXPR_BINARY: int =  8;   // op + left + right
+let EXPR_ASSIGN: int =  9;   // left = right
+let EXPR_CALL:   int = 10;   // callee(args): left=callee, args=arg list
+let EXPR_INDEX:  int = 11;   // left[right]
+let EXPR_FIELD:  int = 12;   // left.name  (sval = field name)
+let EXPR_NEW:    int = 13;   // new ClassName(args)  (sval = class name)
+let EXPR_ARRAY:  int = 14;   // [args]
+let EXPR_MAP:    int = 15;   // {entries}  args=keys, vals=values
+let EXPR_FN:     int = 16;   // fn(params):ret { body }
+let EXPR_INC:    int = 17;   // left++
+let EXPR_DEC:    int = 18;   // left--
+let EXPR_PAREN:  int = 19;   // (left)
+
+// ── TopLevel kinds ─────────────────────────────────────────────────────────────
+let TL_INCLUDE: int = 0;
+let TL_FN:      int = 1;
+let TL_CLASS:   int = 2;
+let TL_VAR:     int = 3;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TypeExpr
+// ══════════════════════════════════════════════════════════════════════════════
+
+class TypeExpr {
+    kind: int;
+    name: string;       // TYPE_NAME
+    elem: TypeExpr;     // TYPE_ARRAY element type
+    key:  TypeExpr;     // TYPE_MAP key type
+    val:  TypeExpr;     // TYPE_MAP value type
+    // TYPE_FN
+    fn_params: TypeExpr[];
+    fn_ret:    TypeExpr;
+    line: int;
+    col:  int;
+
+    fn new(k: int, l: int, c: int) {
+        this.kind = k;
+        this.line = l;
+        this.col  = c;
+        let p: TypeExpr[] = [];
+        this.fn_params = p;
+    }
+
+    fn to_string(): string {
+        if this.kind == TYPE_NAME  { return this.name; }
+        if this.kind == TYPE_ARRAY { return this.elem.to_string() + "[]"; }
+        if this.kind == TYPE_MAP {
+            return "map<" + this.key.to_string() + "," + this.val.to_string() + ">";
+        }
+        // TYPE_FN
+        let s: string = "fn(";
+        let i: int = 0;
+        while i < len(this.fn_params) {
+            if i > 0 { s = s + ","; }
+            let p: TypeExpr = this.fn_params[i];
+            s = s + p.to_string();
+            i = i + 1;
+        }
+        s = s + ")";
+        if this.fn_ret != null { s = s + ":" + this.fn_ret.to_string(); }
+        return s;
+    }
+}
+
+fn type_name(n: string, l: int, c: int): TypeExpr {
+    let te: TypeExpr = new TypeExpr(TYPE_NAME, l, c);
+    te.name = n;
+    return te;
+}
+
+fn type_array(elem: TypeExpr): TypeExpr {
+    let te: TypeExpr = new TypeExpr(TYPE_ARRAY, elem.line, elem.col);
+    te.elem = elem;
+    return te;
+}
+
+fn type_map(key: TypeExpr, val: TypeExpr, l: int, c: int): TypeExpr {
+    let te: TypeExpr = new TypeExpr(TYPE_MAP, l, c);
+    te.key = key;
+    te.val = val;
+    return te;
+}
+
+fn type_fn(params: TypeExpr[], ret: TypeExpr, l: int, c: int): TypeExpr {
+    let te: TypeExpr = new TypeExpr(TYPE_FN, l, c);
+    te.fn_params = params;
+    te.fn_ret = ret;
+    return te;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Param
+// ══════════════════════════════════════════════════════════════════════════════
+
+class Param {
+    name: string;
+    type_expr: TypeExpr;
+    line: int;
+    col:  int;
+
+    fn new(n: string, te: TypeExpr, l: int, c: int) {
+        this.name      = n;
+        this.type_expr = te;
+        this.line      = l;
+        this.col       = c;
+    }
+
+    fn to_string(): string {
+        return this.name + ":" + this.type_expr.to_string();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Expr
+// ══════════════════════════════════════════════════════════════════════════════
+
+class Block {
+    stmts: Stmt[];
+    line: int;
+    col:  int;
+
+    fn new(l: int, c: int) {
+        this.line = l;
+        this.col  = c;
+        let s: Stmt[] = [];
+        this.stmts = s;
+    }
+
+    fn to_string(): string {
+        let s: string = "{";
+        let i: int = 0;
+        while i < len(this.stmts) {
+            let st: Stmt = this.stmts[i];
+            s = s + " " + st.to_string();
+            i = i + 1;
+        }
+        return s + " }";
+    }
+}
+
+class Stmt {
+    kind: int;
+    // STMT_VAR
+    var_name:  string;
+    var_type:  TypeExpr;  // null if no annotation
+    var_value: Expr;
+    // STMT_RETURN
+    ret_value: Expr;      // null for bare return
+    // STMT_IF
+    if_cond:   Expr;
+    if_then:   Block;
+    if_else:   Block;     // null if no else block
+    if_else_if: Stmt;     // null if no else-if (kind==STMT_IF)
+    // STMT_WHILE
+    while_cond: Expr;
+    while_body: Block;
+    // STMT_FOR
+    for_init_var:   Stmt;   // null or STMT_VAR (no semicolon form)
+    for_init_expr:  Expr;   // null or expression
+    for_cond:       Expr;   // null = no condition
+    for_post:       Expr;   // null = no post
+    for_body:       Block;
+    // STMT_EXPR
+    expr: Expr;
+    line: int;
+    col:  int;
+
+    fn new(k: int, l: int, c: int) {
+        this.kind = k;
+        this.line = l;
+        this.col  = c;
+    }
+
+    fn to_string(): string {
+        if this.kind == STMT_BREAK    { return "(break)"; }
+        if this.kind == STMT_CONTINUE { return "(continue)"; }
+        if this.kind == STMT_EXPR {
+            return "(expr " + this.expr.to_string() + ")";
+        }
+        if this.kind == STMT_RETURN {
+            if this.ret_value == null { return "(return)"; }
+            return "(return " + this.ret_value.to_string() + ")";
+        }
+        if this.kind == STMT_VAR {
+            let s: string = "(let " + this.var_name;
+            if this.var_type != null { s = s + " " + this.var_type.to_string(); }
+            s = s + " " + this.var_value.to_string() + ")";
+            return s;
+        }
+        if this.kind == STMT_IF {
+            let s: string = "(if " + this.if_cond.to_string() + " " + this.if_then.to_string();
+            if this.if_else_if != null { s = s + " " + this.if_else_if.to_string(); }
+            else if this.if_else != null { s = s + " " + this.if_else.to_string(); }
+            return s + ")";
+        }
+        if this.kind == STMT_WHILE {
+            return "(while " + this.while_cond.to_string() + " " + this.while_body.to_string() + ")";
+        }
+        if this.kind == STMT_FOR {
+            let s: string = "(for ";
+            if this.for_init_var != null  { s = s + this.for_init_var.to_string(); }
+            else if this.for_init_expr != null { s = s + this.for_init_expr.to_string(); }
+            else { s = s + "_"; }
+            s = s + " ";
+            if this.for_cond != null { s = s + this.for_cond.to_string(); }
+            else { s = s + "_"; }
+            s = s + " ";
+            if this.for_post != null { s = s + this.for_post.to_string(); }
+            else { s = s + "_"; }
+            return s + " " + this.for_body.to_string() + ")";
+        }
+        return "(stmt?)";
+    }
+}
+
+class Expr {
+    kind: int;
+    sval: string;   // INT/FLOAT/STRING/BOOL/IDENT/FIELD/NEW value or binary/unary op
+    left: Expr;     // unary operand, binary left, assign left, call callee, field base,
+                    // index base, inc/dec operand, paren inner
+    right: Expr;    // binary right, assign right, index index
+    args:  Expr[];  // call args, array elems, map keys, fn param exprs
+    vals:  Expr[];  // map values
+    // EXPR_FN fields
+    fn_params: Param[];
+    fn_ret:    TypeExpr;
+    fn_body:   Block;
+    line: int;
+    col:  int;
+
+    fn new(k: int, l: int, c: int) {
+        this.kind = k;
+        this.line = l;
+        this.col  = c;
+        let a: Expr[] = [];
+        this.args = a;
+        let v: Expr[] = [];
+        this.vals = v;
+        let p: Param[] = [];
+        this.fn_params = p;
+    }
+
+    fn to_string(): string {
+        if this.kind == EXPR_INT    { return "(int " + this.sval + ")"; }
+        if this.kind == EXPR_FLOAT  { return "(float " + this.sval + ")"; }
+        if this.kind == EXPR_BOOL   { return "(bool " + this.sval + ")"; }
+        // "null" and "this" cannot be string literals in expression position —
+        // Participle parses them as keyword expressions.  Build from char codes.
+        if this.kind == EXPR_NULL   {
+            return char_to_string(110) + char_to_string(117) + char_to_string(108) + char_to_string(108);
+        }
+        if this.kind == EXPR_THIS   {
+            return char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
+        }
+        if this.kind == EXPR_IDENT  { return this.sval; }
+        if this.kind == EXPR_STRING { return "(string " + this.sval + ")"; }
+        if this.kind == EXPR_INC    { return "(++ " + this.left.to_string() + ")"; }
+        if this.kind == EXPR_DEC    { return "(-- " + this.left.to_string() + ")"; }
+        if this.kind == EXPR_PAREN  { return "(paren " + this.left.to_string() + ")"; }
+        if this.kind == EXPR_UNARY  {
+            return "(" + this.sval + " " + this.left.to_string() + ")";
+        }
+        if this.kind == EXPR_BINARY {
+            return "(" + this.sval + " " + this.left.to_string() + " " + this.right.to_string() + ")";
+        }
+        if this.kind == EXPR_ASSIGN {
+            return "(= " + this.left.to_string() + " " + this.right.to_string() + ")";
+        }
+        if this.kind == EXPR_FIELD {
+            return "(. " + this.left.to_string() + " " + this.sval + ")";
+        }
+        if this.kind == EXPR_INDEX {
+            return "([] " + this.left.to_string() + " " + this.right.to_string() + ")";
+        }
+        if this.kind == EXPR_NEW {
+            let s: string = "(new " + this.sval;
+            let i: int = 0;
+            while i < len(this.args) {
+                let a: Expr = this.args[i];
+                s = s + " " + a.to_string();
+                i = i + 1;
+            }
+            return s + ")";
+        }
+        if this.kind == EXPR_CALL {
+            let s: string = "(call " + this.left.to_string();
+            let i: int = 0;
+            while i < len(this.args) {
+                let a: Expr = this.args[i];
+                s = s + " " + a.to_string();
+                i = i + 1;
+            }
+            return s + ")";
+        }
+        if this.kind == EXPR_ARRAY {
+            let s: string = "[";
+            let i: int = 0;
+            while i < len(this.args) {
+                if i > 0 { s = s + " "; }
+                let a: Expr = this.args[i];
+                s = s + a.to_string();
+                i = i + 1;
+            }
+            return s + "]";
+        }
+        if this.kind == EXPR_MAP {
+            let s: string = "{";
+            let i: int = 0;
+            while i < len(this.args) {
+                if i > 0 { s = s + " "; }
+                let k: Expr = this.args[i];
+                let v: Expr = this.vals[i];
+                s = s + k.to_string() + ":" + v.to_string();
+                i = i + 1;
+            }
+            return s + "}";
+        }
+        if this.kind == EXPR_FN {
+            let s: string = "(fn(";
+            let i: int = 0;
+            while i < len(this.fn_params) {
+                if i > 0 { s = s + ","; }
+                let p: Param = this.fn_params[i];
+                s = s + p.to_string();
+                i = i + 1;
+            }
+            s = s + ")";
+            if this.fn_ret != null { s = s + ":" + this.fn_ret.to_string(); }
+            return s + " " + this.fn_body.to_string() + ")";
+        }
+        return "(expr?)";
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FnDecl, FieldDecl, ClassDecl
+// ══════════════════════════════════════════════════════════════════════════════
+
+class FnDecl {
+    name:   string;
+    params: Param[];
+    ret:    TypeExpr;   // null = void
+    body:   Block;
+    line:   int;
+    col:    int;
+
+    fn new(n: string, ps: Param[], r: TypeExpr, b: Block, l: int, c: int) {
+        this.name   = n;
+        this.params = ps;
+        this.ret    = r;
+        this.body   = b;
+        this.line   = l;
+        this.col    = c;
+    }
+
+    fn to_string(): string {
+        let s: string = "(fn " + this.name + "(";
+        let i: int = 0;
+        while i < len(this.params) {
+            if i > 0 { s = s + ","; }
+            let p: Param = this.params[i];
+            s = s + p.to_string();
+            i = i + 1;
+        }
+        s = s + ")";
+        if this.ret != null { s = s + ":" + this.ret.to_string(); }
+        return s + " " + this.body.to_string() + ")";
+    }
+}
+
+class FieldDecl {
+    name:      string;
+    type_expr: TypeExpr;
+    line:      int;
+    col:       int;
+
+    fn new(n: string, te: TypeExpr, l: int, c: int) {
+        this.name      = n;
+        this.type_expr = te;
+        this.line      = l;
+        this.col       = c;
+    }
+
+    fn to_string(): string {
+        return "(field " + this.name + " " + this.type_expr.to_string() + ")";
+    }
+}
+
+class ClassDecl {
+    name:    string;
+    parent:  string;    // "" if no parent class
+    fields:  FieldDecl[];
+    methods: FnDecl[];
+    line:    int;
+    col:     int;
+
+    fn new(n: string, ext: string, l: int, c: int) {
+        this.name   = n;
+        this.parent = ext;
+        this.line    = l;
+        this.col     = c;
+        let f: FieldDecl[] = [];
+        this.fields = f;
+        let m: FnDecl[] = [];
+        this.methods = m;
+    }
+
+    fn to_string(): string {
+        let s: string = "(class " + this.name;
+        if len(this.parent) > 0 { s = s + " extends " + this.parent; }
+        let i: int = 0;
+        while i < len(this.fields) {
+            let fd: FieldDecl = this.fields[i];
+            s = s + " " + fd.to_string();
+            i = i + 1;
+        }
+        let j: int = 0;
+        while j < len(this.methods) {
+            let md: FnDecl = this.methods[j];
+            s = s + " " + md.to_string();
+            j = j + 1;
+        }
+        return s + ")";
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TopLevel and Program
+// ══════════════════════════════════════════════════════════════════════════════
+
+class TopLevel {
+    kind:       int;
+    // TL_INCLUDE
+    incl_stdlib: string;
+    incl_remote: string;
+    // TL_FN
+    fn_decl: FnDecl;
+    // TL_CLASS
+    class_decl: ClassDecl;
+    // TL_VAR: reuse Stmt fields via embedding? No — just duplicate.
+    var_name:  string;
+    var_type:  TypeExpr;
+    var_value: Expr;
+    line: int;
+    col:  int;
+
+    fn new(k: int, l: int, c: int) {
+        this.kind = k;
+        this.line = l;
+        this.col  = c;
+    }
+
+    fn to_string(): string {
+        if this.kind == TL_INCLUDE {
+            if this.incl_stdlib != null { return "(include @" + this.incl_stdlib + ")"; }
+            return "(include " + this.incl_remote + ")";
+        }
+        if this.kind == TL_FN    { return this.fn_decl.to_string(); }
+        if this.kind == TL_CLASS { return this.class_decl.to_string(); }
+        // TL_VAR
+        let s: string = "(let " + this.var_name;
+        if this.var_type  != null { s = s + " " + this.var_type.to_string(); }
+        s = s + " " + this.var_value.to_string() + ")";
+        return s;
+    }
+}
+
+class Program {
+    tops: TopLevel[];
+
+    fn new() {
+        let t: TopLevel[] = [];
+        this.tops = t;
+    }
+
+    fn to_string(): string {
+        let s: string = "(program";
+        let i: int = 0;
+        while i < len(this.tops) {
+            let tl: TopLevel = this.tops[i];
+            s = s + "\n  " + tl.to_string();
+            i = i + 1;
+        }
+        return s + ")";
+    }
+}

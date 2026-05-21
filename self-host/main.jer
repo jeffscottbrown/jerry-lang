@@ -1,14 +1,7 @@
-// Stdin driver: read Jerry source and print one token per line.
+// Stdin driver: lex, parse, and print the AST of Jerry source.
 // Usage: jerry run self-host/ < source.jer
-//
-// Streams tokens directly to avoid Token[] (arrays of heap-type elements
-// have a reference-counting bug where push() does not retain elements).
 fn main() {
     let src: string = read_stdin();
-    let lx: Lexer = new Lexer(src);
-    while true {
-        let tok: Token = lx.next_token();
-        print(tok.to_string());
-        if tok.kind == TOK_EOF || tok.kind == TOK_ERROR { break; }
-    }
+    let prog: Program = parse(src);
+    print(prog.to_string());
 }
