@@ -1,4 +1,4 @@
-.PHONY: build test run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build test install install-runtime run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -61,6 +61,18 @@ test:
 
 install: build
 	cp bin/jerry /usr/local/bin/jerry
+
+# Pre-compile the C runtime to a static archive so jerry can find it by path
+# instead of extracting the go:embed copy on every run.
+# Set PREFIX to install somewhere other than /usr/local.
+PREFIX ?= /usr/local
+install-runtime:
+	mkdir -p $(PREFIX)/lib
+	$(CC) -O2 -c runtime/src/runtime.c -Iruntime/src -o /tmp/jerry_runtime.o
+	ar rcs $(PREFIX)/lib/jerry_runtime.a /tmp/jerry_runtime.o
+	rm /tmp/jerry_runtime.o
+	@echo "Installed: $(PREFIX)/lib/jerry_runtime.a"
+	@echo "To use it: export JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a"
 
 clean:
 	rm -rf bin/

@@ -816,6 +816,7 @@ fn make_builtin_scope(): Scope {
     let p_ss: JType[] = []; push(p_ss, s_ty); push(p_ss, s_ty);
     install_fn(s, "read_file",           p1s, s_ty);
     install_fn(s, "write_file",          p_ss, v_ty);
+    install_fn(s, "getenv",              p1s, s_ty);
     let p1sa: JType[] = []; push(p1sa, s_arr);
     install_fn(s, "exec",                p1sa, i_ty);
     install_fn(s, "string_to_int",       p1s, i_ty);

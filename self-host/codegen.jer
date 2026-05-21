@@ -430,6 +430,7 @@ class Generator {
             "declare ptr  @jerry_alloc(i64)\n" +
             "declare ptr  @jerry_read_file(ptr)\n" +
             "declare void @jerry_write_file(ptr, ptr)\n" +
+            "declare ptr  @jerry_getenv(ptr)\n" +
             "declare i64  @jerry_exec(ptr)\n" +
             "declare void @jerry_each_line(ptr, ptr)\n" +
             "declare void @jerry_capture_args(i64, ptr)\n" +
@@ -1577,6 +1578,13 @@ class Generator {
             let cv: string = this.gen_expr(e.args[1]);
             this.eml("  call void @jerry_write_file(ptr " + pv + ", ptr " + cv + ")");
             return "0";
+        }
+
+        if name == "getenv" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_getenv(ptr " + av + ")");
+            return res;
         }
 
         if name == "exec" {

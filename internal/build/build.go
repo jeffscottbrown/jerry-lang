@@ -17,9 +17,30 @@ import (
 	"github.com/jeffscottbrown/jerry-lang/internal/modfile"
 	"github.com/jeffscottbrown/jerry-lang/internal/module"
 	"github.com/jeffscottbrown/jerry-lang/internal/parser"
-	jerryruntime "github.com/jeffscottbrown/jerry-lang/runtime"
 	"github.com/jeffscottbrown/jerry-lang/stdlib"
 )
+
+// runtimeLibPath returns the path to jerry_runtime.a if one is available on
+// disk, or "" if we should fall back to extracting runtime.c from the embed.
+//
+// Search order:
+//  1. JERRY_RUNTIME env var — explicit developer override
+//  2. <binary_dir>/../lib/jerry_runtime.a — Homebrew / make install layout
+func runtimeLibPath() string {
+	if p := os.Getenv("JERRY_RUNTIME"); p != "" {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	exe, err := os.Executable()
+	if err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), "..", "lib", "jerry_runtime.a")
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Clean(candidate)
+		}
+	}
+	return ""
+}
 
 // Compile compiles srcs to a native binary at outBin.
 // If target is non-empty it is passed to clang as --target.
@@ -39,14 +60,16 @@ func Compile(srcs []string, outBin, target string) error {
 	}
 	tmp.Close()
 
-	runtimeLib, cleanupRuntime, err := ExtractRuntime()
-	if err != nil {
-		return err
+	runtimeArg := runtimeLibPath()
+	if runtimeArg == "" {
+		return fmt.Errorf(
+			"jerry runtime library not found\n" +
+				"Run `make install-runtime` or set JERRY_RUNTIME to the path of jerry_runtime.a",
+		)
 	}
-	defer cleanupRuntime()
 
 	sysroot, _ := exec.Command("xcrun", "--show-sdk-path").Output()
-	args := []string{"-O1", tmp.Name(), runtimeLib, "-o", outBin, "-lm"}
+	args := []string{"-O1", tmp.Name(), runtimeArg, "-o", outBin, "-lm"}
 	if target != "" {
 		args = append(args, "-target", target)
 	}
@@ -255,28 +278,6 @@ func StdlibFS() fs.FS {
 	return stdlib.Files
 }
 
-// ExtractRuntime writes the embedded runtime C sources to a temp directory
-// and returns the path to runtime.c. The caller must call cleanup when done.
-func ExtractRuntime() (runtimeC string, cleanup func(), err error) {
-	dir, err := os.MkdirTemp("", "jerry-runtime-*")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create runtime temp dir: %w", err)
-	}
-	cleanup = func() { os.RemoveAll(dir) }
-
-	for _, name := range []string{"runtime.c", "runtime.h"} {
-		data, err := fs.ReadFile(jerryruntime.Files, "src/"+name)
-		if err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("embedded runtime missing %s: %w", name, err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, name), data, 0644); err != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("failed to write runtime %s: %w", name, err)
-		}
-	}
-	return filepath.Join(dir, "runtime.c"), cleanup, nil
-}
 
 func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))

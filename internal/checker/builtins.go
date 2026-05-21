@@ -46,6 +46,9 @@ func installBuiltins(s *Scope) {
 	// write_file(path, content): void
 	s.Define(&Symbol{Name: "write_file", Kind: SymFunc,
 		Type: FuncType([]*Type{String, String}, Void)})
+	// getenv(name): string — read an environment variable; returns "" if unset
+	s.Define(&Symbol{Name: "getenv", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, String)})
 	// exec(args): int — run a subprocess; returns exit code
 	s.Define(&Symbol{Name: "exec", Kind: SymFunc,
 		Type: FuncType([]*Type{ArrayOf(String)}, Int)})

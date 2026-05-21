@@ -217,6 +217,13 @@ void jerry_write_file(JerryStr* path, JerryStr* content) {
     fclose(f);
 }
 
+JerryStr* jerry_getenv(JerryStr* name) {
+    if (name == NULL) return jerry_string_new("", 0);
+    const char* val = getenv(name->data);
+    if (val == NULL) return jerry_string_new("", 0);
+    return jerry_string_new(val, (int64_t)strlen(val));
+}
+
 int64_t jerry_exec(JerryArray* args) {
     if (args == NULL || args->len == 0) {
         fprintf(stderr, "jerry: exec: empty args\n");

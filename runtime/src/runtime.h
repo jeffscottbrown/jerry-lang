@@ -67,6 +67,7 @@ void jerry_print_array(JerryArray* arr);
 void jerry_println(void);
 JerryStr* jerry_read_file(JerryStr* path);
 void       jerry_write_file(JerryStr* path, JerryStr* content);
+JerryStr*  jerry_getenv(JerryStr* name);
 int64_t    jerry_exec(JerryArray* args);
 
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */
