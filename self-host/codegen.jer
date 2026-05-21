@@ -1460,14 +1460,14 @@ class Generator {
         let ret_lt: string = "void";
         if mt.kind == TY_FN && mt.ret != null { ret_lt = this.llvm_ty(mt.ret); }
 
-        this.release_str_lit_args(e.args, arg_vals);
-
         if ret_lt == "void" {
             this.eml("  call void @" + fn_name + "(" + arg_str + ")");
+            this.release_str_lit_args(e.args, arg_vals);
             return "0";
         }
         let res: string = this.new_tmp();
         this.eml("  " + res + " = call " + ret_lt + " @" + fn_name + "(" + arg_str + ")");
+        this.release_str_lit_args(e.args, arg_vals);
         return res;
     }
 
@@ -1678,7 +1678,9 @@ class Generator {
         // Check if it's a local closure variable
         let lv: LocalVar = this.find_local(name);
         if lv != null && lv.ty != null && lv.ty.kind == TY_FN {
-            return this.gen_closure_call_by_val(lv.ty, lv.reg, e.args);
+            let closure_ptr: string = this.new_tmp();
+            this.eml("  " + closure_ptr + " = load ptr, ptr " + lv.reg);
+            return this.gen_closure_call_by_val(lv.ty, closure_ptr, e.args);
         }
 
         // Named top-level function
@@ -1706,14 +1708,14 @@ class Generator {
         if callee_ty != null && callee_ty.kind == TY_FN { ret_ty = callee_ty.ret; }
         let ret_lt: string = this.llvm_ty(ret_ty);
 
-        this.release_str_lit_args(e.args, arg_vals);
-
         if ret_lt == "void" {
             this.eml("  call void @" + fn_llvm + "(" + arg_str + ")");
+            this.release_str_lit_args(e.args, arg_vals);
             return "0";
         }
         let res: string = this.new_tmp();
         this.eml("  " + res + " = call " + ret_lt + " @" + fn_llvm + "(" + arg_str + ")");
+        this.release_str_lit_args(e.args, arg_vals);
         return res;
     }
 
@@ -1721,7 +1723,7 @@ class Generator {
         let callee_val: string = this.gen_expr(e.left);
         let callee_ty: JType = e.left.jtype;
         if callee_ty == null || callee_ty.kind != TY_FN { return "0"; }
-        return this.gen_closure_call_by_val(callee_ty, callee_val + ".closure_reg", e.args);
+        return this.gen_closure_call_by_val(callee_ty, callee_val, e.args);
     }
 
     // Call a closure stored at alloca_reg (load the closure ptr, extract fn/env, call).
@@ -1760,14 +1762,15 @@ class Generator {
         let ret_lt: string = this.llvm_ty(ret_ty);
 
         let fn_sig: string = ret_lt + " (" + param_types + ")";
-        this.release_str_lit_args(args, arg_vals);
 
         if ret_lt == "void" {
             this.eml("  call " + fn_sig + " " + fn_ptr + "(" + arg_str + ")");
+            this.release_str_lit_args(args, arg_vals);
             return "0";
         }
         let res: string = this.new_tmp();
         this.eml("  " + res + " = call " + fn_sig + " " + fn_ptr + "(" + arg_str + ")");
+        this.release_str_lit_args(args, arg_vals);
         return res;
     }
 
