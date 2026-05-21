@@ -46,6 +46,9 @@ func installBuiltins(s *Scope) {
 	// write_file(path, content): void
 	s.Define(&Symbol{Name: "write_file", Kind: SymFunc,
 		Type: FuncType([]*Type{String, String}, Void)})
+	// exec(args): int — run a subprocess; returns exit code
+	s.Define(&Symbol{Name: "exec", Kind: SymFunc,
+		Type: FuncType([]*Type{ArrayOf(String)}, Int)})
 	// exit(code): void
 	s.Define(&Symbol{Name: "exit", Kind: SymFunc,
 		Type: FuncType([]*Type{Int}, Void)})

@@ -633,6 +633,15 @@ func (g *Generator) genCall(
 			g.releaseStrLitArgs(call.Args, []string{pathVal, contentVal}, out)
 			return "0", checker.Void, nil
 
+		case "exec":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_exec(ptr %s)\n", res, argVal)
+			return res, checker.Int, nil
+
 		case "exit":
 			argVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {

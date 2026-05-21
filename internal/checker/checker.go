@@ -904,6 +904,11 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(a)
 			}
 			return Void
+		case "exec":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Int
 		case "exit":
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])

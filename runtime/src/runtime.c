@@ -1,8 +1,11 @@
 #include "runtime.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* ── Reference-counted allocator ────────────────────────────────────────────── */
 /* Every allocation is preceded by a 16-byte header:
@@ -212,6 +215,39 @@ void jerry_write_file(JerryStr* path, JerryStr* content) {
     }
     fwrite(content->data, 1, (size_t)content->len, f);
     fclose(f);
+}
+
+int64_t jerry_exec(JerryArray* args) {
+    if (args == NULL || args->len == 0) {
+        fprintf(stderr, "jerry: exec: empty args\n");
+        return 1;
+    }
+    /* Build a null-terminated argv for execvp. */
+    char** argv = (char**)malloc(sizeof(char*) * (size_t)(args->len + 1));
+    if (!argv) { fprintf(stderr, "jerry: exec: out of memory\n"); return 1; }
+    for (int64_t i = 0; i < args->len; i++) {
+        JerryStr** slot = (JerryStr**)jerry_array_get(args, i);
+        argv[i] = (*slot)->data;
+    }
+    argv[args->len] = NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        free(argv);
+        fprintf(stderr, "jerry: exec: fork failed\n");
+        return 1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        fprintf(stderr, "jerry: exec: cannot execute '%s': %s\n", argv[0], strerror(errno));
+        _exit(127);
+    }
+    free(argv);
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status)) return (int64_t)WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return (int64_t)(128 + WTERMSIG(status));
+    return 1;
 }
 
 void jerry_each_line(JerryStr* path, JerryClosure* closure) {
