@@ -72,11 +72,12 @@ func (g *Generator) genStmt(s *ast.StmtNode, out *strings.Builder) error {
 
 func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	ty := g.exprType(vd.Value)
-	// When the initializer is an empty [] or {} literal, exprType returns
-	// ArrayOf(Void) or MapOf(Void,Void). Use the explicit annotation instead so
-	// downstream element/key/value-type loads get the correct LLVM type.
+	// When the initializer is null, an empty [] or {} literal, or void, use the
+	// explicit annotation instead so downstream type loads get the correct LLVM type.
+	// e.g. `let x: MyClass = null` should track x as MyClass, not null.
 	if vd.Ann != nil {
 		if ty.Kind == checker.KindVoid ||
+			ty.Kind == checker.KindNull ||
 			(ty.Kind == checker.KindArray && ty.Elem.Kind == checker.KindVoid) ||
 			(ty.Kind == checker.KindMap && ty.Key.Kind == checker.KindVoid) {
 			ty = g.resolveTypeExpr(vd.Ann)
@@ -108,10 +109,10 @@ func (g *Generator) genVarDecl(vd *ast.VarDecl, out *strings.Builder) error {
 	// (function call result, new-expr, concat, etc.). A bare variable load is a
 	// borrow — the source variable remains the owner and will release it.
 	if isHeapType(ty) && simpleIdent(vd.Value) == "" {
-		if endsWithIndex(vd.Value) {
-			// Array element access returns a borrowed pointer (no implicit retain).
-			// Retain here so this variable owns its reference and the paired release
-			// at scope exit is balanced.
+		if endsWithIndex(vd.Value) || endsWithField(vd.Value) || isBareThis(vd.Value) {
+			// Borrowed pointers (array element, field access, `this`) need an explicit
+			// retain so this variable owns its reference and the paired release at
+			// scope exit is balanced.
 			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", val)
 		}
 		g.registerHeapLocal(reg, ty)
@@ -144,12 +145,16 @@ func (g *Generator) genReturn(r *ast.ReturnStmt, out *strings.Builder) error {
 	}
 	// If returning a heap-type bare local variable, exempt its alloca from release
 	// so the caller receives the reference we were holding (transfer of ownership).
+	// If returning a field/index access, retain the value first so that releasing
+	// the owning local doesn't free it before we return.
 	exemptAllocaReg := ""
 	if isHeapType(g.retType) {
 		if ident := simpleIdent(r.Value); ident != "" {
 			if lv, ok := g.locals[ident]; ok && isHeapType(lv.altType) {
 				exemptAllocaReg = lv.reg
 			}
+		} else if endsWithField(r.Value) || endsWithIndex(r.Value) {
+			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", val)
 		}
 	}
 	g.emitAllReleases(exemptAllocaReg, out)

@@ -23,14 +23,25 @@ var jerryLexer = lexer.MustSimple([]lexer.SimpleRule{
 	// containing "true" or "false" are never mis-classified as Bool.
 	{Name: "BoolLit", Pattern: `\b(?:true|false)\b`},
 
-	// Keywords — matched before Ident, after BoolLit so true/false stay separate
-	{Name: "Keyword", Pattern: `\b(?:let|fn|class|extends|if|else|while|for|return|new|this|null|break|continue|include)\b`},
+	// ThisKW and NullKW are their own token types (like BoolLit) so that string
+	// literals "this" and "null" are never mis-classified as keywords after Unquote
+	// strips their surrounding quotes.
+	{Name: "ThisKW", Pattern: `\bthis\b`},
+	{Name: "NullKW", Pattern: `\bnull\b`},
+
+	// Keywords — matched before Ident, after BoolLit/ThisKW/NullKW
+	{Name: "Keyword", Pattern: `\b(?:let|fn|class|extends|if|else|while|for|return|new|break|continue|include)\b`},
 
 	// Identifier
 	{Name: "Ident", Pattern: `[a-zA-Z_][a-zA-Z0-9_]*`},
 
-	// Multi-character operators (longest match first)
-	{Name: "Op", Pattern: `&&|\|\||==|!=|<=|>=|\+\+|--|[+\-*/%=!<>.,;:(){}\[\]@]`},
+	// Multi-character operators (longest match first), then single-char.
+	// Bang and Minus are separate types so UnaryExpr grammar can match them
+	// by token type rather than value (avoiding false matches on string literals
+	// like "!" or "-" after Unquote strips the surrounding quotes).
+	{Name: "Op",    Pattern: `&&|\|\||==|!=|<=|>=|\+\+|--|[+*/%=<>.,;:(){}\[\]@]`},
+	{Name: "Bang",  Pattern: `!`},
+	{Name: "Minus", Pattern: `-`},
 })
 
 var parser = participle.MustBuild[ast.Program](

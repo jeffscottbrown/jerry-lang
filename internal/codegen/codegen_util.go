@@ -280,6 +280,53 @@ func endsWithIndex(e *ast.Expr) bool {
 	return lastOp.Index != nil
 }
 
+// endsWithField returns true if the expression is a single field access chain
+// (no operators, no index, no call), ending with a .field postfix op.
+// Used by genVarDecl to detect borrowed field reads that need an explicit retain.
+func endsWithField(e *ast.Expr) bool {
+	if e == nil {
+		return false
+	}
+	a := e.Assignment
+	if a == nil || a.Right != nil {
+		return false
+	}
+	or := a.Left
+	if or == nil || len(or.Rest) != 0 {
+		return false
+	}
+	and := or.Left
+	if and == nil || len(and.Rest) != 0 {
+		return false
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return false
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return false
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return false
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return false
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return false
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) == 0 {
+		return false
+	}
+	lastOp := post.Ops[len(post.Ops)-1]
+	return lastOp.Field != ""
+}
+
 // simpleIdent returns the variable name if expr is a bare identifier with no
 // operators or postfix operations, or "" otherwise. Used by genReturn to
 // determine whether the return value is a heap local (and should be exempted
@@ -329,6 +376,52 @@ func simpleIdent(e *ast.Expr) string {
 		return ""
 	}
 	return prim.Ident
+}
+
+// isBareThis returns true if the expression is just the `this` keyword with no
+// postfix operations — a borrow of the current receiver, not a fresh allocation.
+func isBareThis(e *ast.Expr) bool {
+	if e == nil {
+		return false
+	}
+	a := e.Assignment
+	if a == nil || a.Right != nil {
+		return false
+	}
+	or := a.Left
+	if or == nil || len(or.Rest) != 0 {
+		return false
+	}
+	and := or.Left
+	if and == nil || len(and.Rest) != 0 {
+		return false
+	}
+	eq := and.Left
+	if eq == nil || len(eq.Rest) != 0 {
+		return false
+	}
+	cmp := eq.Left
+	if cmp == nil || len(cmp.Rest) != 0 {
+		return false
+	}
+	add := cmp.Left
+	if add == nil || len(add.Rest) != 0 {
+		return false
+	}
+	mul := add.Left
+	if mul == nil || len(mul.Rest) != 0 {
+		return false
+	}
+	u := mul.Left
+	if u == nil || u.Op != "" {
+		return false
+	}
+	post := u.Post
+	if post == nil || len(post.Ops) != 0 {
+		return false
+	}
+	prim := post.Base
+	return prim != nil && prim.This
 }
 
 // isEmptyArrayLit returns true when expr is an empty array literal `[]`.

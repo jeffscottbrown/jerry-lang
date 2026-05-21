@@ -192,9 +192,10 @@ class Stmt {
     for_post:       Expr;   // null = no post
     for_body:       Block;
     // STMT_EXPR
-    expr: Expr;
-    line: int;
-    col:  int;
+    expr:     Expr;
+    line:     int;
+    col:      int;
+    var_jtype: JType;  // resolved type for STMT_VAR, set by checker
 
     fn new(k: int, l: int, c: int) {
         this.kind = k;
@@ -256,8 +257,9 @@ class Expr {
     fn_params: Param[];
     fn_ret:    TypeExpr;
     fn_body:   Block;
-    line: int;
-    col:  int;
+    line:  int;
+    col:   int;
+    jtype: JType;   // resolved type, set by checker
 
     fn new(k: int, l: int, c: int) {
         this.kind = k;

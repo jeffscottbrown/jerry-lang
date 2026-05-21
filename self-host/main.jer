@@ -1,7 +1,13 @@
-// Stdin driver: lex, parse, and print the AST of Jerry source.
+// Stdin driver: parse, type-check, and generate LLVM IR from Jerry source.
 // Usage: jerry run self-host/ < source.jer
 fn main() {
     let src: string = read_stdin();
     let prog: Program = parse(src);
-    print(prog.to_string());
+    let result: CheckResult = type_check(prog);
+    if result.has_errors() {
+        print_err(result.error_string());
+        exit(1);
+    }
+    let ir: string = generate(prog, result.info);
+    write(ir);
 }

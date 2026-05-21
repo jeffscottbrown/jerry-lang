@@ -1,0 +1,141 @@
+// types.jer - Type representation for the self-hosted Jerry type checker.
+// JType mirrors checker.Type in internal/checker/types.go.
+
+include @string
+
+// ── Type kind constants ───────────────────────────────────────────────────────
+
+let TY_VOID:   int = 0;
+let TY_INT:    int = 1;
+let TY_FLOAT:  int = 2;
+let TY_BOOL:   int = 3;
+let TY_STRING: int = 4;
+let TY_ARRAY:  int = 5;
+let TY_MAP:    int = 6;
+let TY_FN:     int = 7;
+let TY_CLASS:  int = 8;
+let TY_NULL:   int = 9;
+
+// ── JType ─────────────────────────────────────────────────────────────────────
+
+class JType {
+    kind:       int;
+    elem:       JType;    // TY_ARRAY element type
+    key:        JType;    // TY_MAP key type
+    value:      JType;    // TY_MAP value type
+    params:     JType[];  // TY_FN parameter types
+    ret:        JType;    // TY_FN return type
+    class_name: string;   // TY_CLASS name
+
+    fn new() {
+        let p: JType[] = [];
+        this.params = p;
+    }
+
+    fn to_string(): string {
+        if this.kind == TY_VOID   { return "void"; }
+        if this.kind == TY_INT    { return "int"; }
+        if this.kind == TY_FLOAT  { return "float"; }
+        if this.kind == TY_BOOL   { return "bool"; }
+        if this.kind == TY_STRING { return "string"; }
+        if this.kind == TY_NULL   { return "null"; }
+        if this.kind == TY_ARRAY  { return this.elem.to_string() + "[]"; }
+        if this.kind == TY_MAP {
+            return "map<" + this.key.to_string() + ", " + this.value.to_string() + ">";
+        }
+        if this.kind == TY_CLASS { return this.class_name; }
+        if this.kind == TY_FN {
+            let s: string = "fn(";
+            let i: int = 0;
+            while i < len(this.params) {
+                if i > 0 { s = s + ", "; }
+                s = s + this.params[i].to_string();
+                i = i + 1;
+            }
+            s = s + ")";
+            if this.ret != null && this.ret.kind != TY_VOID {
+                s = s + ": " + this.ret.to_string();
+            }
+            return s;
+        }
+        return "unknown";
+    }
+}
+
+// Structural equality for JType.  Null is assignable to class and string.
+fn jtype_equals(a: JType, b: JType): bool {
+    if a == null && b == null { return true; }
+    if a == null || b == null { return false; }
+    if a == b { return true; }
+    if a.kind != b.kind {
+        if b.kind == TY_NULL && (a.kind == TY_CLASS || a.kind == TY_STRING) { return true; }
+        if a.kind == TY_NULL && (b.kind == TY_CLASS || b.kind == TY_STRING) { return true; }
+        return false;
+    }
+    if a.kind == TY_ARRAY { return jtype_equals(a.elem, b.elem); }
+    if a.kind == TY_MAP {
+        return jtype_equals(a.key, b.key) && jtype_equals(a.value, b.value);
+    }
+    if a.kind == TY_CLASS { return a.class_name == b.class_name; }
+    if a.kind == TY_FN {
+        if len(a.params) != len(b.params) { return false; }
+        let i: int = 0;
+        while i < len(a.params) {
+            if !jtype_equals(a.params[i], b.params[i]) { return false; }
+            i = i + 1;
+        }
+        return jtype_equals(a.ret, b.ret);
+    }
+    return true;
+}
+
+// ── Factory functions ─────────────────────────────────────────────────────────
+
+fn make_void(): JType {
+    let t: JType = new JType(); t.kind = TY_VOID; return t;
+}
+fn make_int(): JType {
+    let t: JType = new JType(); t.kind = TY_INT; return t;
+}
+fn make_float(): JType {
+    let t: JType = new JType(); t.kind = TY_FLOAT; return t;
+}
+fn make_bool(): JType {
+    let t: JType = new JType(); t.kind = TY_BOOL; return t;
+}
+fn make_string(): JType {
+    let t: JType = new JType(); t.kind = TY_STRING; return t;
+}
+fn make_null(): JType {
+    let t: JType = new JType(); t.kind = TY_NULL; return t;
+}
+
+fn make_array(elem: JType): JType {
+    let t: JType = new JType();
+    t.kind = TY_ARRAY;
+    t.elem = elem;
+    return t;
+}
+
+fn make_map_type(key: JType, val: JType): JType {
+    let t: JType = new JType();
+    t.kind = TY_MAP;
+    t.key = key;
+    t.value = val;
+    return t;
+}
+
+fn make_class_type(name: string): JType {
+    let t: JType = new JType();
+    t.kind = TY_CLASS;
+    t.class_name = name;
+    return t;
+}
+
+fn make_fn_type(params: JType[], ret: JType): JType {
+    let t: JType = new JType();
+    t.kind = TY_FN;
+    t.params = params;
+    t.ret = ret;
+    return t;
+}

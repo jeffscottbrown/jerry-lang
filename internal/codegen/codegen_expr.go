@@ -388,7 +388,7 @@ func (g *Generator) genPostfixVal(p *ast.PostfixExpr, out *strings.Builder) (str
 
 		case op.Field != "":
 			if ty.Kind != checker.KindClass {
-				return "", nil, fmt.Errorf("field access on non-class type %s", ty)
+				return "", nil, fmt.Errorf("field access on non-class type %s (field: %s, pos: %v)", ty, op.Field, op.Pos)
 			}
 			ci := g.info.Classes[ty.ClassName]
 			if _, isMethod := ci.Methods[op.Field]; isMethod {

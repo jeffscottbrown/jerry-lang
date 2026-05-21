@@ -1,0 +1,892 @@
+// checker.jer - Type checker for the self-hosted Jerry compiler.
+// Mirrors internal/checker/checker.go.
+//
+// Usage:
+//   let result: CheckResult = type_check(prog);
+//   if len(result.errors) > 0 { /* report errors */ }
+//   // result.info.classes has ClassInfo with field/method layouts
+//   // AST Expr nodes are annotated with .jtype
+
+// ── Symbol / Scope ────────────────────────────────────────────────────────────
+
+class Symbol {
+    name: string;
+    ty:   JType;
+}
+
+class Scope {
+    parent: Scope;
+    syms:   Symbol[];
+
+    fn new(p: Scope) {
+        this.parent = p;
+        let s: Symbol[] = [];
+        this.syms = s;
+    }
+
+    fn define(name: string, ty: JType): bool {
+        let i: int = 0;
+        while i < len(this.syms) {
+            if this.syms[i].name == name { return false; }
+            i = i + 1;
+        }
+        let s: Symbol = new Symbol();
+        s.name = name;
+        s.ty   = ty;
+        push(this.syms, s);
+        return true;
+    }
+
+    // Iterative lookup — walks the scope chain without recursion.
+    fn lookup(name: string): JType {
+        let sc: Scope = this;
+        while sc != null {
+            let i: int = 0;
+            while i < len(sc.syms) {
+                if sc.syms[i].name == name { return sc.syms[i].ty; }
+                i = i + 1;
+            }
+            sc = sc.parent;
+        }
+        return null;
+    }
+}
+
+// ── ClassInfo ─────────────────────────────────────────────────────────────────
+
+class FieldInfo {
+    name: string;
+    ty:   JType;
+    idx:  int;    // field index for codegen GEP
+}
+
+class ClassInfo {
+    name:    string;
+    parent:  string;    // extends (empty string if none)
+    fields:  FieldInfo[];
+    methods: Symbol[];   // reuse Symbol for name → fn JType
+
+    fn new(n: string) {
+        this.name = n;
+        let f: FieldInfo[] = [];
+        this.fields = f;
+        let m: Symbol[] = [];
+        this.methods = m;
+    }
+
+    fn find_field(name: string): FieldInfo {
+        let i: int = 0;
+        while i < len(this.fields) {
+            if this.fields[i].name == name { return this.fields[i]; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn find_method(name: string): JType {
+        let i: int = 0;
+        while i < len(this.methods) {
+            if this.methods[i].name == name { return this.methods[i].ty; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn add_field(name: string, ty: JType) {
+        let fi: FieldInfo = new FieldInfo();
+        fi.name = name;
+        fi.ty   = ty;
+        fi.idx  = len(this.fields);
+        push(this.fields, fi);
+    }
+
+    fn add_method(name: string, ty: JType) {
+        let s: Symbol = new Symbol();
+        s.name = name;
+        s.ty   = ty;
+        push(this.methods, s);
+    }
+}
+
+// ── CheckInfo ─────────────────────────────────────────────────────────────────
+
+class CheckInfo {
+    classes: ClassInfo[];
+    funcs:   Symbol[];    // top-level function name → fn JType
+
+    fn new() {
+        let c: ClassInfo[] = [];
+        this.classes = c;
+        let f: Symbol[] = [];
+        this.funcs = f;
+    }
+
+    fn find_class(name: string): ClassInfo {
+        let i: int = 0;
+        while i < len(this.classes) {
+            if this.classes[i].name == name { return this.classes[i]; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn add_class(ci: ClassInfo) { push(this.classes, ci); }
+
+    fn find_func(name: string): JType {
+        let i: int = 0;
+        while i < len(this.funcs) {
+            if this.funcs[i].name == name { return this.funcs[i].ty; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn add_func(name: string, ty: JType) {
+        let s: Symbol = new Symbol();
+        s.name = name;
+        s.ty   = ty;
+        push(this.funcs, s);
+    }
+}
+
+// ── CheckResult ───────────────────────────────────────────────────────────────
+
+class CheckResult {
+    info:   CheckInfo;
+    errors: string[];
+
+    fn new() {
+        let e: string[] = [];
+        this.errors = e;
+    }
+
+    fn has_errors(): bool { return len(this.errors) > 0; }
+
+    fn error_string(): string {
+        let s: string = "";
+        let i: int = 0;
+        while i < len(this.errors) {
+            s = s + this.errors[i] + "\n";
+            i = i + 1;
+        }
+        return s;
+    }
+}
+
+// ── Checker ───────────────────────────────────────────────────────────────────
+
+class Checker {
+    scope:     Scope;
+    ret_type:  JType;    // current function's return type (null at top level)
+    cur_class: string;   // current class name for "this" resolution
+    in_loop:   bool;
+    info:      CheckInfo;
+    errors:    string[];
+
+    fn new() {
+        let e: string[] = [];
+        this.errors = e;
+        this.info   = new CheckInfo();
+        this.scope  = make_builtin_scope();
+    }
+
+    fn error(msg: string, line: int, col: int) {
+        push(this.errors, int_to_string(line) + ":" + int_to_string(col) + ": " + msg);
+    }
+
+    fn push_scope() { this.scope = new Scope(this.scope); }
+    fn pop_scope()  { this.scope = this.scope.parent; }
+
+    fn define(name: string, ty: JType) { this.scope.define(name, ty); }
+    fn lookup(name: string): JType     { return this.scope.lookup(name); }
+
+    // ── Type expression resolution ────────────────────────────────────────────
+
+    fn resolve_type(te: TypeExpr): JType {
+        if te == null { return make_void(); }
+        if te.kind == TYPE_NAME {
+            if te.name == "void"   { return make_void(); }
+            if te.name == "int"    { return make_int(); }
+            if te.name == "float"  { return make_float(); }
+            if te.name == "bool"   { return make_bool(); }
+            if te.name == "string" { return make_string(); }
+            let ci: ClassInfo = this.info.find_class(te.name);
+            if ci != null { return make_class_type(te.name); }
+            this.error("unknown type '" + te.name + "'", te.line, te.col);
+            return make_void();
+        }
+        if te.kind == TYPE_ARRAY {
+            return make_array(this.resolve_type(te.elem));
+        }
+        if te.kind == TYPE_MAP {
+            return make_map_type(this.resolve_type(te.key), this.resolve_type(te.val));
+        }
+        // TYPE_FN
+        let params: JType[] = [];
+        let i: int = 0;
+        while i < len(te.fn_params) {
+            push(params, this.resolve_type(te.fn_params[i]));
+            i = i + 1;
+        }
+        return make_fn_type(params, this.resolve_type(te.fn_ret));
+    }
+
+    // ── First-pass registration ───────────────────────────────────────────────
+
+    // Pre-register just the class name so forward references work.
+    fn pre_register_class(cd: ClassDecl) {
+        let ci: ClassInfo = new ClassInfo(cd.name);
+        ci.parent = cd.parent;
+        this.info.add_class(ci);
+        this.define(cd.name, make_class_type(cd.name));
+    }
+
+    // Register class fields and methods (run after all names are pre-registered).
+    fn register_class(cd: ClassDecl) {
+        let ci: ClassInfo = this.info.find_class(cd.name);
+        if ci == null { return; }
+        let i: int = 0;
+        while i < len(cd.fields) {
+            let fd: FieldDecl = cd.fields[i];
+            ci.add_field(fd.name, this.resolve_type(fd.type_expr));
+            i = i + 1;
+        }
+        let j: int = 0;
+        while j < len(cd.methods) {
+            let md: FnDecl = cd.methods[j];
+            let mt: JType = this.build_fn_type(md);
+            ci.add_method(md.name, mt);
+            j = j + 1;
+        }
+    }
+
+    fn register_fn(fd: FnDecl) {
+        let ft: JType = this.build_fn_type(fd);
+        this.info.add_func(fd.name, ft);
+        this.define(fd.name, ft);
+    }
+
+    fn register_top_var(tl: TopLevel) {
+        let val_ty: JType = this.check_expr(tl.var_value);
+        let decl_ty: JType = null;
+        if tl.var_type != null {
+            decl_ty = this.resolve_type(tl.var_type);
+        } else {
+            decl_ty = val_ty;
+        }
+        this.define(tl.var_name, decl_ty);
+    }
+
+    fn build_fn_type(fd: FnDecl): JType {
+        let params: JType[] = [];
+        let i: int = 0;
+        while i < len(fd.params) {
+            push(params, this.resolve_type(fd.params[i].type_expr));
+            i = i + 1;
+        }
+        return make_fn_type(params, this.resolve_type(fd.ret));
+    }
+
+    // ── Declaration checking (second pass) ───────────────────────────────────
+
+    fn check_fn_decl(fd: FnDecl) {
+        let ft: JType = this.info.find_func(fd.name);
+        if ft == null { ft = this.build_fn_type(fd); }
+        let saved_ret: JType = this.ret_type;
+        this.ret_type = ft.ret;
+        this.push_scope();
+        let i: int = 0;
+        while i < len(fd.params) {
+            this.define(fd.params[i].name, ft.params[i]);
+            i = i + 1;
+        }
+        this.check_block(fd.body);
+        this.pop_scope();
+        this.ret_type = saved_ret;
+    }
+
+    fn check_class_decl(cd: ClassDecl) {
+        let ci: ClassInfo = this.info.find_class(cd.name);
+        if ci == null { return; }
+        let saved_class: string = this.cur_class;
+        this.cur_class = cd.name;
+        let j: int = 0;
+        while j < len(cd.methods) {
+            let md: FnDecl = cd.methods[j];
+            let mt: JType = ci.find_method(md.name);
+            if mt == null { j = j + 1; continue; }
+            let saved_ret: JType = this.ret_type;
+            this.ret_type = mt.ret;
+            this.push_scope();
+            this.define("this", make_class_type(cd.name));
+            let i: int = 0;
+            while i < len(md.params) {
+                this.define(md.params[i].name, mt.params[i]);
+                i = i + 1;
+            }
+            this.check_block(md.body);
+            this.pop_scope();
+            this.ret_type = saved_ret;
+            j = j + 1;
+        }
+        this.cur_class = saved_class;
+    }
+
+    // ── Block and statement checking ──────────────────────────────────────────
+
+    fn check_block(b: Block) {
+        if b == null { return; }
+        this.push_scope();
+        let i: int = 0;
+        while i < len(b.stmts) {
+            this.check_stmt(b.stmts[i]);
+            i = i + 1;
+        }
+        this.pop_scope();
+    }
+
+    fn check_stmt(s: Stmt) {
+        if s == null { return; }
+
+        if s.kind == STMT_VAR {
+            let val_ty: JType = this.check_expr(s.var_value);
+            let decl_ty: JType = null;
+            if s.var_type != null {
+                decl_ty = this.resolve_type(s.var_type);
+                // Empty [] or {} literal is compatible with any array/map annotation.
+                let empty_arr: bool = val_ty.kind == TY_ARRAY && val_ty.elem.kind == TY_VOID && decl_ty.kind == TY_ARRAY;
+                let empty_map: bool = val_ty.kind == TY_MAP   && val_ty.key.kind  == TY_VOID && decl_ty.kind == TY_MAP;
+                if !empty_arr && !empty_map && !jtype_equals(decl_ty, val_ty) {
+                    this.error("var '" + s.var_name + "': declared " + decl_ty.to_string() + " but got " + val_ty.to_string(), s.line, s.col);
+                }
+            } else {
+                decl_ty = val_ty;
+            }
+            s.var_jtype = decl_ty;
+            this.define(s.var_name, decl_ty);
+            return;
+        }
+
+        if s.kind == STMT_RETURN {
+            let got: JType = null;
+            if s.ret_value != null {
+                got = this.check_expr(s.ret_value);
+            } else {
+                got = make_void();
+            }
+            if this.ret_type != null && !jtype_equals(this.ret_type, got) {
+                this.error("return type mismatch: expected " + this.ret_type.to_string() + " got " + got.to_string(), s.line, s.col);
+            }
+            return;
+        }
+
+        if s.kind == STMT_IF {
+            this.check_expr(s.if_cond);
+            this.check_block(s.if_then);
+            if s.if_else_if != null {
+                this.check_stmt(s.if_else_if);
+            } else if s.if_else != null {
+                this.check_block(s.if_else);
+            }
+            return;
+        }
+
+        if s.kind == STMT_WHILE {
+            this.check_expr(s.while_cond);
+            let saved_loop: bool = this.in_loop;
+            this.in_loop = true;
+            this.check_block(s.while_body);
+            this.in_loop = saved_loop;
+            return;
+        }
+
+        if s.kind == STMT_FOR {
+            // for-init var is scoped to the whole for statement.
+            this.push_scope();
+            if s.for_init_var != null {
+                this.check_stmt(s.for_init_var);
+            } else if s.for_init_expr != null {
+                this.check_expr(s.for_init_expr);
+            }
+            if s.for_cond != null { this.check_expr(s.for_cond); }
+            if s.for_post != null { this.check_expr(s.for_post); }
+            let saved_loop: bool = this.in_loop;
+            this.in_loop = true;
+            this.check_block(s.for_body);
+            this.in_loop = saved_loop;
+            this.pop_scope();
+            return;
+        }
+
+        if s.kind == STMT_BREAK || s.kind == STMT_CONTINUE {
+            if !this.in_loop {
+                this.error("break/continue outside loop", s.line, s.col);
+            }
+            return;
+        }
+
+        if s.kind == STMT_EXPR {
+            this.check_expr(s.expr);
+            return;
+        }
+    }
+
+    // ── Expression checking ───────────────────────────────────────────────────
+
+    fn check_expr(e: Expr): JType {
+        if e == null { return make_void(); }
+        let t: JType = this.check_expr_inner(e);
+        e.jtype = t;
+        return t;
+    }
+
+    fn check_expr_inner(e: Expr): JType {
+        if e.kind == EXPR_INT    { return make_int(); }
+        if e.kind == EXPR_FLOAT  { return make_float(); }
+        if e.kind == EXPR_STRING { return make_string(); }
+        if e.kind == EXPR_BOOL   { return make_bool(); }
+        if e.kind == EXPR_NULL   { return make_null(); }
+
+        if e.kind == EXPR_THIS {
+            if this.cur_class != null && len(this.cur_class) > 0 {
+                return make_class_type(this.cur_class);
+            }
+            this.error("'this' used outside of class method", e.line, e.col);
+            return make_void();
+        }
+
+        if e.kind == EXPR_IDENT {
+            let t: JType = this.lookup(e.sval);
+            if t == null {
+                this.error("undefined: '" + e.sval + "'", e.line, e.col);
+                return make_void();
+            }
+            return t;
+        }
+
+        if e.kind == EXPR_PAREN { return this.check_expr(e.left); }
+
+        if e.kind == EXPR_UNARY { return this.check_unary(e); }
+        if e.kind == EXPR_BINARY { return this.check_binary(e); }
+
+        if e.kind == EXPR_INC || e.kind == EXPR_DEC {
+            let t: JType = this.check_expr(e.left);
+            if t.kind != TY_INT && t.kind != TY_FLOAT {
+                this.error("++ / -- requires numeric type, got " + t.to_string(), e.line, e.col);
+            }
+            return t;
+        }
+
+        if e.kind == EXPR_ASSIGN { return this.check_assign_expr(e); }
+        if e.kind == EXPR_CALL   { return this.check_call_expr(e); }
+        if e.kind == EXPR_INDEX  { return this.check_index(e); }
+        if e.kind == EXPR_FIELD  { return this.check_field(e); }
+        if e.kind == EXPR_NEW    { return this.check_new(e); }
+        if e.kind == EXPR_ARRAY  { return this.check_array_lit(e); }
+        if e.kind == EXPR_MAP    { return this.check_map_lit(e); }
+        if e.kind == EXPR_FN     { return this.check_fn_expr(e); }
+
+        return make_void();
+    }
+
+    fn check_unary(e: Expr): JType {
+        let t: JType = this.check_expr(e.left);
+        if e.sval == "!" {
+            if t.kind != TY_BOOL {
+                this.error("! requires bool, got " + t.to_string(), e.line, e.col);
+            }
+            return make_bool();
+        }
+        if e.sval == "-" {
+            if t.kind != TY_INT && t.kind != TY_FLOAT {
+                this.error("unary - requires numeric type, got " + t.to_string(), e.line, e.col);
+            }
+            return t;
+        }
+        return t;
+    }
+
+    fn check_binary(e: Expr): JType {
+        let lt: JType = this.check_expr(e.left);
+        let rt: JType = this.check_expr(e.right);
+        let op: string = e.sval;
+
+        if op == "&&" || op == "||" {
+            if lt.kind != TY_BOOL || rt.kind != TY_BOOL {
+                this.error(op + " requires bool operands", e.line, e.col);
+            }
+            return make_bool();
+        }
+        if op == "==" || op == "!=" {
+            if !jtype_equals(lt, rt) {
+                this.error(op + " requires same-type operands, got " + lt.to_string() + " and " + rt.to_string(), e.line, e.col);
+            }
+            return make_bool();
+        }
+        if op == "<" || op == ">" || op == "<=" || op == ">=" {
+            if !jtype_equals(lt, rt) {
+                this.error(op + " requires same-type operands", e.line, e.col);
+            }
+            if lt.kind != TY_INT && lt.kind != TY_FLOAT && lt.kind != TY_STRING {
+                this.error(op + " not valid for type " + lt.to_string(), e.line, e.col);
+            }
+            return make_bool();
+        }
+        if op == "+" {
+            if lt.kind == TY_STRING && rt.kind == TY_STRING { return make_string(); }
+        }
+        if !jtype_equals(lt, rt) {
+            this.error(op + " type mismatch: " + lt.to_string() + " and " + rt.to_string(), e.line, e.col);
+        }
+        if lt.kind != TY_INT && lt.kind != TY_FLOAT {
+            this.error(op + " not valid for type " + lt.to_string(), e.line, e.col);
+        }
+        return lt;
+    }
+
+    fn check_assign_expr(e: Expr): JType {
+        let lt: JType = this.check_expr(e.left);
+        let rt: JType = this.check_expr(e.right);
+        if !jtype_equals(lt, rt) {
+            this.error("assignment type mismatch: " + lt.to_string() + " = " + rt.to_string(), e.line, e.col);
+        }
+        return lt;
+    }
+
+    fn check_index(e: Expr): JType {
+        let base: JType = this.check_expr(e.left);
+        let idx:  JType = this.check_expr(e.right);
+        if base.kind == TY_ARRAY {
+            if idx.kind != TY_INT {
+                this.error("array index must be int, got " + idx.to_string(), e.line, e.col);
+            }
+            return base.elem;
+        }
+        if base.kind == TY_MAP {
+            if !jtype_equals(base.key, idx) {
+                this.error("map key type mismatch: expected " + base.key.to_string() + " got " + idx.to_string(), e.line, e.col);
+            }
+            return base.value;
+        }
+        this.error("index on non-array/non-map type " + base.to_string(), e.line, e.col);
+        return make_void();
+    }
+
+    fn check_field(e: Expr): JType {
+        let base: JType = this.check_expr(e.left);
+        if base.kind != TY_CLASS {
+            this.error("field access on non-class type " + base.to_string(), e.line, e.col);
+            return make_void();
+        }
+        let ci: ClassInfo = this.info.find_class(base.class_name);
+        if ci == null {
+            this.error("unknown class '" + base.class_name + "'", e.line, e.col);
+            return make_void();
+        }
+        let fi: FieldInfo = ci.find_field(e.sval);
+        if fi != null { return fi.ty; }
+        let mt: JType = ci.find_method(e.sval);
+        if mt != null { return mt; }
+        this.error("class " + base.class_name + " has no field or method '" + e.sval + "'", e.line, e.col);
+        return make_void();
+    }
+
+    fn check_new(e: Expr): JType {
+        let ci: ClassInfo = this.info.find_class(e.sval);
+        if ci == null {
+            this.error("unknown class '" + e.sval + "'", e.line, e.col);
+            return make_void();
+        }
+        let mt: JType = ci.find_method("new");
+        if mt != null {
+            if len(e.args) != len(mt.params) {
+                this.error("new " + e.sval + ": expected " + int_to_string(len(mt.params)) + " args, got " + int_to_string(len(e.args)), e.line, e.col);
+            }
+        }
+        let i: int = 0;
+        while i < len(e.args) {
+            this.check_expr(e.args[i]);
+            i = i + 1;
+        }
+        return make_class_type(e.sval);
+    }
+
+    fn check_array_lit(e: Expr): JType {
+        if len(e.args) == 0 { return make_array(make_void()); }
+        let elem: JType = this.check_expr(e.args[0]);
+        let i: int = 1;
+        while i < len(e.args) {
+            let et: JType = this.check_expr(e.args[i]);
+            if !jtype_equals(elem, et) {
+                this.error("array literal has mixed types: " + elem.to_string() + " and " + et.to_string(), e.line, e.col);
+            }
+            i = i + 1;
+        }
+        return make_array(elem);
+    }
+
+    fn check_map_lit(e: Expr): JType {
+        if len(e.args) == 0 { return make_map_type(make_void(), make_void()); }
+        let key_ty: JType = this.check_expr(e.args[0]);
+        let val_ty: JType = this.check_expr(e.vals[0]);
+        let i: int = 1;
+        while i < len(e.args) {
+            let kt: JType = this.check_expr(e.args[i]);
+            let vt: JType = this.check_expr(e.vals[i]);
+            if !jtype_equals(key_ty, kt) {
+                this.error("map literal has mixed key types", e.line, e.col);
+            }
+            if !jtype_equals(val_ty, vt) {
+                this.error("map literal has mixed value types", e.line, e.col);
+            }
+            i = i + 1;
+        }
+        return make_map_type(key_ty, val_ty);
+    }
+
+    fn check_fn_expr(e: Expr): JType {
+        let params: JType[] = [];
+        let i: int = 0;
+        while i < len(e.fn_params) {
+            push(params, this.resolve_type(e.fn_params[i].type_expr));
+            i = i + 1;
+        }
+        let ret: JType = this.resolve_type(e.fn_ret);
+        let saved_ret: JType = this.ret_type;
+        let saved_class: string = this.cur_class;
+        this.ret_type  = ret;
+        this.cur_class = "";
+        this.push_scope();
+        let j: int = 0;
+        while j < len(e.fn_params) {
+            this.define(e.fn_params[j].name, params[j]);
+            j = j + 1;
+        }
+        this.check_block(e.fn_body);
+        this.pop_scope();
+        this.ret_type  = saved_ret;
+        this.cur_class = saved_class;
+        return make_fn_type(params, ret);
+    }
+
+    // ── Call expression checking ──────────────────────────────────────────────
+
+    fn check_call_expr(e: Expr): JType {
+        // Method call: left is EXPR_FIELD
+        if e.left.kind == EXPR_FIELD {
+            return this.check_method_call(e);
+        }
+        // Regular function call: left is EXPR_IDENT
+        if e.left.kind == EXPR_IDENT {
+            return this.check_fn_call(e);
+        }
+        // Higher-order call: left is any expr returning a fn type
+        let callee_ty: JType = this.check_expr(e.left);
+        let i: int = 0;
+        while i < len(e.args) { this.check_expr(e.args[i]); i = i + 1; }
+        if callee_ty.kind == TY_FN { return callee_ty.ret; }
+        return make_void();
+    }
+
+    // Handles obj.method(args) where e.left is EXPR_FIELD.
+    fn check_method_call(e: Expr): JType {
+        let field_expr: Expr = e.left;
+        let obj_ty: JType = this.check_expr(field_expr.left);
+        let method: string = field_expr.sval;
+        let i: int = 0;
+        while i < len(e.args) { this.check_expr(e.args[i]); i = i + 1; }
+        if obj_ty.kind != TY_CLASS {
+            // Array/string method calls: return best-effort type
+            return make_void();
+        }
+        let ci: ClassInfo = this.info.find_class(obj_ty.class_name);
+        if ci == null { return make_void(); }
+        let mt: JType = ci.find_method(method);
+        if mt == null {
+            this.error("class " + obj_ty.class_name + " has no method '" + method + "'", e.line, e.col);
+            return make_void();
+        }
+        if mt.kind == TY_FN { return mt.ret; }
+        return mt;
+    }
+
+    // Handles bare function calls like foo(args), len(x), push(arr, val), etc.
+    fn check_fn_call(e: Expr): JType {
+        let name: string = e.left.sval;
+
+        // ── Built-in functions with special return-type rules ─────────────────
+
+        if name == "len" {
+            if len(e.args) == 1 { this.check_expr(e.args[0]); }
+            return make_int();
+        }
+        if name == "push" {
+            let i: int = 0;
+            while i < len(e.args) { this.check_expr(e.args[i]); i = i + 1; }
+            return make_void();
+        }
+        if name == "map_keys" {
+            if len(e.args) == 1 {
+                let mt: JType = this.check_expr(e.args[0]);
+                if mt.kind == TY_MAP { return make_array(mt.key); }
+            }
+            return make_array(make_void());
+        }
+        if name == "map_get" {
+            if len(e.args) >= 1 {
+                let mt: JType = this.check_expr(e.args[0]);
+                if len(e.args) >= 2 { this.check_expr(e.args[1]); }
+                if mt.kind == TY_MAP { return mt.value; }
+            }
+            return make_void();
+        }
+        if name == "int" || name == "float" || name == "string" || name == "bool" {
+            if len(e.args) == 1 { this.check_expr(e.args[0]); }
+            if name == "int"    { return make_int(); }
+            if name == "float"  { return make_float(); }
+            if name == "bool"   { return make_bool(); }
+            return make_string();
+        }
+
+        // ── Look up in scope ──────────────────────────────────────────────────
+
+        let callee_ty: JType = this.lookup(name);
+        let i: int = 0;
+        while i < len(e.args) { this.check_expr(e.args[i]); i = i + 1; }
+        if callee_ty == null {
+            this.error("undefined function '" + name + "'", e.line, e.col);
+            return make_void();
+        }
+        if callee_ty.kind == TY_FN { return callee_ty.ret; }
+        return make_void();
+    }
+}
+
+// ── Builtin scope ─────────────────────────────────────────────────────────────
+
+fn install_fn(s: Scope, name: string, params: JType[], ret: JType) {
+    s.define(name, make_fn_type(params, ret));
+}
+
+fn make_builtin_scope(): Scope {
+    let s: Scope = new Scope(null);
+
+    let v_ty: JType = make_void();
+    let i_ty: JType = make_int();
+    let f_ty: JType = make_float();
+    let b_ty: JType = make_bool();
+    let s_ty: JType = make_string();
+    let s_arr: JType = make_array(s_ty);
+    let v_arr: JType = make_array(v_ty);
+
+    // print, write: void
+    let p1s: JType[] = []; push(p1s, s_ty);
+    install_fn(s, "print",      p1s, v_ty);
+    install_fn(s, "write",      p1s, v_ty);
+    install_fn(s, "print_err",  p1s, v_ty);
+    install_fn(s, "panic",      p1s, v_ty);
+    // println: void
+    let p0: JType[] = [];
+    install_fn(s, "println",    p0, v_ty);
+    install_fn(s, "read_stdin", p0, s_ty);
+    install_fn(s, "args",       p0, s_arr);
+    install_fn(s, "now_millis",  p0, i_ty);
+    install_fn(s, "now_seconds", p0, i_ty);
+    install_fn(s, "now_string",  p0, s_ty);
+    // len: special (poly) — registered for scope lookup, special-cased in check_fn_call
+    let p1v: JType[] = []; push(p1v, v_ty);
+    install_fn(s, "len",  p1v, i_ty);
+    install_fn(s, "push", p1v, v_ty);
+    // int conversions
+    let p1i: JType[] = []; push(p1i, i_ty);
+    install_fn(s, "int_to_string",  p1i, s_ty);
+    install_fn(s, "char_to_string", p1i, s_ty);
+    install_fn(s, "exit",           p1i, v_ty);
+    // float conversions
+    let p1f: JType[] = []; push(p1f, f_ty);
+    install_fn(s, "float_to_string", p1f, s_ty);
+    // bool conversions
+    let p1b: JType[] = []; push(p1b, b_ty);
+    install_fn(s, "bool_to_string", p1b, s_ty);
+    // string funcs
+    let p_si: JType[] = []; push(p_si, s_ty); push(p_si, i_ty);
+    install_fn(s, "char_at",  p_si, i_ty);
+    let p_sii: JType[] = []; push(p_sii, s_ty); push(p_sii, i_ty); push(p_sii, i_ty);
+    install_fn(s, "string_slice", p_sii, s_ty);
+    let p_ss: JType[] = []; push(p_ss, s_ty); push(p_ss, s_ty);
+    install_fn(s, "read_file",           p1s, s_ty);
+    install_fn(s, "write_file",          p_ss, v_ty);
+    install_fn(s, "string_to_int",       p1s, i_ty);
+    install_fn(s, "string_contains",     p_ss, b_ty);
+    install_fn(s, "string_starts_with",  p_ss, b_ty);
+    install_fn(s, "string_ends_with",    p_ss, b_ty);
+    install_fn(s, "string_index_of",     p_ss, i_ty);
+    install_fn(s, "string_to_upper",     p1s, s_ty);
+    install_fn(s, "string_to_lower",     p1s, s_ty);
+    install_fn(s, "string_trim",         p1s, s_ty);
+    install_fn(s, "string_replace",      p_ss, s_ty);
+    // map functions (polymorphic — special-cased in check_fn_call for return type)
+    install_fn(s, "map_keys",   p1v, v_arr);
+    install_fn(s, "map_get",    p1v, v_ty);
+    install_fn(s, "map_set",    p1v, v_ty);
+    install_fn(s, "map_has",    p1v, b_ty);
+    install_fn(s, "map_delete", p1v, v_ty);
+    install_fn(s, "map_len",    p1v, i_ty);
+    // type conversions
+    install_fn(s, "int",    p1v, i_ty);
+    install_fn(s, "float",  p1v, f_ty);
+    install_fn(s, "string", p1v, s_ty);
+    // stdlib helpers that appear in core.jer
+    install_fn(s, "is_whitespace", p1i, b_ty);
+    install_fn(s, "is_digit",      p1i, b_ty);
+    install_fn(s, "is_alpha",      p1i, b_ty);
+    install_fn(s, "is_alnum",      p1i, b_ty);
+    // testing
+    install_fn(s, "assert_eq_int",    p1v, v_ty);
+    install_fn(s, "assert_eq_string", p1v, v_ty);
+    install_fn(s, "assert_eq_float",  p1v, v_ty);
+    install_fn(s, "assert_eq_bool",   p1v, v_ty);
+    install_fn(s, "assert_true",      p1v, v_ty);
+    install_fn(s, "assert_false",     p1v, v_ty);
+    install_fn(s, "each_line",        p1v, v_ty);
+
+    return s;
+}
+
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+fn type_check(prog: Program): CheckResult {
+    let c: Checker = new Checker();
+
+    // Pre-pass: register all class names so forward/mutual references work.
+    let i: int = 0;
+    while i < len(prog.tops) {
+        let tl: TopLevel = prog.tops[i];
+        if tl.kind == TL_CLASS { c.pre_register_class(tl.class_decl); }
+        i = i + 1;
+    }
+
+    // First pass: register function signatures and class members.
+    let j: int = 0;
+    while j < len(prog.tops) {
+        let tl: TopLevel = prog.tops[j];
+        if tl.kind == TL_FN    { c.register_fn(tl.fn_decl); }
+        if tl.kind == TL_CLASS { c.register_class(tl.class_decl); }
+        if tl.kind == TL_VAR   { c.register_top_var(tl); }
+        j = j + 1;
+    }
+
+    // Second pass: check bodies.
+    let k: int = 0;
+    while k < len(prog.tops) {
+        let tl: TopLevel = prog.tops[k];
+        if tl.kind == TL_FN    { c.check_fn_decl(tl.fn_decl); }
+        if tl.kind == TL_CLASS { c.check_class_decl(tl.class_decl); }
+        k = k + 1;
+    }
+
+    let result: CheckResult = new CheckResult();
+    result.info   = c.info;
+    result.errors = c.errors;
+    return result;
+}
