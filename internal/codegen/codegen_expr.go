@@ -75,12 +75,31 @@ func (g *Generator) genStore(lv *ast.OrExpr, lt, rhs string, out *strings.Builde
 		lvar, ok := g.locals[prim.Ident]
 		if !ok {
 			if gvar, ok2 := g.globals[prim.Ident]; ok2 {
-				g.storeInto(out, lt, rhs, gvar.reg)
+				if isHeapType(gvar.altType) {
+					oldReg := g.newTmp()
+					fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", oldReg, gvar.reg)
+					fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", rhs)
+					g.storeInto(out, lt, rhs, gvar.reg)
+					fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", oldReg)
+				} else {
+					g.storeInto(out, lt, rhs, gvar.reg)
+				}
 				return nil
 			}
 			return fmt.Errorf("undefined variable %q", prim.Ident)
 		}
-		g.storeInto(out, lt, rhs, lvar.reg)
+		// For heap-type locals, retain the new value and release the displaced one
+		// so the scope-exit release stays balanced regardless of how many times the
+		// variable has been reassigned.
+		if isHeapType(lvar.altType) {
+			oldReg := g.newTmp()
+			fmt.Fprintf(out, "  %s = load ptr, ptr %s\n", oldReg, lvar.reg)
+			fmt.Fprintf(out, "  call void @jerry_retain(ptr %s)\n", rhs)
+			g.storeInto(out, lt, rhs, lvar.reg)
+			fmt.Fprintf(out, "  call void @jerry_release(ptr %s)\n", oldReg)
+		} else {
+			g.storeInto(out, lt, rhs, lvar.reg)
+		}
 		return nil
 	}
 	// Postfix: could be obj.field or arr[idx] — build the base then store.
@@ -369,7 +388,7 @@ func (g *Generator) genPostfixVal(p *ast.PostfixExpr, out *strings.Builder) (str
 
 		case op.Field != "":
 			if ty.Kind != checker.KindClass {
-				return "", nil, fmt.Errorf("field access on non-class type %s", ty)
+				return "", nil, fmt.Errorf("field access on non-class type %s (field: %s, pos: %v)", ty, op.Field, op.Pos)
 			}
 			ci := g.info.Classes[ty.ClassName]
 			if _, isMethod := ci.Methods[op.Field]; isMethod {
@@ -592,6 +611,21 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  %s = call ptr @jerry_char_to_string(i64 %s)\n", res, argVal)
 			return res, checker.String, nil
 
+		case "string_contains", "string_starts_with", "string_ends_with":
+			sVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			subVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			raw := g.newTmp()
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i8 @jerry_%s(ptr %s, ptr %s)\n", raw, base.Ident, sVal, subVal)
+			fmt.Fprintf(out, "  %s = icmp ne i8 %s, 0\n", res, raw)
+			return res, checker.Bool, nil
+
 		case "read_file":
 			argVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {
@@ -613,6 +647,57 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  call void @jerry_write_file(ptr %s, ptr %s)\n", pathVal, contentVal)
 			g.releaseStrLitArgs(call.Args, []string{pathVal, contentVal}, out)
 			return "0", checker.Void, nil
+
+		case "getenv":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_getenv(ptr %s)\n", res, argVal)
+			return res, checker.String, nil
+
+		case "delete_file":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			fmt.Fprintf(out, "  call void @jerry_delete_file(ptr %s)\n", argVal)
+			return "0", checker.Void, nil
+
+		case "is_dir":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			raw := g.newTmp()
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i8 @jerry_is_dir(ptr %s)\n", raw, argVal)
+			fmt.Fprintf(out, "  %s = icmp ne i8 %s, 0\n", res, raw)
+			return res, checker.Bool, nil
+
+		case "list_dir":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_list_dir(ptr %s)\n", res, argVal)
+			return res, checker.ArrayOf(checker.String), nil
+
+		case "runtime_lib_path":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_runtime_lib_path()\n", res)
+			return res, checker.String, nil
+
+		case "exec":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_exec(ptr %s)\n", res, argVal)
+			return res, checker.Int, nil
 
 		case "exit":
 			argVal, err := g.genExpr(call.Args[0], out)
@@ -1062,9 +1147,13 @@ func (g *Generator) genArrayLit(a *ast.ArrayLit, out *strings.Builder) (string, 
 		elemLLVM = "i64"
 	}
 	elemSize := g.typeSize(elemTy)
+	heapElems := int8(0)
+	if isHeapType(elemTy) {
+		heapElems = 1
+	}
 	arrReg := g.newTmp()
-	fmt.Fprintf(out, "  %s = call ptr @jerry_array_new(i64 %d, i64 %d)\n",
-		arrReg, elemSize, len(a.Elems))
+	fmt.Fprintf(out, "  %s = call ptr @jerry_array_new(i64 %d, i64 %d, i8 %d)\n",
+		arrReg, elemSize, len(a.Elems), heapElems)
 	for _, e := range a.Elems {
 		ev, err := g.genExpr(e, out)
 		if err != nil {

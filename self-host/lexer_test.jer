@@ -1,0 +1,367 @@
+// Tests for the Jerry lexer implemented in lexer.jer.
+// Run with: jerry test self-host/
+//
+// Tests call next_token() directly rather than tokenize() to avoid creating
+// arrays of class instances (Token[]), which is not yet exercised by Jerry's
+// existing test suite.
+//
+// Note: lexers are created with `new Lexer(src)` rather than a helper
+// function because returning a class instance from a function loses string
+// field data (reference-counting bug in Jerry's codegen).
+
+include @testing
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
+fn test_integers() {
+    let lx: Lexer = new Lexer("0 42 1000");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_INT, "0 kind");
+    assert_eq_string(t0.value, "0", "0 value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_INT, "42 kind");
+    assert_eq_string(t1.value, "42", "42 value");
+
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_INT, "1000 kind");
+    assert_eq_string(t2.value, "1000", "1000 value");
+
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF after integers");
+}
+
+fn test_floats() {
+    let lx: Lexer = new Lexer("3.14 0.5 100.0");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_FLOAT, "3.14 kind");
+    assert_eq_string(t0.value, "3.14", "3.14 value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_FLOAT, "0.5 kind");
+    assert_eq_string(t1.value, "0.5", "0.5 value");
+
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_FLOAT, "100.0 kind");
+    assert_eq_string(t2.value, "100.0", "100.0 value");
+}
+
+fn test_int_then_dot() {
+    // "3." — no digit after dot, so INT + OP ".".
+    let lx: Lexer = new Lexer("3.");
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_INT, "3 kind");
+    assert_eq_string(t0.value, "3", "3 value");
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_OP, ". kind");
+    assert_eq_string(t1.value, ".", ". value");
+}
+
+fn test_strings() {
+    let lx: Lexer = new Lexer("\"hello\" \"world\"");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_STRING, "hello kind");
+    assert_eq_string(t0.value, "hello", "hello value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_STRING, "world kind");
+    assert_eq_string(t1.value, "world", "world value");
+}
+
+fn test_string_escape_newline() {
+    let lx: Lexer = new Lexer("\"a\\nb\"");
+    let t: Token = lx.next_token();
+    assert_eq_int(t.kind, TOK_STRING, "escaped string kind");
+    assert_eq_string(t.value, "a\nb", "\\n expanded");
+}
+
+fn test_string_escape_tab() {
+    let lx: Lexer = new Lexer("\"tab\\there\"");
+    let t: Token = lx.next_token();
+    assert_eq_string(t.value, "tab\there", "\\t expanded");
+}
+
+fn test_string_escape_quote() {
+    let lx: Lexer = new Lexer("\"say \\\"hi\\\"\"");
+    let t: Token = lx.next_token();
+    assert_eq_string(t.value, "say \"hi\"", "\\\" expanded");
+}
+
+fn test_string_escape_backslash() {
+    let lx: Lexer = new Lexer("\"back\\\\slash\"");
+    let t: Token = lx.next_token();
+    assert_eq_string(t.value, "back\\slash", "\\\\ expanded");
+}
+
+fn test_unterminated_string() {
+    let lx: Lexer = new Lexer("\"no end");
+    let t: Token = lx.next_token();
+    assert_eq_int(t.kind, TOK_ERROR, "unterminated string is ERROR");
+}
+
+fn test_booleans() {
+    let lx: Lexer = new Lexer("true false");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_BOOL, "true kind");
+    assert_eq_string(t0.value, "true", "true value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_BOOL, "false kind");
+    assert_eq_string(t1.value, "false", "false value");
+
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_keywords() {
+    let lx: Lexer = new Lexer("let fn class extends if else while for return break continue include");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_KEYWORD, "let");
+    assert_eq_string(t0.value, "let", "let value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_KEYWORD, "fn");
+    assert_eq_string(t1.value, "fn", "fn value");
+
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_KEYWORD, "class");
+
+    let t3: Token = lx.next_token();
+    assert_eq_int(t3.kind, TOK_KEYWORD, "extends");
+
+    let t4: Token = lx.next_token();
+    assert_eq_int(t4.kind, TOK_KEYWORD, "if");
+
+    let t5: Token = lx.next_token();
+    assert_eq_int(t5.kind, TOK_KEYWORD, "else");
+
+    let t6: Token = lx.next_token();
+    assert_eq_int(t6.kind, TOK_KEYWORD, "while");
+
+    let t7: Token = lx.next_token();
+    assert_eq_int(t7.kind, TOK_KEYWORD, "for");
+
+    let t8: Token = lx.next_token();
+    assert_eq_int(t8.kind, TOK_KEYWORD, "return");
+    assert_eq_string(t8.value, "return", "return value");
+
+    let t9: Token = lx.next_token();
+    assert_eq_int(t9.kind, TOK_KEYWORD, "break");
+
+    let t10: Token = lx.next_token();
+    assert_eq_int(t10.kind, TOK_KEYWORD, "continue");
+
+    let t11: Token = lx.next_token();
+    assert_eq_int(t11.kind, TOK_KEYWORD, "include");
+    assert_eq_string(t11.value, "include", "include value");
+
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_keyword_this() {
+    // "this", "null", "new" cannot appear as string literals in expression
+    // position due to Participle parser ambiguity; build from char codes.
+    // t=116 h=104 i=105 s=115
+    let s: string = char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
+    let lx: Lexer = new Lexer(s);
+    let t: Token = lx.next_token();
+    assert_eq_int(t.kind, TOK_KEYWORD, "kw:this");
+}
+
+fn test_keyword_null() {
+    // n=110 u=117 l=108 l=108
+    let s: string = char_to_string(110) + char_to_string(117) + char_to_string(108) + char_to_string(108);
+    let lx: Lexer = new Lexer(s);
+    let t: Token = lx.next_token();
+    assert_eq_int(t.kind, TOK_KEYWORD, "kw:null");
+}
+
+fn test_keyword_new() {
+    // n=110 e=101 w=119
+    let s: string = char_to_string(110) + char_to_string(101) + char_to_string(119);
+    let lx: Lexer = new Lexer(s);
+    let t: Token = lx.next_token();
+    assert_eq_int(t.kind, TOK_KEYWORD, "kw:new");
+}
+
+fn test_type_names_are_idents() {
+    // int, float, bool, string, void lex as IDENT — not keywords.
+    let lx: Lexer = new Lexer("int float bool string void");
+    let t0: Token = lx.next_token(); assert_eq_int(t0.kind, TOK_IDENT, "int is IDENT");
+    let t1: Token = lx.next_token(); assert_eq_int(t1.kind, TOK_IDENT, "float is IDENT");
+    let t2: Token = lx.next_token(); assert_eq_int(t2.kind, TOK_IDENT, "bool is IDENT");
+    let t3: Token = lx.next_token(); assert_eq_int(t3.kind, TOK_IDENT, "string is IDENT");
+    let t4: Token = lx.next_token(); assert_eq_int(t4.kind, TOK_IDENT, "void is IDENT");
+}
+
+fn test_identifiers() {
+    let lx: Lexer = new Lexer("foo bar_baz _x myVar123");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_IDENT, "foo kind");
+    assert_eq_string(t0.value, "foo", "foo value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_IDENT, "bar_baz kind");
+    assert_eq_string(t1.value, "bar_baz", "bar_baz value");
+
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_IDENT, "_x kind");
+    assert_eq_string(t2.value, "_x", "_x value");
+
+    let t3: Token = lx.next_token();
+    assert_eq_int(t3.kind, TOK_IDENT, "myVar123 kind");
+    assert_eq_string(t3.value, "myVar123", "myVar123 value");
+}
+
+fn test_operators_single() {
+    let lx: Lexer = new Lexer("+ - * / % = ! < > . , ; : ( ) { } [ ] @");
+    let t0:  Token = lx.next_token(); assert_eq_string(t0.value,  "+", "op +");  assert_eq_int(t0.kind,  TOK_OP, "k +");
+    let t1:  Token = lx.next_token(); assert_eq_string(t1.value,  "-", "op -");  assert_eq_int(t1.kind,  TOK_OP, "k -");
+    let t2:  Token = lx.next_token(); assert_eq_string(t2.value,  "*", "op *");  assert_eq_int(t2.kind,  TOK_OP, "k *");
+    let t3:  Token = lx.next_token(); assert_eq_string(t3.value,  "/", "op /");  assert_eq_int(t3.kind,  TOK_OP, "k /");
+    let t4:  Token = lx.next_token(); assert_eq_string(t4.value,  "%", "op %");  assert_eq_int(t4.kind,  TOK_OP, "k %");
+    let t5:  Token = lx.next_token(); assert_eq_string(t5.value,  "=", "op =");  assert_eq_int(t5.kind,  TOK_OP, "k =");
+    let t6:  Token = lx.next_token(); assert_eq_string(t6.value,  "!", "op !");  assert_eq_int(t6.kind,  TOK_OP, "k !");
+    let t7:  Token = lx.next_token(); assert_eq_string(t7.value,  "<", "op <");  assert_eq_int(t7.kind,  TOK_OP, "k <");
+    let t8:  Token = lx.next_token(); assert_eq_string(t8.value,  ">", "op >");  assert_eq_int(t8.kind,  TOK_OP, "k >");
+    let t9:  Token = lx.next_token(); assert_eq_string(t9.value,  ".", "op .");  assert_eq_int(t9.kind,  TOK_OP, "k .");
+    let t10: Token = lx.next_token(); assert_eq_string(t10.value, ",", "op ,");  assert_eq_int(t10.kind, TOK_OP, "k ,");
+    let t11: Token = lx.next_token(); assert_eq_string(t11.value, ";", "op ;");  assert_eq_int(t11.kind, TOK_OP, "k ;");
+    let t12: Token = lx.next_token(); assert_eq_string(t12.value, ":", "op :");  assert_eq_int(t12.kind, TOK_OP, "k :");
+    let t13: Token = lx.next_token(); assert_eq_string(t13.value, "(", "op (");  assert_eq_int(t13.kind, TOK_OP, "k (");
+    let t14: Token = lx.next_token(); assert_eq_string(t14.value, ")", "op )");  assert_eq_int(t14.kind, TOK_OP, "k )");
+    let t15: Token = lx.next_token(); assert_eq_string(t15.value, "{", "op {");  assert_eq_int(t15.kind, TOK_OP, "k {");
+    let t16: Token = lx.next_token(); assert_eq_string(t16.value, "}", "op }");  assert_eq_int(t16.kind, TOK_OP, "k }");
+    let t17: Token = lx.next_token(); assert_eq_string(t17.value, "[", "op [");  assert_eq_int(t17.kind, TOK_OP, "k [");
+    let t18: Token = lx.next_token(); assert_eq_string(t18.value, "]", "op ]");  assert_eq_int(t18.kind, TOK_OP, "k ]");
+    let t19: Token = lx.next_token(); assert_eq_string(t19.value, "@", "op @");  assert_eq_int(t19.kind, TOK_OP, "k @");
+    let eof: Token = lx.next_token(); assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_operators_multi() {
+    let lx: Lexer = new Lexer("&& || == != <= >= ++ --");
+    let t0: Token = lx.next_token(); assert_eq_string(t0.value, "&&", "op &&"); assert_eq_int(t0.kind, TOK_OP, "k &&");
+    let t1: Token = lx.next_token(); assert_eq_string(t1.value, "||", "op ||"); assert_eq_int(t1.kind, TOK_OP, "k ||");
+    let t2: Token = lx.next_token(); assert_eq_string(t2.value, "==", "op =="); assert_eq_int(t2.kind, TOK_OP, "k ==");
+    let t3: Token = lx.next_token(); assert_eq_string(t3.value, "!=", "op !="); assert_eq_int(t3.kind, TOK_OP, "k !=");
+    let t4: Token = lx.next_token(); assert_eq_string(t4.value, "<=", "op <="); assert_eq_int(t4.kind, TOK_OP, "k <=");
+    let t5: Token = lx.next_token(); assert_eq_string(t5.value, ">=", "op >="); assert_eq_int(t5.kind, TOK_OP, "k >=");
+    let t6: Token = lx.next_token(); assert_eq_string(t6.value, "++", "op ++"); assert_eq_int(t6.kind, TOK_OP, "k ++");
+    let t7: Token = lx.next_token(); assert_eq_string(t7.value, "--", "op --"); assert_eq_int(t7.kind, TOK_OP, "k --");
+    let eof: Token = lx.next_token(); assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_line_comment() {
+    let lx: Lexer = new Lexer("foo // this is ignored\nbar");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_IDENT, "foo before comment");
+    assert_eq_string(t0.value, "foo", "foo value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_IDENT, "bar after comment");
+    assert_eq_string(t1.value, "bar", "bar value");
+
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_block_comment() {
+    let lx: Lexer = new Lexer("a /* multi\nline\ncomment */ b");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_IDENT, "a before block comment");
+    assert_eq_string(t0.value, "a", "a value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_IDENT, "b after block comment");
+    assert_eq_string(t1.value, "b", "b value");
+
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_unterminated_block_comment() {
+    let lx: Lexer = new Lexer("x /* never closed");
+
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_IDENT, "x before bad comment");
+    assert_eq_string(t0.value, "x", "x value");
+
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_ERROR, "unterminated block comment is ERROR");
+    assert_eq_string(t1.value, "unterminated block comment", "error message");
+}
+
+fn test_positions() {
+    let lx: Lexer = new Lexer("ab\ncd\n  ef");
+    let ab: Token = lx.next_token();
+    let cd: Token = lx.next_token();
+    let ef: Token = lx.next_token();
+    assert_eq_int(ab.line, 1, "ab line"); assert_eq_int(ab.col, 1, "ab col");
+    assert_eq_int(cd.line, 2, "cd line"); assert_eq_int(cd.col, 1, "cd col");
+    assert_eq_int(ef.line, 3, "ef line"); assert_eq_int(ef.col, 3, "ef col (after 2 spaces)");
+}
+
+fn test_let_declaration() {
+    let lx: Lexer = new Lexer("let x: int = 42;");
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_KEYWORD, "let kw");
+    assert_eq_string(t0.value, "let", "let value");
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_IDENT, "x ident");
+    assert_eq_string(t1.value, "x", "x value");
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_OP, "colon");
+    assert_eq_string(t2.value, ":", ": value");
+    let t3: Token = lx.next_token();
+    assert_eq_int(t3.kind, TOK_IDENT, "int ident");   // int is plain IDENT
+    assert_eq_string(t3.value, "int", "int value");
+    let t4: Token = lx.next_token();
+    assert_eq_int(t4.kind, TOK_OP, "equals");
+    assert_eq_string(t4.value, "=", "= value");
+    let t5: Token = lx.next_token();
+    assert_eq_int(t5.kind, TOK_INT, "42 int");
+    assert_eq_string(t5.value, "42", "42 value");
+    let t6: Token = lx.next_token();
+    assert_eq_int(t6.kind, TOK_OP, "semi");
+    assert_eq_string(t6.value, ";", "; value");
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_include_directive() {
+    let lx: Lexer = new Lexer("include @testing");
+    let t0: Token = lx.next_token();
+    assert_eq_int(t0.kind, TOK_KEYWORD, "include kw");
+    assert_eq_string(t0.value, "include", "include value");
+    let t1: Token = lx.next_token();
+    assert_eq_int(t1.kind, TOK_OP, "@ op");
+    assert_eq_string(t1.value, "@", "@ value");
+    let t2: Token = lx.next_token();
+    assert_eq_int(t2.kind, TOK_IDENT, "testing ident");
+    assert_eq_string(t2.value, "testing", "testing value");
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "EOF");
+}
+
+fn test_empty_input() {
+    let lx: Lexer = new Lexer("");
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "empty input gives EOF");
+    assert_eq_int(eof.line, 1, "EOF line");
+    assert_eq_int(eof.col,  1, "EOF col");
+}
+
+fn test_only_whitespace() {
+    let lx: Lexer = new Lexer("   \n\t  ");
+    let eof: Token = lx.next_token();
+    assert_eq_int(eof.kind, TOK_EOF, "whitespace-only gives EOF");
+}

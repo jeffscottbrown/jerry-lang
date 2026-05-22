@@ -1,8 +1,13 @@
 #include "runtime.h"
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 /* ── Reference-counted allocator ────────────────────────────────────────────── */
 /* Every allocation is preceded by a 16-byte header:
@@ -66,6 +71,13 @@ static JerryStr* alloc_str(int64_t len) {
 
 static void jerry_arr_destructor(void* self) {
     JerryArray* arr = (JerryArray*)self;
+    if (arr->heap_elems) {
+        for (int64_t i = 0; i < arr->len; i++) {
+            void* ptr;
+            memcpy(&ptr, arr->data + i * arr->elem_size, sizeof(void*));
+            jerry_release(ptr);
+        }
+    }
     free(arr->data); /* data is a plain malloc'd buffer */
 }
 
@@ -88,6 +100,8 @@ JerryStr* jerry_string_concat(JerryStr* a, JerryStr* b) {
 }
 
 int8_t jerry_string_eq(JerryStr* a, JerryStr* b) {
+    if (a == b) return 1;
+    if (!a || !b) return 0;
     if (a->len != b->len) return 0;
     return (int8_t)(memcmp(a->data, b->data, (size_t)a->len) == 0);
 }
@@ -120,6 +134,30 @@ JerryStr* jerry_char_to_string(int64_t code) {
     char buf[1];
     buf[0] = (char)(code & 0xFF);
     return jerry_string_new(buf, 1);
+}
+
+int8_t jerry_string_contains(JerryStr* s, JerryStr* sub) {
+    if (s == NULL || sub == NULL) return 0;
+    if (sub->len == 0) return 1;
+    if (sub->len > s->len) return 0;
+    for (int64_t i = 0; i <= s->len - sub->len; i++) {
+        if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0) return 1;
+    }
+    return 0;
+}
+
+int8_t jerry_string_starts_with(JerryStr* s, JerryStr* prefix) {
+    if (s == NULL || prefix == NULL) return 0;
+    if (prefix->len == 0) return 1;
+    if (prefix->len > s->len) return 0;
+    return (int8_t)(memcmp(s->data, prefix->data, (size_t)prefix->len) == 0);
+}
+
+int8_t jerry_string_ends_with(JerryStr* s, JerryStr* suffix) {
+    if (s == NULL || suffix == NULL) return 0;
+    if (suffix->len == 0) return 1;
+    if (suffix->len > s->len) return 0;
+    return (int8_t)(memcmp(s->data + s->len - suffix->len, suffix->data, (size_t)suffix->len) == 0);
 }
 
 JerryStr* jerry_int_to_string(int64_t n) {
@@ -205,6 +243,76 @@ void jerry_write_file(JerryStr* path, JerryStr* content) {
     fclose(f);
 }
 
+void jerry_delete_file(JerryStr* path) {
+    if (path == NULL) return;
+    remove(path->data);
+}
+
+int8_t jerry_is_dir(JerryStr* path) {
+    if (path == NULL) return 0;
+    struct stat st;
+    if (stat(path->data, &st) != 0) return 0;
+    return S_ISDIR(st.st_mode) ? 1 : 0;
+}
+
+JerryArray* jerry_list_dir(JerryStr* path) {
+    JerryArray* result = jerry_array_new(sizeof(void*), 8, 1);
+    if (path == NULL) return result;
+    struct dirent** entries;
+    int n = scandir(path->data, &entries, NULL, alphasort);
+    if (n < 0) return result;
+    for (int i = 0; i < n; i++) {
+        const char* name = entries[i]->d_name;
+        if (name[0] != '.') {  /* skip hidden / . / .. */
+            JerryStr* s = jerry_string_new(name, (int64_t)strlen(name));
+            jerry_array_push(result, &s);
+        }
+        free(entries[i]);
+    }
+    free(entries);
+    return result;
+}
+
+JerryStr* jerry_getenv(JerryStr* name) {
+    if (name == NULL) return jerry_string_new("", 0);
+    const char* val = getenv(name->data);
+    if (val == NULL) return jerry_string_new("", 0);
+    return jerry_string_new(val, (int64_t)strlen(val));
+}
+
+int64_t jerry_exec(JerryArray* args) {
+    if (args == NULL || args->len == 0) {
+        fprintf(stderr, "jerry: exec: empty args\n");
+        return 1;
+    }
+    /* Build a null-terminated argv for execvp. */
+    char** argv = (char**)malloc(sizeof(char*) * (size_t)(args->len + 1));
+    if (!argv) { fprintf(stderr, "jerry: exec: out of memory\n"); return 1; }
+    for (int64_t i = 0; i < args->len; i++) {
+        JerryStr** slot = (JerryStr**)jerry_array_get(args, i);
+        argv[i] = (*slot)->data;
+    }
+    argv[args->len] = NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        free(argv);
+        fprintf(stderr, "jerry: exec: fork failed\n");
+        return 1;
+    }
+    if (pid == 0) {
+        execvp(argv[0], argv);
+        fprintf(stderr, "jerry: exec: cannot execute '%s': %s\n", argv[0], strerror(errno));
+        _exit(127);
+    }
+    free(argv);
+    int status = 0;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status)) return (int64_t)WEXITSTATUS(status);
+    if (WIFSIGNALED(status)) return (int64_t)(128 + WTERMSIG(status));
+    return 1;
+}
+
 void jerry_each_line(JerryStr* path, JerryClosure* closure) {
     if (path == NULL || closure == NULL || closure->fn_ptr == NULL) {
         fprintf(stderr, "jerry: each_line: null argument or invalid callback\n");
@@ -236,17 +344,23 @@ void jerry_each_line(JerryStr* path, JerryClosure* closure) {
 
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */
 
-JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap) {
+JerryArray* jerry_array_new(int64_t elem_size, int64_t initial_cap, int8_t heap_elems) {
     JerryArray* arr = jerry_alloc(sizeof(JerryArray));
     JerryHeader* h = (JerryHeader*)arr - 1;
-    h->destructor = jerry_arr_destructor;
-    arr->elem_size = elem_size;
-    arr->len       = 0;
-    arr->cap       = initial_cap > 0 ? initial_cap : 8;
-    arr->data      = malloc((size_t)(arr->cap * elem_size));
+    h->destructor  = jerry_arr_destructor;
+    arr->elem_size  = elem_size;
+    arr->len        = 0;
+    arr->cap        = initial_cap > 0 ? initial_cap : 8;
+    arr->heap_elems = heap_elems;
+    arr->data       = malloc((size_t)(arr->cap * elem_size));
     if (!arr->data) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
     return arr;
 }
+
+/* Mark an existing array as holding heap-type elements.  Called by codegen
+   when an empty [] literal is annotated with a heap-element type (e.g.
+   Token[]) so that push/set/destructor manage reference counts correctly. */
+void jerry_array_mark_heap(JerryArray* arr) { arr->heap_elems = 1; }
 
 void* jerry_array_get(JerryArray* arr, int64_t idx) {
     if (idx < 0 || idx >= arr->len) {
@@ -265,7 +379,17 @@ void jerry_array_set(JerryArray* arr, int64_t idx, void* elem) {
             (long long)idx, (long long)arr->len);
         exit(1);
     }
-    memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+    if (arr->heap_elems) {
+        void* incoming;
+        memcpy(&incoming, elem, sizeof(void*));
+        void* old;
+        memcpy(&old, arr->data + idx * arr->elem_size, sizeof(void*));
+        jerry_retain(incoming);
+        memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+        jerry_release(old);
+    } else {
+        memcpy(arr->data + idx * arr->elem_size, elem, (size_t)arr->elem_size);
+    }
 }
 
 int64_t jerry_array_len(JerryArray* arr) {
@@ -283,6 +407,11 @@ void jerry_array_push(JerryArray* arr, void* elem) {
         arr->data = new_data;
         arr->cap  = new_cap;
     }
+    if (arr->heap_elems) {
+        void* ptr;
+        memcpy(&ptr, elem, sizeof(void*));
+        jerry_retain(ptr);
+    }
     memcpy(arr->data + arr->len * arr->elem_size, elem, (size_t)arr->elem_size);
     arr->len++;
 }
@@ -299,13 +428,31 @@ void jerry_capture_args(int64_t argc, char** argv) {
 
 JerryArray* jerry_args(void) {
     int64_t count = g_argc > 1 ? g_argc - 1 : 0;
-    JerryArray* arr = jerry_array_new(sizeof(void*), count > 0 ? count : 1);
+    JerryArray* arr = jerry_array_new(sizeof(void*), count > 0 ? count : 1, 1);
     for (int64_t i = 1; i < g_argc; i++) {
         int64_t slen = (int64_t)strlen(g_argv[i]);
         JerryStr* s = jerry_string_new(g_argv[i], slen);
         jerry_array_push(arr, &s);
     }
     return arr;
+}
+
+/* Returns JERRY_RUNTIME env var, or <binary_dir>/../lib/jerry_runtime.a.
+   Mirrors the same discovery logic as internal/build/build.go:runtimeLibPath(). */
+JerryStr* jerry_runtime_lib_path(void) {
+    const char* env = getenv("JERRY_RUNTIME");
+    if (env && env[0]) return jerry_string_new(env, (int64_t)strlen(env));
+    if (g_argv && g_argv[0]) {
+        char resolved[4096];
+        if (realpath(g_argv[0], resolved)) {
+            char* slash = strrchr(resolved, '/');
+            if (slash) { *slash = '\0'; }
+            strncat(resolved, "/../lib/jerry_runtime.a",
+                    sizeof(resolved) - strlen(resolved) - 1);
+            return jerry_string_new(resolved, (int64_t)strlen(resolved));
+        }
+    }
+    return jerry_string_new("", 0);
 }
 
 /* ── I/O extras ─────────────────────────────────────────────────────────────── */
@@ -485,7 +632,7 @@ void jerry_map_delete(JerryMap* m, void* key) {
 int64_t jerry_map_len(JerryMap* m) { return m->len; }
 
 JerryArray* jerry_map_keys(JerryMap* m) {
-    JerryArray* arr = jerry_array_new(8, m->len > 0 ? m->len : 1);
+    JerryArray* arr = jerry_array_new(8, m->len > 0 ? m->len : 1, m->string_keys);
     for (int64_t i = 0; i < m->bucket_count; i++) {
         for (JerryMapNode* n = m->buckets[i]; n; n = n->next) {
             jerry_array_push(arr, n->key);

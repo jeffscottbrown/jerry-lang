@@ -1,0 +1,262 @@
+// Tests for the Jerry parser implemented in parser.jer.
+// Run with: jerry test self-host/
+
+include @testing
+
+// Helper: parse src and return prog.to_string()
+fn parse_str(src: string): string {
+    let prog: Program = parse(src);
+    return prog.to_string();
+}
+
+// ── Includes ───────────────────────────────────────────────────────────────────
+
+fn test_parse_include_stdlib() {
+    let got: string = parse_str("include @string");
+    assert_eq_string(got, "(program\n  (include @string))", "stdlib include");
+}
+
+fn test_parse_include_remote() {
+    let got: string = parse_str("include " + char_to_string(34) + "foo/bar.jer" + char_to_string(34));
+    assert_eq_string(got, "(program\n  (include foo/bar.jer))", "remote include");
+}
+
+// ── Top-level variable declarations ────────────────────────────────────────────
+
+fn test_parse_global_var_int() {
+    let got: string = parse_str("let x: int = 42;");
+    assert_eq_string(got, "(program\n  (let x int (int 42)))", "global int var");
+}
+
+fn test_parse_global_var_string() {
+    let got: string = parse_str("let s: string = " + char_to_string(34) + "hello" + char_to_string(34) + ";");
+    assert_eq_string(got, "(program\n  (let s string (string hello)))", "global string var");
+}
+
+// ── Function declarations ───────────────────────────────────────────────────────
+
+fn test_parse_fn_no_params() {
+    let got: string = parse_str("fn foo() { }");
+    assert_eq_string(got, "(program\n  (fn foo() { }))", "fn no params");
+}
+
+fn test_parse_fn_returns_int() {
+    let got: string = parse_str("fn one(): int { return 1; }");
+    assert_eq_string(got, "(program\n  (fn one():int { (return (int 1)) }))", "fn returns int");
+}
+
+fn test_parse_fn_two_params() {
+    let got: string = parse_str("fn add(a: int, b: int): int { return a + b; }");
+    assert_eq_string(got, "(program\n  (fn add(a:int,b:int):int { (return (+ a b)) }))", "fn two params");
+}
+
+fn test_parse_fn_string_param() {
+    let got: string = parse_str("fn greet(name: string): string { return name; }");
+    assert_eq_string(got, "(program\n  (fn greet(name:string):string { (return name) }))", "fn string param");
+}
+
+// ── Class declarations ──────────────────────────────────────────────────────────
+
+fn test_parse_class_empty() {
+    let got: string = parse_str("class Foo { }");
+    assert_eq_string(got, "(program\n  (class Foo))", "empty class");
+}
+
+fn test_parse_class_fields() {
+    let got: string = parse_str("class Point { x: int; y: int; }");
+    assert_eq_string(got, "(program\n  (class Point (field x int) (field y int)))", "class with fields");
+}
+
+fn test_parse_class_method() {
+    let got: string = parse_str("class Box { w: int; fn area(): int { return this.w; } }");
+    assert_eq_string(got, "(program\n  (class Box (field w int) (fn area():int { (return (. this w)) })))", "class method");
+}
+
+fn test_parse_class_extends() {
+    let got: string = parse_str("class Dog extends Animal { breed: string; }");
+    assert_eq_string(got, "(program\n  (class Dog extends Animal (field breed string)))", "class extends");
+}
+
+// ── Type expressions ────────────────────────────────────────────────────────────
+
+fn test_parse_type_array() {
+    let got: string = parse_str("fn f(xs: int[]): int { return xs[0]; }");
+    assert_eq_string(got, "(program\n  (fn f(xs:int[]):int { (return ([] xs (int 0))) }))", "array type param");
+}
+
+fn test_parse_type_map() {
+    let got: string = parse_str("fn f(m: map<string, int>): int { return m[" + char_to_string(34) + "k" + char_to_string(34) + "]; }");
+    assert_eq_string(got, "(program\n  (fn f(m:map<string,int>):int { (return ([] m (string k))) }))", "map type param");
+}
+
+fn test_parse_type_fn() {
+    let got: string = parse_str("fn apply(f: fn(int): int, x: int): int { return f(x); }");
+    assert_eq_string(got, "(program\n  (fn apply(f:fn(int):int,x:int):int { (return (call f x)) }))", "fn type param");
+}
+
+// ── Statements ──────────────────────────────────────────────────────────────────
+
+fn test_parse_var_decl() {
+    let got: string = parse_str("fn f() { let x: int = 0; }");
+    assert_eq_string(got, "(program\n  (fn f() { (let x int (int 0)) }))", "var decl");
+}
+
+fn test_parse_return_void() {
+    let got: string = parse_str("fn f() { return; }");
+    assert_eq_string(got, "(program\n  (fn f() { (return) }))", "return void");
+}
+
+fn test_parse_if_only() {
+    let got: string = parse_str("fn f(x: int) { if x > 0 { return; } }");
+    assert_eq_string(got, "(program\n  (fn f(x:int) { (if (> x (int 0)) { (return) }) }))", "if no else");
+}
+
+fn test_parse_if_else() {
+    let got: string = parse_str("fn f(x: int): int { if x > 0 { return 1; } else { return 0; } }");
+    assert_eq_string(got, "(program\n  (fn f(x:int):int { (if (> x (int 0)) { (return (int 1)) } { (return (int 0)) }) }))", "if else");
+}
+
+fn test_parse_while() {
+    let got: string = parse_str("fn f() { let i: int = 0; while i < 10 { i++; } }");
+    assert_eq_string(got, "(program\n  (fn f() { (let i int (int 0)) (while (< i (int 10)) { (expr (++ i)) }) }))", "while loop");
+}
+
+fn test_parse_for() {
+    let got: string = parse_str("fn f() { for (let i: int = 0; i < 3; i++) { } }");
+    assert_eq_string(got, "(program\n  (fn f() { (for (let i int (int 0)) (< i (int 3)) (++ i) { }) }))", "for loop");
+}
+
+fn test_parse_break_continue() {
+    let got: string = parse_str("fn f() { while true { break; continue; } }");
+    assert_eq_string(got, "(program\n  (fn f() { (while (bool true) { (break) (continue) }) }))", "break continue");
+}
+
+// ── Expressions ─────────────────────────────────────────────────────────────────
+
+fn test_parse_arithmetic() {
+    let got: string = parse_str("fn f(): int { return 1 + 2 * 3 - 4 / 2; }");
+    assert_eq_string(got, "(program\n  (fn f():int { (return (- (+ (int 1) (* (int 2) (int 3))) (/ (int 4) (int 2)))) }))", "arithmetic precedence");
+}
+
+fn test_parse_comparison() {
+    let got: string = parse_str("fn f(x: int): bool { return x >= 0 && x <= 100; }");
+    assert_eq_string(got, "(program\n  (fn f(x:int):bool { (return (&& (>= x (int 0)) (<= x (int 100)))) }))", "comparison and");
+}
+
+fn test_parse_unary() {
+    let got: string = parse_str("fn f(x: int): int { return -x; }");
+    assert_eq_string(got, "(program\n  (fn f(x:int):int { (return (- x)) }))", "unary minus");
+}
+
+fn test_parse_not() {
+    let got: string = parse_str("fn f(b: bool): bool { return !b; }");
+    assert_eq_string(got, "(program\n  (fn f(b:bool):bool { (return (! b)) }))", "logical not");
+}
+
+fn test_parse_new_expr() {
+    let got: string = parse_str("fn f(): Foo { return new Foo(); }");
+    assert_eq_string(got, "(program\n  (fn f():Foo { (return (new Foo)) }))", "new expr");
+}
+
+fn test_parse_array_literal() {
+    let got: string = parse_str("fn f(): int[] { return [1, 2, 3]; }");
+    assert_eq_string(got, "(program\n  (fn f():int[] { (return [(int 1) (int 2) (int 3)]) }))", "array literal");
+}
+
+fn test_parse_empty_array_literal() {
+    let got: string = parse_str("fn f() { let xs: int[] = []; }");
+    assert_eq_string(got, "(program\n  (fn f() { (let xs int[] []) }))", "empty array literal");
+}
+
+fn test_parse_index_expr() {
+    let got: string = parse_str("fn f(xs: int[]): int { return xs[0]; }");
+    assert_eq_string(got, "(program\n  (fn f(xs:int[]):int { (return ([] xs (int 0))) }))", "index expr");
+}
+
+fn test_parse_field_access() {
+    let got: string = parse_str("fn f(p: Point): int { return p.x; }");
+    assert_eq_string(got, "(program\n  (fn f(p:Point):int { (return (. p x)) }))", "field access");
+}
+
+fn test_parse_method_call() {
+    let got: string = parse_str("fn f(s: string): int { return len(s); }");
+    assert_eq_string(got, "(program\n  (fn f(s:string):int { (return (call len s)) }))", "method call");
+}
+
+fn test_parse_assign_stmt() {
+    let got: string = parse_str("fn f() { let x: int = 0; x = 5; }");
+    assert_eq_string(got, "(program\n  (fn f() { (let x int (int 0)) (expr (= x (int 5))) }))", "assign stmt");
+}
+
+fn test_parse_field_assign() {
+    let got: string = parse_str("fn f(p: Point) { p.x = 1; }");
+    assert_eq_string(got, "(program\n  (fn f(p:Point) { (expr (= (. p x) (int 1))) }))", "field assign");
+}
+
+fn test_parse_index_assign() {
+    let got: string = parse_str("fn f(xs: int[]) { xs[0] = 99; }");
+    assert_eq_string(got, "(program\n  (fn f(xs:int[]) { (expr (= ([] xs (int 0)) (int 99))) }))", "index assign");
+}
+
+fn test_parse_float_literal() {
+    let got: string = parse_str("fn f(): float { return 3.14; }");
+    assert_eq_string(got, "(program\n  (fn f():float { (return (float 3.14)) }))", "float literal");
+}
+
+fn test_parse_bool_literals() {
+    let got: string = parse_str("fn f(): bool { return true; }");
+    assert_eq_string(got, "(program\n  (fn f():bool { (return (bool true)) }))", "bool true");
+}
+
+fn test_parse_null_literal() {
+    let got: string = parse_str("fn f(): string { return null; }");
+    // null is built via char codes in to_string
+    let null_str: string = char_to_string(110) + char_to_string(117) + char_to_string(108) + char_to_string(108);
+    assert_eq_string(got, "(program\n  (fn f():string { (return " + null_str + ") }))", "null literal");
+}
+
+fn test_parse_this_expr() {
+    let this_str: string = char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
+    let got: string = parse_str("class Foo { x: int; fn get(): int { return this.x; } }");
+    assert_eq_string(got, "(program\n  (class Foo (field x int) (fn get():int { (return (. " + this_str + " x)) })))", "this expr");
+}
+
+fn test_parse_map_literal() {
+    let got: string = parse_str("fn f(): map<string, int> { return {" + char_to_string(34) + "a" + char_to_string(34) + ": 1}; }");
+    assert_eq_string(got, "(program\n  (fn f():map<string,int> { (return {(string a):(int 1)}) }))", "map literal");
+}
+
+fn test_parse_fn_expr() {
+    let got: string = parse_str("fn f() { let g: fn(int): int = fn(x: int): int { return x; }; }");
+    assert_eq_string(got, "(program\n  (fn f() { (let g fn(int):int (fn(x:int):int { (return x) })) }))", "fn expr");
+}
+
+fn test_parse_or_expr() {
+    let got: string = parse_str("fn f(a: bool, b: bool): bool { return a || b; }");
+    assert_eq_string(got, "(program\n  (fn f(a:bool,b:bool):bool { (return (|| a b)) }))", "or expr");
+}
+
+fn test_parse_eq_ne() {
+    let got: string = parse_str("fn f(x: int): bool { return x == 0; }");
+    assert_eq_string(got, "(program\n  (fn f(x:int):bool { (return (== x (int 0))) }))", "eq expr");
+}
+
+fn test_parse_nested_calls() {
+    let got: string = parse_str("fn f(s: string): string { return int_to_string(len(s)); }");
+    assert_eq_string(got, "(program\n  (fn f(s:string):string { (return (call int_to_string (call len s))) }))", "nested calls");
+}
+
+fn test_parse_inc_dec() {
+    let got: string = parse_str("fn f() { let i: int = 0; i++; i--; }");
+    assert_eq_string(got, "(program\n  (fn f() { (let i int (int 0)) (expr (++ i)) (expr (-- i)) }))", "inc dec");
+}
+
+fn test_parse_chained_method() {
+    let got: string = parse_str("fn f(s: string): string { return s.slice(0, 3); }");
+    assert_eq_string(got, "(program\n  (fn f(s:string):string { (return (call (. s slice) (int 0) (int 3))) }))", "chained method");
+}
+
+fn test_parse_multiple_top_levels() {
+    let got: string = parse_str("let x: int = 1; fn f(): int { return x; }");
+    assert_eq_string(got, "(program\n  (let x int (int 1))\n  (fn f():int { (return x) }))", "multiple top levels");
+}

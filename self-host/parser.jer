@@ -1,0 +1,794 @@
+// Recursive-descent parser for Jerry.
+// Consumes a Token[] produced by Lexer.tokenize() and returns a Program AST.
+//
+// Error handling: parse errors print a message and call exit(1).
+// The grammar matches the Go Participle grammar in internal/parser/parser.go.
+
+// ── Parser ────────────────────────────────────────────────────────────────────
+
+class Parser {
+    tokens: Token[];
+    pos:    int;
+
+    fn new(toks: Token[]) {
+        this.tokens = toks;
+        this.pos    = 0;
+    }
+
+    // ── Token access ──────────────────────────────────────────────────────────
+
+    fn cur(): Token {
+        return this.tokens[this.pos];
+    }
+
+    fn peek_kind(): int {
+        return this.tokens[this.pos].kind;
+    }
+
+    fn peek_val(): string {
+        return this.tokens[this.pos].value;
+    }
+
+    fn peek_line(): int { return this.tokens[this.pos].line; }
+    fn peek_col():  int { return this.tokens[this.pos].col; }
+
+    fn advance(): Token {
+        let t: Token = this.tokens[this.pos];
+        if this.pos + 1 < len(this.tokens) {
+            this.pos = this.pos + 1;
+        }
+        return t;
+    }
+
+    // True if current token has the given kind (and, if val!="", also the given value).
+    fn check(kind: int, val: string): bool {
+        let t: Token = this.tokens[this.pos];
+        if t.kind != kind { return false; }
+        if len(val) == 0  { return true; }
+        return t.value == val;
+    }
+
+    // Consume and return current token if it matches; otherwise error.
+    fn expect(kind: int, val: string): Token {
+        if this.check(kind, val) { return this.advance(); }
+        let t: Token = this.tokens[this.pos];
+        print("parse error at " + int_to_string(t.line) + ":" + int_to_string(t.col)
+            + ": expected '" + val + "' but got '" + t.value + "'");
+        exit(1);
+        return t;
+    }
+
+    // Consume if matches; return whether it matched.
+    fn eat(kind: int, val: string): bool {
+        if this.check(kind, val) { this.advance(); return true; }
+        return false;
+    }
+
+    // ── Top-level ─────────────────────────────────────────────────────────────
+
+    fn parse_program(): Program {
+        let prog: Program = new Program();
+        while this.peek_kind() != TOK_EOF {
+            let tl: TopLevel = this.parse_top_level();
+            push(prog.tops, tl);
+        }
+        return prog;
+    }
+
+    fn parse_top_level(): TopLevel {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+
+        if this.check(TOK_KEYWORD, "include") {
+            return this.parse_include(l, c);
+        }
+        if this.check(TOK_KEYWORD, "class") {
+            let cd: ClassDecl = this.parse_class_decl();
+            let tl: TopLevel = new TopLevel(TL_CLASS, cd.line, cd.col);
+            tl.class_decl = cd;
+            return tl;
+        }
+        if this.check(TOK_KEYWORD, "fn") {
+            let fd: FnDecl = this.parse_fn_decl();
+            let tl: TopLevel = new TopLevel(TL_FN, fd.line, fd.col);
+            tl.fn_decl = fd;
+            return tl;
+        }
+        if this.check(TOK_KEYWORD, "let") {
+            return this.parse_top_var(l, c);
+        }
+        let t: Token = this.tokens[this.pos];
+        print("parse error at " + int_to_string(t.line) + ":" + int_to_string(t.col)
+            + ": unexpected token '" + t.value + "' at top level");
+        exit(1);
+        return new TopLevel(TL_VAR, l, c);
+    }
+
+    fn parse_include(l: int, c: int): TopLevel {
+        this.advance();  // consume "include"
+        let tl: TopLevel = new TopLevel(TL_INCLUDE, l, c);
+        if this.eat(TOK_OP, "@") {
+            let name: Token = this.expect(TOK_IDENT, "");
+            tl.incl_stdlib = name.value;
+        } else {
+            let path: Token = this.expect(TOK_STRING, "");
+            tl.incl_remote = path.value;
+        }
+        return tl;
+    }
+
+    fn parse_top_var(l: int, c: int): TopLevel {
+        this.advance();  // consume "let"
+        let name: Token = this.expect(TOK_IDENT, "");
+        let tl: TopLevel = new TopLevel(TL_VAR, l, c);
+        tl.var_name = name.value;
+        if this.eat(TOK_OP, ":") {
+            tl.var_type = this.parse_type_expr();
+        }
+        this.expect(TOK_OP, "=");
+        tl.var_value = this.parse_expr();
+        this.expect(TOK_OP, ";");
+        return tl;
+    }
+
+    // ── Type expressions ──────────────────────────────────────────────────────
+
+    fn parse_type_expr(): TypeExpr {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+
+        // map<K, V>
+        if this.check(TOK_IDENT, "map") {
+            this.advance();
+            this.expect(TOK_OP, "<");
+            let key: TypeExpr = this.parse_type_expr();
+            this.expect(TOK_OP, ",");
+            let val: TypeExpr = this.parse_type_expr();
+            this.expect(TOK_OP, ">");
+            return type_map(key, val, l, c);
+        }
+
+        // fn(T...): T
+        if this.check(TOK_KEYWORD, "fn") {
+            this.advance();
+            this.expect(TOK_OP, "(");
+            let ps: TypeExpr[] = [];
+            if !this.check(TOK_OP, ")") {
+                let first: TypeExpr = this.parse_type_expr();
+                push(ps, first);
+                while this.eat(TOK_OP, ",") {
+                    let p: TypeExpr = this.parse_type_expr();
+                    push(ps, p);
+                }
+            }
+            this.expect(TOK_OP, ")");
+            let ret: TypeExpr = null;
+            if this.eat(TOK_OP, ":") {
+                ret = this.parse_type_expr();
+            }
+            return type_fn(ps, ret, l, c);
+        }
+
+        // named type (int, string, MyClass, etc.) with optional [] suffixes
+        let name: Token = this.expect(TOK_IDENT, "");
+        let te: TypeExpr = type_name(name.value, l, c);
+        while this.check(TOK_OP, "[") && this.pos + 1 < len(this.tokens) {
+            let next: Token = this.tokens[this.pos + 1];
+            if next.kind == TOK_OP && next.value == "]" {
+                this.advance();  // [
+                this.advance();  // ]
+                te = type_array(te);
+            } else {
+                break;
+            }
+        }
+        return te;
+    }
+
+    // ── Class declaration ─────────────────────────────────────────────────────
+
+    fn parse_class_decl(): ClassDecl {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        this.advance();  // "class"
+        let name: Token = this.expect(TOK_IDENT, "");
+        let ext: string = "";
+        if this.eat(TOK_KEYWORD, "extends") {
+            let pname: Token = this.expect(TOK_IDENT, "");
+            ext = pname.value;
+        }
+        let cd: ClassDecl = new ClassDecl(name.value, ext, l, c);
+        this.expect(TOK_OP, "{");
+        while !this.check(TOK_OP, "}") && this.peek_kind() != TOK_EOF {
+            if this.check(TOK_KEYWORD, "fn") {
+                let md: FnDecl = this.parse_fn_decl();
+                push(cd.methods, md);
+            } else {
+                let fd: FieldDecl = this.parse_field_decl();
+                push(cd.fields, fd);
+            }
+        }
+        this.expect(TOK_OP, "}");
+        return cd;
+    }
+
+    fn parse_field_decl(): FieldDecl {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        let name: Token = this.expect(TOK_IDENT, "");
+        this.expect(TOK_OP, ":");
+        let te: TypeExpr = this.parse_type_expr();
+        this.expect(TOK_OP, ";");
+        return new FieldDecl(name.value, te, l, c);
+    }
+
+    // ── Function declaration ──────────────────────────────────────────────────
+
+    fn parse_fn_decl(): FnDecl {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        this.advance();  // "fn"
+        // function name may be an ident, "new", or "null"
+        let fname: string = "";
+        if this.peek_kind() == TOK_IDENT {
+            let t: Token = this.advance();
+            fname = t.value;
+        } else if this.peek_kind() == TOK_KEYWORD {
+            // "new" or "null" are valid method names
+            let t: Token = this.advance();
+            fname = t.value;
+        } else {
+            let t: Token = this.tokens[this.pos];
+            print("parse error at " + int_to_string(t.line) + ":" + int_to_string(t.col)
+                + ": expected function name");
+            exit(1);
+        }
+        this.expect(TOK_OP, "(");
+        let ps: Param[] = [];
+        if !this.check(TOK_OP, ")") {
+            let p: Param = this.parse_param();
+            push(ps, p);
+            while this.eat(TOK_OP, ",") {
+                let p2: Param = this.parse_param();
+                push(ps, p2);
+            }
+        }
+        this.expect(TOK_OP, ")");
+        let ret: TypeExpr = null;
+        if this.eat(TOK_OP, ":") {
+            ret = this.parse_type_expr();
+        }
+        let body: Block = this.parse_block();
+        return new FnDecl(fname, ps, ret, body, l, c);
+    }
+
+    fn parse_param(): Param {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        let name: Token = this.expect(TOK_IDENT, "");
+        this.expect(TOK_OP, ":");
+        let te: TypeExpr = this.parse_type_expr();
+        return new Param(name.value, te, l, c);
+    }
+
+    // ── Block and statements ──────────────────────────────────────────────────
+
+    fn parse_block(): Block {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        this.expect(TOK_OP, "{");
+        let blk: Block = new Block(l, c);
+        while !this.check(TOK_OP, "}") && this.peek_kind() != TOK_EOF {
+            let st: Stmt = this.parse_stmt();
+            push(blk.stmts, st);
+        }
+        this.expect(TOK_OP, "}");
+        return blk;
+    }
+
+    fn parse_stmt(): Stmt {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+
+        if this.check(TOK_KEYWORD, "let") {
+            return this.parse_var_decl_stmt(l, c);
+        }
+        if this.check(TOK_KEYWORD, "return") {
+            return this.parse_return_stmt(l, c);
+        }
+        if this.check(TOK_KEYWORD, "if") {
+            return this.parse_if_stmt(l, c);
+        }
+        if this.check(TOK_KEYWORD, "while") {
+            return this.parse_while_stmt(l, c);
+        }
+        if this.check(TOK_KEYWORD, "for") {
+            return this.parse_for_stmt(l, c);
+        }
+        if this.check(TOK_KEYWORD, "break") {
+            this.advance();
+            this.expect(TOK_OP, ";");
+            return new Stmt(STMT_BREAK, l, c);
+        }
+        if this.check(TOK_KEYWORD, "continue") {
+            this.advance();
+            this.expect(TOK_OP, ";");
+            return new Stmt(STMT_CONTINUE, l, c);
+        }
+        // Expression statement
+        let st: Stmt = new Stmt(STMT_EXPR, l, c);
+        st.expr = this.parse_expr();
+        this.expect(TOK_OP, ";");
+        return st;
+    }
+
+    fn parse_var_decl_stmt(l: int, c: int): Stmt {
+        this.advance();  // "let"
+        let name: Token = this.expect(TOK_IDENT, "");
+        let st: Stmt = new Stmt(STMT_VAR, l, c);
+        st.var_name = name.value;
+        if this.eat(TOK_OP, ":") {
+            st.var_type = this.parse_type_expr();
+        }
+        this.expect(TOK_OP, "=");
+        st.var_value = this.parse_expr();
+        this.expect(TOK_OP, ";");
+        return st;
+    }
+
+    fn parse_return_stmt(l: int, c: int): Stmt {
+        this.advance();  // "return"
+        let st: Stmt = new Stmt(STMT_RETURN, l, c);
+        if !this.check(TOK_OP, ";") {
+            st.ret_value = this.parse_expr();
+        }
+        this.expect(TOK_OP, ";");
+        return st;
+    }
+
+    fn parse_if_stmt(l: int, c: int): Stmt {
+        this.advance();  // "if"
+        let st: Stmt = new Stmt(STMT_IF, l, c);
+        st.if_cond = this.parse_expr();
+        st.if_then = this.parse_block();
+        if this.eat(TOK_KEYWORD, "else") {
+            if this.check(TOK_KEYWORD, "if") {
+                let elif_l: int = this.peek_line();
+                let elif_c: int = this.peek_col();
+                st.if_else_if = this.parse_if_stmt(elif_l, elif_c);
+            } else {
+                st.if_else = this.parse_block();
+            }
+        }
+        return st;
+    }
+
+    fn parse_while_stmt(l: int, c: int): Stmt {
+        this.advance();  // "while"
+        let st: Stmt = new Stmt(STMT_WHILE, l, c);
+        st.while_cond = this.parse_expr();
+        st.while_body = this.parse_block();
+        return st;
+    }
+
+    fn parse_for_stmt(l: int, c: int): Stmt {
+        this.advance();  // "for"
+        this.expect(TOK_OP, "(");
+        let st: Stmt = new Stmt(STMT_FOR, l, c);
+        // Optional init: either "let x = expr" or expr
+        if !this.check(TOK_OP, ";") {
+            if this.check(TOK_KEYWORD, "let") {
+                let init_l: int = this.peek_line();
+                let init_c: int = this.peek_col();
+                st.for_init_var = this.parse_for_var_decl(init_l, init_c);
+            } else {
+                st.for_init_expr = this.parse_expr();
+            }
+        }
+        this.expect(TOK_OP, ";");
+        // Optional condition
+        if !this.check(TOK_OP, ";") {
+            st.for_cond = this.parse_expr();
+        }
+        this.expect(TOK_OP, ";");
+        // Optional post
+        if !this.check(TOK_OP, ")") {
+            st.for_post = this.parse_expr();
+        }
+        this.expect(TOK_OP, ")");
+        st.for_body = this.parse_block();
+        return st;
+    }
+
+    // Parses "let x [: T] = expr" (no trailing semicolon) for for-loop init.
+    fn parse_for_var_decl(l: int, c: int): Stmt {
+        this.advance();  // "let"
+        let name: Token = this.expect(TOK_IDENT, "");
+        let st: Stmt = new Stmt(STMT_VAR, l, c);
+        st.var_name = name.value;
+        if this.eat(TOK_OP, ":") {
+            st.var_type = this.parse_type_expr();
+        }
+        this.expect(TOK_OP, "=");
+        st.var_value = this.parse_expr();
+        return st;
+    }
+
+    // ── Expressions ───────────────────────────────────────────────────────────
+
+    fn parse_expr(): Expr {
+        return this.parse_assign();
+    }
+
+    // Assign: right-associative  left = right
+    fn parse_assign(): Expr {
+        let left: Expr = this.parse_or();
+        if this.eat(TOK_OP, "=") {
+            let l: int = left.line;
+            let c: int = left.col;
+            let right: Expr = this.parse_assign();
+            let e: Expr = new Expr(EXPR_ASSIGN, l, c);
+            e.left  = left;
+            e.right = right;
+            return e;
+        }
+        return left;
+    }
+
+    fn parse_or(): Expr {
+        let left: Expr = this.parse_and();
+        while this.check(TOK_OP, "||") {
+            let l: int = left.line;
+            let c: int = left.col;
+            this.advance();
+            let right: Expr = this.parse_and();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = "||";
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_and(): Expr {
+        let left: Expr = this.parse_eq();
+        while this.check(TOK_OP, "&&") {
+            let l: int = left.line;
+            let c: int = left.col;
+            this.advance();
+            let right: Expr = this.parse_eq();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = "&&";
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_eq(): Expr {
+        let left: Expr = this.parse_cmp();
+        while this.check(TOK_OP, "==") || this.check(TOK_OP, "!=") {
+            let l: int = left.line;
+            let c: int = left.col;
+            let op: Token = this.advance();
+            let right: Expr = this.parse_cmp();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = op.value;
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_cmp(): Expr {
+        let left: Expr = this.parse_add();
+        while this.check(TOK_OP, "<")  || this.check(TOK_OP, ">")  ||
+              this.check(TOK_OP, "<=") || this.check(TOK_OP, ">=") {
+            let l: int = left.line;
+            let c: int = left.col;
+            let op: Token = this.advance();
+            let right: Expr = this.parse_add();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = op.value;
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_add(): Expr {
+        let left: Expr = this.parse_mul();
+        while this.check(TOK_OP, "+") || this.check(TOK_OP, "-") {
+            let l: int = left.line;
+            let c: int = left.col;
+            let op: Token = this.advance();
+            let right: Expr = this.parse_mul();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = op.value;
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_mul(): Expr {
+        let left: Expr = this.parse_unary();
+        while this.check(TOK_OP, "*") || this.check(TOK_OP, "/") || this.check(TOK_OP, "%") {
+            let l: int = left.line;
+            let c: int = left.col;
+            let op: Token = this.advance();
+            let right: Expr = this.parse_unary();
+            let e: Expr = new Expr(EXPR_BINARY, l, c);
+            e.sval  = op.value;
+            e.left  = left;
+            e.right = right;
+            left = e;
+        }
+        return left;
+    }
+
+    fn parse_unary(): Expr {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        if this.check(TOK_OP, "!") || this.check(TOK_OP, "-") {
+            let op: Token = this.advance();
+            let operand: Expr = this.parse_unary();
+            let e: Expr = new Expr(EXPR_UNARY, l, c);
+            e.sval = op.value;
+            e.left = operand;
+            return e;
+        }
+        return this.parse_postfix();
+    }
+
+    fn parse_postfix(): Expr {
+        let base: Expr = this.parse_primary();
+        while true {
+            if this.check(TOK_OP, ".") {
+                let l: int = base.line;
+                let c: int = base.col;
+                this.advance();
+                let field: Token = this.expect(TOK_IDENT, "");
+                let e: Expr = new Expr(EXPR_FIELD, l, c);
+                e.left = base;
+                e.sval = field.value;
+                base = e;
+            } else if this.check(TOK_OP, "(") {
+                let l: int = base.line;
+                let c: int = base.col;
+                this.advance();
+                let call_args: Expr[] = [];
+                if !this.check(TOK_OP, ")") {
+                    let a: Expr = this.parse_expr();
+                    push(call_args, a);
+                    while this.eat(TOK_OP, ",") {
+                        let a2: Expr = this.parse_expr();
+                        push(call_args, a2);
+                    }
+                }
+                this.expect(TOK_OP, ")");
+                let e: Expr = new Expr(EXPR_CALL, l, c);
+                e.left = base;
+                e.args = call_args;
+                base = e;
+            } else if this.check(TOK_OP, "[") {
+                let l: int = base.line;
+                let c: int = base.col;
+                this.advance();
+                let idx: Expr = this.parse_expr();
+                this.expect(TOK_OP, "]");
+                let e: Expr = new Expr(EXPR_INDEX, l, c);
+                e.left  = base;
+                e.right = idx;
+                base = e;
+            } else if this.check(TOK_OP, "++") {
+                let l: int = base.line;
+                let c: int = base.col;
+                this.advance();
+                let e: Expr = new Expr(EXPR_INC, l, c);
+                e.left = base;
+                base = e;
+            } else if this.check(TOK_OP, "--") {
+                let l: int = base.line;
+                let c: int = base.col;
+                this.advance();
+                let e: Expr = new Expr(EXPR_DEC, l, c);
+                e.left = base;
+                base = e;
+            } else {
+                break;
+            }
+        }
+        return base;
+    }
+
+    fn parse_primary(): Expr {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+
+        // Integer
+        if this.peek_kind() == TOK_INT {
+            let t: Token = this.advance();
+            let e: Expr = new Expr(EXPR_INT, l, c);
+            e.sval = t.value;
+            return e;
+        }
+
+        // Float
+        if this.peek_kind() == TOK_FLOAT {
+            let t: Token = this.advance();
+            let e: Expr = new Expr(EXPR_FLOAT, l, c);
+            e.sval = t.value;
+            return e;
+        }
+
+        // String
+        if this.peek_kind() == TOK_STRING {
+            let t: Token = this.advance();
+            let e: Expr = new Expr(EXPR_STRING, l, c);
+            e.sval = t.value;
+            return e;
+        }
+
+        // Bool
+        if this.peek_kind() == TOK_BOOL {
+            let t: Token = this.advance();
+            let e: Expr = new Expr(EXPR_BOOL, l, c);
+            e.sval = t.value;
+            return e;
+        }
+
+        // null keyword — build from char codes: n=110 u=117 l=108 l=108
+        let kw_null: string = char_to_string(110) + char_to_string(117) + char_to_string(108) + char_to_string(108);
+        if this.check(TOK_KEYWORD, kw_null) {
+            this.advance();
+            return new Expr(EXPR_NULL, l, c);
+        }
+
+        // this keyword — t=116 h=104 i=105 s=115
+        let kw_this: string = char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
+        if this.check(TOK_KEYWORD, kw_this) {
+            this.advance();
+            return new Expr(EXPR_THIS, l, c);
+        }
+
+        // new ClassName(...) — n=110 e=101 w=119
+        let kw_new: string = char_to_string(110) + char_to_string(101) + char_to_string(119);
+        if this.check(TOK_KEYWORD, kw_new) {
+            this.advance();
+            let cn: Token = this.expect(TOK_IDENT, "");
+            this.expect(TOK_OP, "(");
+            let new_args: Expr[] = [];
+            if !this.check(TOK_OP, ")") {
+                let a: Expr = this.parse_expr();
+                push(new_args, a);
+                while this.eat(TOK_OP, ",") {
+                    let a2: Expr = this.parse_expr();
+                    push(new_args, a2);
+                }
+            }
+            this.expect(TOK_OP, ")");
+            let e: Expr = new Expr(EXPR_NEW, l, c);
+            e.sval = cn.value;
+            e.args = new_args;
+            return e;
+        }
+
+        // fn literal
+        if this.check(TOK_KEYWORD, "fn") {
+            return this.parse_fn_expr(l, c);
+        }
+
+        // Array literal [...]
+        if this.check(TOK_OP, "[") {
+            this.advance();
+            let elems: Expr[] = [];
+            if !this.check(TOK_OP, "]") {
+                let elem: Expr = this.parse_expr();
+                push(elems, elem);
+                while this.eat(TOK_OP, ",") {
+                    let elem2: Expr = this.parse_expr();
+                    push(elems, elem2);
+                }
+            }
+            this.expect(TOK_OP, "]");
+            let e: Expr = new Expr(EXPR_ARRAY, l, c);
+            e.args = elems;
+            return e;
+        }
+
+        // Map literal {...}
+        if this.check(TOK_OP, "{") {
+            return this.parse_map_lit(l, c);
+        }
+
+        // Parenthesized expression
+        if this.check(TOK_OP, "(") {
+            this.advance();
+            let inner: Expr = this.parse_expr();
+            this.expect(TOK_OP, ")");
+            let e: Expr = new Expr(EXPR_PAREN, l, c);
+            e.left = inner;
+            return e;
+        }
+
+        // Identifier
+        if this.peek_kind() == TOK_IDENT {
+            let t: Token = this.advance();
+            let e: Expr = new Expr(EXPR_IDENT, l, c);
+            e.sval = t.value;
+            return e;
+        }
+
+        // Unexpected
+        let t: Token = this.tokens[this.pos];
+        print("parse error at " + int_to_string(t.line) + ":" + int_to_string(t.col)
+            + ": unexpected token '" + t.value + "' in expression");
+        exit(1);
+        return new Expr(EXPR_INT, l, c);
+    }
+
+    fn parse_fn_expr(l: int, c: int): Expr {
+        this.advance();  // "fn"
+        this.expect(TOK_OP, "(");
+        let ps: Param[] = [];
+        if !this.check(TOK_OP, ")") {
+            let p: Param = this.parse_param();
+            push(ps, p);
+            while this.eat(TOK_OP, ",") {
+                let p2: Param = this.parse_param();
+                push(ps, p2);
+            }
+        }
+        this.expect(TOK_OP, ")");
+        let ret: TypeExpr = null;
+        if this.eat(TOK_OP, ":") {
+            ret = this.parse_type_expr();
+        }
+        let body: Block = this.parse_block();
+        let e: Expr = new Expr(EXPR_FN, l, c);
+        e.fn_params = ps;
+        e.fn_ret    = ret;
+        e.fn_body   = body;
+        return e;
+    }
+
+    fn parse_map_lit(l: int, c: int): Expr {
+        this.advance();  // "{"
+        let keys: Expr[] = [];
+        let vals: Expr[] = [];
+        if !this.check(TOK_OP, "}") {
+            let k: Expr = this.parse_expr();
+            this.expect(TOK_OP, ":");
+            let v: Expr = this.parse_expr();
+            push(keys, k);
+            push(vals, v);
+            while this.eat(TOK_OP, ",") {
+                let k2: Expr = this.parse_expr();
+                this.expect(TOK_OP, ":");
+                let v2: Expr = this.parse_expr();
+                push(keys, k2);
+                push(vals, v2);
+            }
+        }
+        this.expect(TOK_OP, "}");
+        let e: Expr = new Expr(EXPR_MAP, l, c);
+        e.args = keys;
+        e.vals = vals;
+        return e;
+    }
+}
+
+// ── Public parse function ──────────────────────────────────────────────────────
+
+fn parse(src: string): Program {
+    let lx: Lexer = new Lexer(src);
+    let tokens: Token[] = lx.tokenize();
+    let p: Parser = new Parser(tokens);
+    return p.parse_program();
+}

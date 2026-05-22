@@ -44,7 +44,14 @@ jobs:
       - name: Build jerry
         run: go build -o jerry-bin ./cmd/jerry
 
+      - name: Build runtime library
+        run: |
+          cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+          ar rcs jerry_runtime.a jerry_runtime.o
+
       - name: Smoke-test compiled binary
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
         run: |
           ./jerry-bin --version
           ./jerry-bin run examples/hello.jer
@@ -55,4 +62,6 @@ jobs:
           ./jerry-bin run examples/strings.jer
 
       - name: Jerry tests
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
         run: ./jerry-bin test tests/

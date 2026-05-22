@@ -1,0 +1,343 @@
+// Jerry lexer implemented in Jerry — first step toward a self-hosting compiler.
+//
+// Produces the same token stream as the Go lexer in internal/parser/parser.go:
+//   Whitespace and comments are silently discarded.
+//   Float is matched before Int so "3.14" is one token, not "3" + "." + "14".
+//   BoolLit (true/false) is separate from keywords.
+//   Type names (int, float, bool, string, void) are plain identifiers.
+
+include @string
+
+// ── Token kind constants ───────────────────────────────────────────────────────
+
+let TOK_INT:     int = 0;   // [0-9]+
+let TOK_FLOAT:   int = 1;   // [0-9]+\.[0-9]+
+let TOK_STRING:  int = 2;   // "..." (decoded, quotes stripped)
+let TOK_BOOL:    int = 3;   // true | false
+let TOK_KEYWORD: int = 4;   // let fn class extends if else while for return new this null break continue include
+let TOK_IDENT:   int = 5;   // [a-zA-Z_][a-zA-Z0-9_]*
+let TOK_OP:      int = 6;   // && || == != <= >= ++ -- or any single punctuation
+let TOK_EOF:     int = 7;   // end of input
+let TOK_ERROR:   int = 8;   // unrecognised character or unterminated literal
+
+// ── Keyword check ──────────────────────────────────────────────────────────────
+// Type names (int, float, bool, string, void) are NOT included — they lex as
+// plain identifiers, matching the behaviour of the Go parser.
+//
+// Implemented as explicit if-chains rather than a map literal because
+// Participle's grammar matches string literals by value (not token type), so
+// a String token whose content equals a keyword (e.g. "this", "null") is
+// greedily parsed as the corresponding keyword expression, producing spurious
+// type errors.  The same applies to comparisons like `word == "this"`, so the
+// two PrimaryExpr-level keywords are built from character codes instead.
+fn is_keyword(word: string): bool {
+    if word == "let"      { return true; }
+    if word == "fn"       { return true; }
+    if word == "class"    { return true; }
+    if word == "extends"  { return true; }
+    if word == "if"       { return true; }
+    if word == "else"     { return true; }
+    if word == "while"    { return true; }
+    if word == "for"      { return true; }
+    if word == "return"   { return true; }
+    if word == "new"      { return true; }
+    if word == "break"    { return true; }
+    if word == "continue" { return true; }
+    if word == "include"  { return true; }
+    // "this" — 't'=116 'h'=104 'i'=105 's'=115
+    let kw_this: string = char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
+    if word == kw_this { return true; }
+    // "null" — 'n'=110 'u'=117 'l'=108 'l'=108
+    let kw_null: string = char_to_string(110) + char_to_string(117) + char_to_string(108) + char_to_string(108);
+    if word == kw_null { return true; }
+    return false;
+}
+
+// ── Token ──────────────────────────────────────────────────────────────────────
+
+class Token {
+    kind:  int;
+    value: string;
+    line:  int;    // 1-based source line
+    col:   int;    // 1-based source column
+
+    fn new(k: int, v: string, l: int, c: int) {
+        this.kind  = k;
+        this.value = v;
+        this.line  = l;
+        this.col   = c;
+    }
+
+    fn kind_name(): string {
+        if this.kind == 0 { return "INT"; }
+        if this.kind == 1 { return "FLOAT"; }
+        if this.kind == 2 { return "STRING"; }
+        if this.kind == 3 { return "BOOL"; }
+        if this.kind == 4 { return "KEYWORD"; }
+        if this.kind == 5 { return "IDENT"; }
+        if this.kind == 6 { return "OP"; }
+        if this.kind == 7 { return "EOF"; }
+        return "ERROR";
+    }
+
+    fn to_string(): string {
+        let loc: string = " @" + int_to_string(this.line) + ":" + int_to_string(this.col);
+        return this.kind_name() + "(" + this.value + ")" + loc;
+    }
+}
+
+// ── Lexer ──────────────────────────────────────────────────────────────────────
+
+class Lexer {
+    // Integer fields are placed before string fields to work around a Jerry
+    // codegen issue where a string field at struct offset 0 is misread.
+    pos:      int;    // byte offset of the next character to read
+    line:     int;    // 1-based line of the next character to read
+    col:      int;    // 1-based column of the next character to read
+    err_line: int;
+    err_col:  int;
+    src:      string;
+    err_msg:  string; // set when an unterminated block comment is detected
+
+    fn new(source: string) {
+        this.pos      = 0;
+        this.line     = 1;
+        this.col      = 1;
+        this.err_line = 0;
+        this.err_col  = 0;
+        this.src      = source;
+        this.err_msg  = "";
+    }
+
+    // ── Low-level character access ────────────────────────────────────────────
+
+    fn at_end(): bool {
+        return this.pos >= len(this.src);
+    }
+
+    // Current character code without consuming, or -1 at end.
+    fn peek(): int {
+        if this.at_end() { return -1; }
+        return char_at(this.src, this.pos);
+    }
+
+    // Character code one position ahead without consuming, or -1.
+    fn peek_next(): int {
+        if this.pos + 1 >= len(this.src) { return -1; }
+        return char_at(this.src, this.pos + 1);
+    }
+
+    // Consume and return the current character code, advancing line/col.
+    // Returns -1 without advancing when at end.
+    fn advance(): int {
+        if this.at_end() { return -1; }
+        let c: int = char_at(this.src, this.pos);
+        this.pos = this.pos + 1;
+        if c == 10 {   // '\n'
+            this.line = this.line + 1;
+            this.col  = 1;
+        } else {
+            this.col = this.col + 1;
+        }
+        return c;
+    }
+
+    // ── Whitespace / comment skipping ─────────────────────────────────────────
+
+    // Advances past whitespace, // line comments, and /* block */ comments.
+    // Returns true on success; false (with err_* populated) on unterminated
+    // block comment.
+    fn skip_ws_and_comments(): bool {
+        while !this.at_end() {
+            let c: int = this.peek();
+            if is_whitespace(c) {
+                this.advance();
+            } else if c == 47 {   // '/'
+                let n: int = this.peek_next();
+                if n == 47 {      // '//' — skip to end of line (don't eat '\n')
+                    this.advance();
+                    this.advance();
+                    while !this.at_end() && this.peek() != 10 {
+                        this.advance();
+                    }
+                } else if n == 42 {   // '/*'
+                    let sl: int = this.line;
+                    let sc: int = this.col;
+                    this.advance();   // '/'
+                    this.advance();   // '*'
+                    let found: bool = false;
+                    while !this.at_end() {
+                        let ch: int = this.advance();
+                        if ch == 42 && !this.at_end() && this.peek() == 47 {   // '*/'
+                            this.advance();
+                            found = true;
+                            break;
+                        }
+                    }
+                    if !found {
+                        this.err_line = sl;
+                        this.err_col  = sc;
+                        this.err_msg  = "unterminated block comment";
+                        return false;
+                    }
+                } else {
+                    break;   // lone '/' is a division operator
+                }
+            } else {
+                break;
+            }
+        }
+        return true;
+    }
+
+    // ── Sub-scanners ──────────────────────────────────────────────────────────
+
+    // Scans an integer or float starting after the first digit (at start_pos).
+    fn scan_number(start_pos: int, l: int, c: int): Token {
+        while !this.at_end() && is_digit(this.peek()) {
+            this.advance();
+        }
+        // Float: '.' followed immediately by at least one more digit.
+        if this.peek() == 46 && this.pos + 1 < len(this.src) && is_digit(char_at(this.src, this.pos + 1)) {
+            this.advance();   // '.'
+            while !this.at_end() && is_digit(this.peek()) {
+                this.advance();
+            }
+            return new Token(TOK_FLOAT, string_slice(this.src, start_pos, this.pos), l, c);
+        }
+        return new Token(TOK_INT, string_slice(this.src, start_pos, this.pos), l, c);
+    }
+
+    // Scans an identifier/keyword/boolean starting after the first char (at start_pos).
+    fn scan_ident(start_pos: int, l: int, c: int): Token {
+        while !this.at_end() && (is_alnum(this.peek()) || this.peek() == 95) {   // '_' = 95
+            this.advance();
+        }
+        let word: string = string_slice(this.src, start_pos, this.pos);
+        if word == "true" || word == "false" {
+            return new Token(TOK_BOOL, word, l, c);
+        }
+        if is_keyword(word) {
+            return new Token(TOK_KEYWORD, word, l, c);
+        }
+        return new Token(TOK_IDENT, word, l, c);
+    }
+
+    // Scans a string literal after the opening '"' has been consumed.
+    // Returns decoded content (escape sequences expanded, quotes stripped).
+    fn scan_string(l: int, c: int): Token {
+        let value: string = "";
+        while !this.at_end() {
+            let ch: int = this.advance();
+            if ch == 34 {   // '"' closing quote
+                return new Token(TOK_STRING, value, l, c);
+            }
+            if ch == 92 {   // '\'
+                if this.at_end() {
+                    return new Token(TOK_ERROR, "unterminated string escape", l, c);
+                }
+                let esc: int = this.advance();
+                if esc == 110 {        value = value + char_to_string(10); }   // \n
+                else if esc == 116 {   value = value + char_to_string(9);  }   // \t
+                else if esc == 114 {   value = value + char_to_string(13); }   // \r
+                else if esc == 34  {   value = value + char_to_string(34); }   // \"
+                else if esc == 92  {   value = value + char_to_string(92); }   // \\
+                else { value = value + char_to_string(92) + char_to_string(esc); }
+            } else {
+                value = value + char_to_string(ch);
+            }
+        }
+        return new Token(TOK_ERROR, "unterminated string literal", l, c);
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    // Returns the next token, discarding whitespace and comments.
+    fn next_token(): Token {
+        if !this.skip_ws_and_comments() {
+            return new Token(TOK_ERROR, this.err_msg, this.err_line, this.err_col);
+        }
+        if this.at_end() {
+            return new Token(TOK_EOF, "", this.line, this.col);
+        }
+
+        let l:     int = this.line;
+        let c:     int = this.col;
+        let start: int = this.pos;
+        let ch:    int = this.advance();
+
+        // Numbers
+        if is_digit(ch) { return this.scan_number(start, l, c); }
+
+        // Identifiers / keywords / booleans
+        if is_alpha(ch) || ch == 95 { return this.scan_ident(start, l, c); }   // '_' = 95
+
+        // String literals
+        if ch == 34 { return this.scan_string(l, c); }   // '"'
+
+        // Two-character operators (longest-match first)
+        if ch == 38  {   // '&'
+            if this.peek() == 38  { this.advance(); return new Token(TOK_OP, "&&", l, c); }
+            return new Token(TOK_ERROR, "&", l, c);
+        }
+        if ch == 124 {   // '|'
+            if this.peek() == 124 { this.advance(); return new Token(TOK_OP, "||", l, c); }
+            return new Token(TOK_ERROR, "|", l, c);
+        }
+        if ch == 61  {   // '='
+            if this.peek() == 61  { this.advance(); return new Token(TOK_OP, "==", l, c); }
+            return new Token(TOK_OP, "=", l, c);
+        }
+        if ch == 33  {   // '!'
+            if this.peek() == 61  { this.advance(); return new Token(TOK_OP, "!=", l, c); }
+            return new Token(TOK_OP, "!", l, c);
+        }
+        if ch == 60  {   // '<'
+            if this.peek() == 61  { this.advance(); return new Token(TOK_OP, "<=", l, c); }
+            return new Token(TOK_OP, "<", l, c);
+        }
+        if ch == 62  {   // '>'
+            if this.peek() == 61  { this.advance(); return new Token(TOK_OP, ">=", l, c); }
+            return new Token(TOK_OP, ">", l, c);
+        }
+        if ch == 43  {   // '+'
+            if this.peek() == 43  { this.advance(); return new Token(TOK_OP, "++", l, c); }
+            return new Token(TOK_OP, "+", l, c);
+        }
+        if ch == 45  {   // '-'
+            if this.peek() == 45  { this.advance(); return new Token(TOK_OP, "--", l, c); }
+            return new Token(TOK_OP, "-", l, c);
+        }
+        // '/' arrives here only as division — '//' and '/*' were eaten by skip.
+        if ch == 47  { return new Token(TOK_OP, "/",  l, c); }
+
+        // Single-character operators
+        if ch == 42  { return new Token(TOK_OP, "*",  l, c); }
+        if ch == 37  { return new Token(TOK_OP, "%",  l, c); }
+        if ch == 46  { return new Token(TOK_OP, ".",  l, c); }
+        if ch == 44  { return new Token(TOK_OP, ",",  l, c); }
+        if ch == 59  { return new Token(TOK_OP, ";",  l, c); }
+        if ch == 58  { return new Token(TOK_OP, ":",  l, c); }
+        if ch == 40  { return new Token(TOK_OP, "(",  l, c); }
+        if ch == 41  { return new Token(TOK_OP, ")",  l, c); }
+        if ch == 123 { return new Token(TOK_OP, "{",  l, c); }
+        if ch == 125 { return new Token(TOK_OP, "}",  l, c); }
+        if ch == 91  { return new Token(TOK_OP, "[",  l, c); }
+        if ch == 93  { return new Token(TOK_OP, "]",  l, c); }
+        if ch == 64  { return new Token(TOK_OP, "@",  l, c); }
+
+        return new Token(TOK_ERROR, char_to_string(ch), l, c);
+    }
+
+    // Tokenises the entire source.  Returns all tokens including the final
+    // TOK_EOF, or up to and including the first TOK_ERROR.
+    fn tokenize(): Token[] {
+        let tokens: Token[] = [];
+        while true {
+            let tok: Token = this.next_token();
+            push(tokens, tok);
+            if tok.kind == TOK_EOF || tok.kind == TOK_ERROR { break; }
+        }
+        return tokens;
+    }
+}

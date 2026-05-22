@@ -1,0 +1,2159 @@
+// codegen.jer — LLVM IR code generator for the self-hosted Jerry compiler.
+// Translates a type-checked Program AST (from checker.jer) into textual LLVM IR.
+//
+// Design notes:
+//   • All output is accumulated in string fields on Generator (fn_buf, anon_buf,
+//     class_buf, global_buf, str_consts).  emit() dispatches to fn_buf or anon_buf
+//     depending on the in_anon flag (set while generating anonymous fn bodies).
+//   • Locals are tracked as a LocalVar[] with linear search — same pattern as
+//     Scope/Symbol in checker.jer.  No map<string,LocalVar> needed.
+//   • Reference-counted heap locals (string, array, map, class, fn) are tracked
+//     with a linked-list of ScopeNodes so scope push/pop is O(1).
+//   • The entry point is generate(prog, info) which returns the full LLVM IR string.
+
+include @string
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper data structures
+// ─────────────────────────────────────────────────────────────────────────────
+
+class LocalVar {
+    name:    string;
+    reg:     string;    // alloca register e.g. "%x.3", or global ref "@g"
+    llvm_ty: string;    // LLVM type: "i64", "ptr", "double", "i1"
+    ty:      JType;
+
+    fn new(n: string, r: string, lt: string, t: JType) {
+        this.name    = n;
+        this.reg     = r;
+        this.llvm_ty = lt;
+        this.ty      = t;
+    }
+}
+
+class LoopLabels {
+    cond_lbl:         string;
+    end_lbl:          string;
+    loop_scope: ScopeNode; // release_top at loop entry; for break/continue releases
+
+    fn new(c: string, e: string, s: ScopeNode) {
+        this.cond_lbl   = c;
+        this.end_lbl    = e;
+        this.loop_scope = s;
+    }
+}
+
+class ReleaseEntry {
+    alloca_reg: string;
+    ty:         JType;
+    fn new(r: string, t: JType) { this.alloca_reg = r; this.ty = t; }
+}
+
+// Linked-list node for tracking heap locals per scope.
+class ScopeNode {
+    entries: ReleaseEntry[];
+    parent:  ScopeNode;
+
+    fn new(p: ScopeNode) {
+        this.parent = p;
+        let e: ReleaseEntry[] = [];
+        this.entries = e;
+    }
+}
+
+// Saved generator state for anonymous function codegen.
+class GenContext {
+    locals:    LocalVar[];
+    ret_type:  JType;
+    fn_name:   string;
+    cls_name:  string;
+    terminated: bool;
+    lbl_stack: LoopLabels[];
+    rel_top:   ScopeNode;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generator
+// ─────────────────────────────────────────────────────────────────────────────
+
+class Generator {
+    fn_buf:     string;   // current function / regular function definitions
+    anon_buf:   string;   // anonymous function defs (emitted before fn_buf)
+    class_buf:  string;   // struct type + vtable declarations
+    global_buf: string;   // @global = global T zero
+    str_consts: string[]; // str_consts[i] = raw string value for @.str.i
+
+    tmp:     int;   // temp register counter
+    lbl:     int;   // label counter
+
+    in_anon: bool;  // true while generating an anonymous function body
+
+    // Current function context (reset per function)
+    locals:    LocalVar[];
+    globals:   LocalVar[];   // module-level variable slots
+    ret_type:  JType;
+    fn_name:   string;       // LLVM name of current function
+    cls_name:  string;       // current class name (for method codegen)
+    terminated: bool;
+    lbl_stack: LoopLabels[];
+    rel_top:   ScopeNode;    // linked-list head for release scopes
+
+    info: CheckInfo;         // type info from type_check()
+
+    fn new(ci: CheckInfo) {
+        this.info       = ci;
+        this.fn_buf     = "";
+        this.anon_buf   = "";
+        this.class_buf  = "";
+        this.global_buf = "";
+        let sc: string[]     = []; this.str_consts = sc;
+        let lv: LocalVar[]   = []; this.locals     = lv;
+        let gv: LocalVar[]   = []; this.globals    = gv;
+        let ll: LoopLabels[] = []; this.lbl_stack  = ll;
+    }
+
+    // ── Emit ─────────────────────────────────────────────────────────────────
+
+    fn em(s: string) {
+        if this.in_anon { this.anon_buf = this.anon_buf + s; }
+        else            { this.fn_buf   = this.fn_buf   + s; }
+    }
+    fn eml(s: string) { this.em(s + "\n"); }
+    fn em_class(s: string) { this.class_buf  = this.class_buf  + s; }
+    fn em_global(s: string) { this.global_buf = this.global_buf + s; }
+
+    // ── Counter helpers ───────────────────────────────────────────────────────
+
+    fn new_tmp(): string {
+        this.tmp = this.tmp + 1;
+        return "%t" + int_to_string(this.tmp);
+    }
+
+    fn new_lbl(prefix: string): string {
+        this.lbl = this.lbl + 1;
+        return prefix + "." + int_to_string(this.lbl);
+    }
+
+    // Allocate a named alloca register (e.g. %x.5).
+    fn alloca_name(name: string): string {
+        this.tmp = this.tmp + 1;
+        return "%" + name + "." + int_to_string(this.tmp);
+    }
+
+    // ── LLVM type helpers ─────────────────────────────────────────────────────
+
+    fn llvm_ty(ty: JType): string {
+        if ty == null             { return "void"; }
+        if ty.kind == TY_VOID     { return "void"; }
+        if ty.kind == TY_INT      { return "i64"; }
+        if ty.kind == TY_FLOAT    { return "double"; }
+        if ty.kind == TY_BOOL     { return "i1"; }
+        return "ptr";  // string, array, map, class, fn, null
+    }
+
+    fn zero_val(ty: JType): string {
+        if ty == null          { return "0"; }
+        if ty.kind == TY_INT   { return "0"; }
+        if ty.kind == TY_FLOAT { return "0.0"; }
+        if ty.kind == TY_BOOL  { return "false"; }
+        return "null";
+    }
+
+    fn type_size(ty: JType): int {
+        if ty == null          { return 8; }
+        if ty.kind == TY_INT   { return 8; }
+        if ty.kind == TY_FLOAT { return 8; }
+        if ty.kind == TY_BOOL  { return 1; }
+        return 8;
+    }
+
+    fn is_heap(ty: JType): bool {
+        if ty == null { return false; }
+        if ty.kind == TY_STRING { return true; }
+        if ty.kind == TY_ARRAY  { return true; }
+        if ty.kind == TY_MAP    { return true; }
+        if ty.kind == TY_CLASS  { return true; }
+        if ty.kind == TY_FN     { return true; }
+        return false;
+    }
+
+    // ── Local variable lookup ─────────────────────────────────────────────────
+
+    fn find_local(name: string): LocalVar {
+        let i: int = len(this.locals) - 1;
+        while i >= 0 {
+            if this.locals[i].name == name { return this.locals[i]; }
+            i = i - 1;
+        }
+        return null;
+    }
+
+    fn find_global(name: string): LocalVar {
+        let i: int = 0;
+        while i < len(this.globals) {
+            if this.globals[i].name == name { return this.globals[i]; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn clone_locals(): LocalVar[] {
+        let c: LocalVar[] = [];
+        let i: int = 0;
+        while i < len(this.locals) { push(c, this.locals[i]); i = i + 1; }
+        return c;
+    }
+
+    fn clone_lbl_stack(): LoopLabels[] {
+        let c: LoopLabels[] = [];
+        let i: int = 0;
+        while i < len(this.lbl_stack) { push(c, this.lbl_stack[i]); i = i + 1; }
+        return c;
+    }
+
+    // Remove the last element from an int[] (Jerry has no pop builtin).
+    fn drop_last_int(arr: int[]): int[] {
+        let r: int[] = [];
+        let i: int = 0;
+        while i < len(arr) - 1 { push(r, arr[i]); i = i + 1; }
+        return r;
+    }
+
+    fn drop_last_lbl(arr: LoopLabels[]): LoopLabels[] {
+        let r: LoopLabels[] = [];
+        let i: int = 0;
+        while i < len(arr) - 1 { push(r, arr[i]); i = i + 1; }
+        return r;
+    }
+
+    // ── Reference-counting scope helpers ──────────────────────────────────────
+
+    fn push_rel_scope() {
+        this.rel_top = new ScopeNode(this.rel_top);
+    }
+
+    fn pop_rel_scope() {
+        if this.rel_top != null { this.rel_top = this.rel_top.parent; }
+    }
+
+    fn register_heap_local(alloca_reg: string, ty: JType) {
+        if this.rel_top == null { return; }
+        push(this.rel_top.entries, new ReleaseEntry(alloca_reg, ty));
+    }
+
+    // Emit jerry_release for all entries in one ScopeNode, in reverse order.
+    // Skip except_alloca if non-empty (used for return-value exemption).
+    fn emit_scope_releases(sn: ScopeNode, except_alloca: string) {
+        if sn == null { return; }
+        let i: int = len(sn.entries) - 1;
+        while i >= 0 {
+            let re: ReleaseEntry = sn.entries[i];
+            if except_alloca == "" || re.alloca_reg != except_alloca {
+                let tmp: string = this.new_tmp();
+                this.eml("  " + tmp + " = load ptr, ptr " + re.alloca_reg);
+                this.eml("  call void @jerry_release(ptr " + tmp + ")");
+            }
+            i = i - 1;
+        }
+    }
+
+    // Emit releases for all scopes from rel_top down to (not including) stop_at.
+    fn emit_releases_to(stop_at: ScopeNode, except_alloca: string) {
+        let sn: ScopeNode = this.rel_top;
+        while sn != null && sn != stop_at {
+            this.emit_scope_releases(sn, except_alloca);
+            sn = sn.parent;
+        }
+    }
+
+    fn emit_all_releases(except_alloca: string) {
+        this.emit_releases_to(null, except_alloca);
+    }
+
+    fn emit_cur_scope_releases() {
+        this.emit_scope_releases(this.rel_top, "");
+    }
+
+    // ── Context save/restore (for anonymous functions) ────────────────────────
+
+    fn save_ctx(): GenContext {
+        let ctx: GenContext = new GenContext();
+        ctx.locals     = this.clone_locals();
+        ctx.ret_type   = this.ret_type;
+        ctx.fn_name    = this.fn_name;
+        ctx.cls_name   = this.cls_name;
+        ctx.terminated = this.terminated;
+        ctx.lbl_stack  = this.clone_lbl_stack();
+        ctx.rel_top    = this.rel_top;
+        return ctx;
+    }
+
+    fn restore_ctx(ctx: GenContext) {
+        this.locals     = ctx.locals;
+        this.ret_type   = ctx.ret_type;
+        this.fn_name    = ctx.fn_name;
+        this.cls_name   = ctx.cls_name;
+        this.terminated = ctx.terminated;
+        this.lbl_stack  = ctx.lbl_stack;
+        this.rel_top    = ctx.rel_top;
+        // tmp and lbl stay globally unique — do not restore
+    }
+
+    // ── Alloca / store emission ───────────────────────────────────────────────
+
+    fn emit_alloca(name: string, llvm_type: string): string {
+        let reg: string = this.alloca_name(name);
+        this.eml("  " + reg + " = alloca " + llvm_type);
+        return reg;
+    }
+
+    fn emit_store(llvm_type: string, val: string, ptr: string) {
+        this.eml("  store " + llvm_type + " " + val + ", ptr " + ptr);
+    }
+
+    fn emit_block_label(name: string) {
+        this.eml(name + ":");
+        this.terminated = false;
+    }
+
+    // Widen an i1 (bool) to i64 if needed (e.g. before passing to a fn that
+    // expects i64, or for coercion purposes).
+    fn coerce_to_i64(val: string, ty: JType): string {
+        if ty != null && ty.kind == TY_BOOL {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = zext i1 " + val + " to i64");
+            return res;
+        }
+        return val;
+    }
+
+    // ── String utilities ──────────────────────────────────────────────────────
+
+    // Produce the LLVM hex escape for one byte value (e.g. 10 → "0A").
+    fn hex_byte(n: int): string {
+        let hex: string = "0123456789ABCDEF";
+        let hi: int = (n / 16) % 16;
+        let lo: int = n % 16;
+        return char_to_string(char_at(hex, hi)) + char_to_string(char_at(hex, lo));
+    }
+
+    // Escape a raw string for use inside LLVM IR  c"..." constants.
+    fn llvm_escape(s: string): string {
+        let result: string = "";
+        let i: int = 0;
+        let n: int = len(s);
+        let bs: int = 92;   // backslash
+        while i < n {
+            let c: int = char_at(s, i);
+            if c == bs {
+                result = result + "\\5C";
+            } else if c == 34 {
+                result = result + "\\22";
+            } else if c == 10 {
+                result = result + "\\0A";
+            } else if c == 13 {
+                result = result + "\\0D";
+            } else if c == 9 {
+                result = result + "\\09";
+            } else if c < 32 || c >= 127 {
+                result = result + "\\" + this.hex_byte(c);
+            } else {
+                result = result + char_to_string(c);
+            }
+            i = i + 1;
+        }
+        return result;
+    }
+
+    // Intern a string constant: store in str_consts, emit jerry_string_new call.
+    fn gen_string_lit(s: string): string {
+        let id: int = len(this.str_consts);
+        push(this.str_consts, s);
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = call ptr @jerry_string_new(ptr @.str." +
+            int_to_string(id) + ", i64 " + int_to_string(len(s)) + ")");
+        return res;
+    }
+
+    // ── Field index lookup ────────────────────────────────────────────────────
+
+    // Return GEP index for a class field (1-based because slot 0 is vtable ptr).
+    fn field_gep_idx(ci: ClassInfo, field_name: string): int {
+        let i: int = 0;
+        while i < len(ci.fields) {
+            if ci.fields[i].name == field_name { return i + 1; }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    // ── Module-level structure ────────────────────────────────────────────────
+
+    fn module_header(): string {
+        return "; Jerry self-hosted compiled module\n" +
+            "\n" +
+            "%JerryStr   = type { i64, ptr }\n" +
+            "%JerryArray = type { i64, i64, ptr, i64 }\n" +
+            "%JerryMap   = type { ptr, i64, i64, i64, i8 }\n" +
+            "%JerryClosure = type { ptr, ptr }\n" +
+            "\n";
+    }
+
+    fn runtime_decls(): string {
+        return "; ── Runtime function declarations ───────────────────────────────────────────\n" +
+            "declare ptr  @jerry_string_new(ptr, i64)\n" +
+            "declare ptr  @jerry_string_concat(ptr, ptr)\n" +
+            "declare i8   @jerry_string_eq(ptr, ptr)\n" +
+            "declare i8   @jerry_string_ne(ptr, ptr)\n" +
+            "declare i64  @jerry_string_len(ptr)\n" +
+            "declare ptr  @jerry_int_to_string(i64)\n" +
+            "declare ptr  @jerry_float_to_string(double)\n" +
+            "declare i64  @jerry_char_at(ptr, i64)\n" +
+            "declare ptr  @jerry_string_slice(ptr, i64, i64)\n" +
+            "declare ptr  @jerry_char_to_string(i64)\n" +
+            "declare void @jerry_print_int(i64)\n" +
+            "declare void @jerry_print_float(double)\n" +
+            "declare void @jerry_print_bool(i8)\n" +
+            "declare void @jerry_print_string(ptr)\n" +
+            "declare void @jerry_print_array(ptr)\n" +
+            "declare void @jerry_println()\n" +
+            "declare ptr  @jerry_array_new(i64, i64, i8)\n" +
+            "declare void @jerry_array_mark_heap(ptr)\n" +
+            "declare ptr  @jerry_array_get(ptr, i64)\n" +
+            "declare void @jerry_array_set(ptr, i64, ptr)\n" +
+            "declare i64  @jerry_array_len(ptr)\n" +
+            "declare void @jerry_array_push(ptr, ptr)\n" +
+            "declare void @jerry_panic(ptr)\n" +
+            "declare void @jerry_exit(i64)\n" +
+            "declare void @jerry_retain(ptr)\n" +
+            "declare void @jerry_release(ptr)\n" +
+            "declare ptr  @jerry_alloc(i64)\n" +
+            "declare ptr  @jerry_read_file(ptr)\n" +
+            "declare void @jerry_write_file(ptr, ptr)\n" +
+            "declare ptr  @jerry_getenv(ptr)\n" +
+            "declare void @jerry_delete_file(ptr)\n" +
+            "declare i8   @jerry_is_dir(ptr)\n" +
+            "declare ptr  @jerry_list_dir(ptr)\n" +
+            "declare ptr  @jerry_runtime_lib_path()\n" +
+            "declare i64  @jerry_exec(ptr)\n" +
+            "declare void @jerry_each_line(ptr, ptr)\n" +
+            "declare void @jerry_capture_args(i64, ptr)\n" +
+            "declare ptr  @jerry_args()\n" +
+            "declare void @jerry_print_err(ptr)\n" +
+            "declare ptr  @jerry_read_stdin()\n" +
+            "declare i64  @jerry_now_millis()\n" +
+            "declare i64  @jerry_now_seconds()\n" +
+            "declare ptr  @jerry_now_string()\n" +
+            "declare ptr  @jerry_map_new(i8, i64)\n" +
+            "declare void @jerry_map_set(ptr, ptr, ptr)\n" +
+            "declare ptr  @jerry_map_get(ptr, ptr)\n" +
+            "declare i8   @jerry_map_has(ptr, ptr)\n" +
+            "declare void @jerry_map_delete(ptr, ptr)\n" +
+            "declare i64  @jerry_map_len(ptr)\n" +
+            "declare ptr  @jerry_map_keys(ptr)\n" +
+            "\n";
+    }
+
+    fn c_main_wrapper(has_globals: bool): string {
+        let s: string = "\n; ── C entry point ───────────────────────────────────────────────────────────\n" +
+            "define i32 @main(i32 %argc, ptr %argv) {\n" +
+            "entry:\n" +
+            "  %argc64 = sext i32 %argc to i64\n" +
+            "  call void @jerry_capture_args(i64 %argc64, ptr %argv)\n";
+        if has_globals {
+            s = s + "  call void @jerry_global_init()\n";
+        }
+        s = s + "  call void @main_jerry()\n" +
+            "  ret i32 0\n" +
+            "}\n";
+        return s;
+    }
+
+    // ── Class type declarations ───────────────────────────────────────────────
+
+    fn gen_class_types() {
+        let i: int = 0;
+        while i < len(this.info.classes) {
+            let ci: ClassInfo = this.info.classes[i];
+            // struct layout: vtable ptr + fields
+            let fields: string = "ptr";
+            let j: int = 0;
+            while j < len(ci.fields) {
+                fields = fields + ", " + this.llvm_ty(ci.fields[j].ty);
+                j = j + 1;
+            }
+            this.em_class("%" + ci.name + " = type { " + fields + " }\n");
+            i = i + 1;
+        }
+        if len(this.info.classes) > 0 { this.em_class("\n"); }
+    }
+
+    fn gen_vtable_decls() {
+        let i: int = 0;
+        while i < len(this.info.classes) {
+            let ci: ClassInfo = this.info.classes[i];
+            if len(ci.methods) == 0 { i = i + 1; continue; }
+            let ptrs: string = "";
+            let j: int = 0;
+            while j < len(ci.methods) {
+                if j > 0 { ptrs = ptrs + ", "; }
+                ptrs = ptrs + "ptr @" + ci.name + "_" + ci.methods[j].name + "_jerry";
+                j = j + 1;
+            }
+            this.em_class("@vtable." + ci.name + " = private constant [" +
+                int_to_string(len(ci.methods)) + " x ptr] [" + ptrs + "]\n");
+            i = i + 1;
+        }
+        if len(this.info.classes) > 0 { this.em_class("\n"); }
+    }
+
+    // ── Class destructor generation ───────────────────────────────────────────
+
+    fn gen_class_destructor(cd: ClassDecl) {
+        let ci: ClassInfo = this.info.find_class(cd.name);
+        if ci == null { return; }
+        let fn_name: string = cd.name + "_destroy_jerry";
+        this.eml("define private void @" + fn_name + "(ptr %self) {");
+        this.eml("entry:");
+        let i: int = 0;
+        while i < len(ci.fields) {
+            let fi: FieldInfo = ci.fields[i];
+            if !this.is_heap(fi.ty) { i = i + 1; continue; }
+            let field_slot: string = this.new_tmp();
+            let field_val:  string = this.new_tmp();
+            // slot 0 = vtable, so field at index i is at GEP index i+1
+            this.eml("  " + field_slot + " = getelementptr %" + cd.name +
+                ", ptr %self, i32 0, i32 " + int_to_string(i + 1));
+            this.eml("  " + field_val + " = load ptr, ptr " + field_slot);
+            this.eml("  call void @jerry_release(ptr " + field_val + ")");
+            i = i + 1;
+        }
+        this.eml("  ret void");
+        this.eml("}\n");
+    }
+
+    // ── Function declaration generation ──────────────────────────────────────
+
+    // Generate a top-level function (is_method=false) or class method (is_method=true).
+    fn gen_fn(fd: FnDecl, is_method: bool, class_name: string, ft: JType) {
+        if ft == null { return; }
+
+        let llvm_name: string = "";
+        if is_method {
+            llvm_name = class_name + "_" + fd.name + "_jerry";
+        } else if fd.name == "main" {
+            llvm_name = "main_jerry";
+        } else {
+            llvm_name = fd.name + "_jerry";
+        }
+        // Build parameter list
+        let param_str: string = "";
+        let param_regs: string[] = [];
+        if is_method {
+            param_str = "ptr %self.arg";
+            push(param_regs, "%self.arg");
+        }
+        let pi: int = 0;
+        while pi < len(fd.params) {
+            let p: Param = fd.params[pi];
+            let pltty: string = this.llvm_ty(ft.params[pi]);
+            let preg: string = "%" + p.name + ".arg";
+            if len(param_str) > 0 { param_str = param_str + ", "; }
+            param_str = param_str + pltty + " " + preg;
+            push(param_regs, preg);
+            pi = pi + 1;
+        }
+
+        let ret_lt: string = this.llvm_ty(ft.ret);
+        this.eml("define " + ret_lt + " @" + llvm_name + "(" + param_str + ") {");
+        this.eml("entry:");
+
+        let ctx: GenContext = this.save_ctx();
+        this.fn_name   = llvm_name;
+        this.cls_name  = class_name;
+        this.ret_type  = ft.ret;
+        let new_locals: LocalVar[] = [];
+        this.locals    = new_locals;
+        this.terminated = false;
+        let new_lbl: LoopLabels[] = [];
+        this.lbl_stack = new_lbl;
+        this.rel_top   = null;
+
+        // Allocate alloca for 'this' in methods
+        if is_method {
+            let sreg: string = this.emit_alloca("this", "ptr");
+            this.emit_store("ptr", "%self.arg", sreg);
+            push(this.locals, new LocalVar("this", sreg, "ptr", make_class_type(class_name)));
+        }
+
+        // Allocate allocas for all parameters
+        let i: int = 0;
+        while i < len(fd.params) {
+            let p: Param = fd.params[i];
+            let pltty: string = this.llvm_ty(ft.params[i]);
+            let offset: int = 0;
+            if is_method { offset = 1; }
+            let arg_reg: string = param_regs[i + offset];
+            let reg: string = this.emit_alloca(p.name, pltty);
+            this.emit_store(pltty, arg_reg, reg);
+            push(this.locals, new LocalVar(p.name, reg, pltty, ft.params[i]));
+            i = i + 1;
+        }
+
+        this.gen_block(fd.body);
+
+        if !this.terminated {
+            if ret_lt == "void" {
+                this.eml("  ret void");
+            } else {
+                this.eml("  ret " + ret_lt + " " + this.zero_val(ft.ret));
+            }
+        }
+        this.eml("}\n");
+        this.restore_ctx(ctx);
+    }
+
+    // Generate an anonymous function expression; returns the closure register.
+    fn gen_fn_expr(e: Expr): string {
+        this.tmp = this.tmp + 1;
+        let anon_id: string = int_to_string(this.tmp);
+        let anon_name: string = "anon_" + anon_id + "_jerry";
+
+        // Build param type list
+        let params: JType[] = [];
+        let pi: int = 0;
+        while pi < len(e.fn_params) {
+            push(params, this.resolve_te(e.fn_params[pi].type_expr));
+            pi = pi + 1;
+        }
+        let ret_ty: JType = this.resolve_te(e.fn_ret);
+        let ret_lt: string = this.llvm_ty(ret_ty);
+
+        // Build LLVM param string (env ptr + declared params)
+        let param_str: string = "ptr %env.arg";
+        let param_regs: string[] = [];
+        push(param_regs, "%env.arg");
+        let pi2: int = 0;
+        while pi2 < len(e.fn_params) {
+            let p: Param = e.fn_params[pi2];
+            let pltty: string = this.llvm_ty(params[pi2]);
+            let preg: string = "%" + p.name + ".arg";
+            param_str = param_str + ", " + pltty + " " + preg;
+            push(param_regs, preg);
+            pi2 = pi2 + 1;
+        }
+
+        // Save context and switch to anon buffer
+        let ctx: GenContext = this.save_ctx();
+        let was_anon: bool = this.in_anon;
+        this.in_anon = true;
+
+        this.fn_name  = anon_name;
+        this.cls_name = "";
+        this.ret_type = ret_ty;
+        let nl: LocalVar[] = [];
+        this.locals    = nl;
+        this.terminated = false;
+        let nll: LoopLabels[] = [];
+        this.lbl_stack = nll;
+        this.rel_top   = null;
+
+        this.eml("define private " + ret_lt + " @" + anon_name + "(" + param_str + ") {");
+        this.eml("entry:");
+
+        // Allocate param allocas (skip env at index 0)
+        let i: int = 0;
+        while i < len(e.fn_params) {
+            let p: Param = e.fn_params[i];
+            let pltty: string = this.llvm_ty(params[i]);
+            let reg: string = this.emit_alloca(p.name, pltty);
+            this.emit_store(pltty, param_regs[i + 1], reg);
+            push(this.locals, new LocalVar(p.name, reg, pltty, params[i]));
+            i = i + 1;
+        }
+
+        this.gen_block(e.fn_body);
+
+        if !this.terminated {
+            if ret_lt == "void" { this.eml("  ret void"); }
+            else { this.eml("  ret " + ret_lt + " " + this.zero_val(ret_ty)); }
+        }
+        this.eml("}\n");
+
+        this.in_anon = was_anon;
+        this.restore_ctx(ctx);
+
+        // Now (back in the outer function) build a closure struct
+        let closure_reg: string = this.new_tmp();
+        this.eml("  " + closure_reg + " = call ptr @jerry_alloc(i64 16)");
+        let fptr_slot: string = this.new_tmp();
+        this.eml("  " + fptr_slot + " = getelementptr %JerryClosure, ptr " +
+            closure_reg + ", i32 0, i32 0");
+        this.eml("  store ptr @" + anon_name + ", ptr " + fptr_slot);
+        let env_slot: string = this.new_tmp();
+        this.eml("  " + env_slot + " = getelementptr %JerryClosure, ptr " +
+            closure_reg + ", i32 0, i32 1");
+        this.eml("  store ptr null, ptr " + env_slot);
+        return closure_reg;
+    }
+
+    // Resolve a TypeExpr to a JType (mirrors Checker.resolve_type but without errors).
+    fn resolve_te(te: TypeExpr): JType {
+        if te == null { return make_void(); }
+        if te.kind == TYPE_NAME {
+            if te.name == "void"   { return make_void(); }
+            if te.name == "int"    { return make_int(); }
+            if te.name == "float"  { return make_float(); }
+            if te.name == "bool"   { return make_bool(); }
+            if te.name == "string" { return make_string(); }
+            return make_class_type(te.name);
+        }
+        if te.kind == TYPE_ARRAY { return make_array(this.resolve_te(te.elem)); }
+        if te.kind == TYPE_MAP {
+            return make_map_type(this.resolve_te(te.key), this.resolve_te(te.val));
+        }
+        // TYPE_FN
+        let p: JType[] = [];
+        let i: int = 0;
+        while i < len(te.fn_params) {
+            push(p, this.resolve_te(te.fn_params[i]));
+            i = i + 1;
+        }
+        return make_fn_type(p, this.resolve_te(te.fn_ret));
+    }
+
+    // ── Block and statement generation ────────────────────────────────────────
+
+    fn gen_block(b: Block) {
+        if b == null { return; }
+        let saved_locals: LocalVar[] = this.clone_locals();
+        this.push_rel_scope();
+        let i: int = 0;
+        while i < len(b.stmts) {
+            if this.terminated { i = i + 1; continue; }
+            this.gen_stmt(b.stmts[i]);
+            i = i + 1;
+        }
+        if !this.terminated { this.emit_cur_scope_releases(); }
+        this.pop_rel_scope();
+        this.locals = saved_locals;
+    }
+
+    fn gen_stmt(s: Stmt) {
+        if s == null { return; }
+        if s.kind == STMT_VAR     { this.gen_var_decl(s); return; }
+        if s.kind == STMT_RETURN  { this.gen_return(s);   return; }
+        if s.kind == STMT_IF      { this.gen_if(s);        return; }
+        if s.kind == STMT_WHILE   { this.gen_while(s);     return; }
+        if s.kind == STMT_FOR     { this.gen_for(s);       return; }
+        if s.kind == STMT_BREAK {
+            if len(this.lbl_stack) == 0 { return; }
+            let top: LoopLabels = this.lbl_stack[len(this.lbl_stack) - 1];
+            this.emit_releases_to(top.loop_scope, "");
+            this.eml("  br label %" + top.end_lbl);
+            this.terminated = true;
+            return;
+        }
+        if s.kind == STMT_CONTINUE {
+            if len(this.lbl_stack) == 0 { return; }
+            let top: LoopLabels = this.lbl_stack[len(this.lbl_stack) - 1];
+            this.emit_releases_to(top.loop_scope, "");
+            this.eml("  br label %" + top.cond_lbl);
+            this.terminated = true;
+            return;
+        }
+        if s.kind == STMT_EXPR {
+            this.gen_expr(s.expr);
+            return;
+        }
+    }
+
+    fn gen_var_decl(s: Stmt) {
+        // Determine the effective type (use annotation for empty [] / {})
+        let ty: JType = s.var_jtype;
+        if ty == null { ty = make_void(); }
+
+        let val: string = "";
+        // Bare string literal: gen directly so lifetime is owned by this alloca
+        if s.var_value != null && s.var_value.kind == EXPR_STRING {
+            val = this.gen_string_lit(s.var_value.sval);
+        } else {
+            val = this.gen_expr(s.var_value);
+        }
+
+        let lt: string = this.llvm_ty(ty);
+        let reg: string = this.emit_alloca(s.var_name, lt);
+        this.emit_store(lt, val, reg);
+        push(this.locals, new LocalVar(s.var_name, reg, lt, ty));
+
+        // Mark heap arrays created from empty literal so element RC works.
+        if ty.kind == TY_ARRAY && this.is_heap(ty.elem) && this.is_empty_array_lit(s.var_value) {
+            this.eml("  call void @jerry_array_mark_heap(ptr " + val + ")");
+        }
+
+        // Track for release if this is a fresh heap allocation (not a bare load).
+        if this.is_heap(ty) && !this.is_simple_ident(s.var_value) {
+            if this.is_index_expr(s.var_value) || this.is_field_expr(s.var_value) || this.is_bare_this(s.var_value) {
+                // Borrowed references (array element, field access, `this`) need an explicit
+                // retain so this variable owns its reference and the paired release is balanced.
+                this.eml("  call void @jerry_retain(ptr " + val + ")");
+            }
+            this.register_heap_local(reg, ty);
+        }
+    }
+
+    fn gen_return(s: Stmt) {
+        if s.ret_value == null {
+            this.emit_all_releases("");
+            this.eml("  ret void");
+            this.terminated = true;
+            return;
+        }
+        // Bare string literal: allocate directly (lifetime transfer to caller)
+        let val: string = "";
+        if s.ret_value.kind == EXPR_STRING && this.is_heap(this.ret_type) {
+            val = this.gen_string_lit(s.ret_value.sval);
+            this.emit_all_releases("");
+            this.eml("  ret ptr " + val);
+            this.terminated = true;
+            return;
+        }
+        val = this.gen_expr(s.ret_value);
+
+        // Exempt the returned local from release (transfer of ownership to caller).
+        // For field/index access return values, retain first so releasing locals
+        // doesn't free the value before it reaches the caller.
+        let exempt: string = "";
+        if this.is_heap(this.ret_type) {
+            if this.is_simple_ident(s.ret_value) {
+                let lv: LocalVar = this.find_local(s.ret_value.sval);
+                if lv != null && this.is_heap(lv.ty) { exempt = lv.reg; }
+            } else if this.is_field_expr(s.ret_value) || this.is_index_expr(s.ret_value) {
+                this.eml("  call void @jerry_retain(ptr " + val + ")");
+            }
+        }
+        this.emit_all_releases(exempt);
+        let ret_lt: string = this.llvm_ty(this.ret_type);
+        this.eml("  ret " + ret_lt + " " + val);
+        this.terminated = true;
+    }
+
+    fn gen_if(s: Stmt) {
+        let then_lbl:  string = this.new_lbl("if.then");
+        let else_lbl:  string = this.new_lbl("if.else");
+        let merge_lbl: string = this.new_lbl("if.merge");
+
+        let cond: string = this.gen_expr(s.if_cond);
+        this.eml("  br i1 " + cond + ", label %" + then_lbl + ", label %" + else_lbl);
+
+        // then
+        this.emit_block_label(then_lbl);
+        this.gen_block(s.if_then);
+        if !this.terminated { this.eml("  br label %" + merge_lbl); }
+        let then_term: bool = this.terminated;
+
+        // else / else-if
+        this.emit_block_label(else_lbl);
+        if s.if_else_if != null {
+            this.gen_stmt(s.if_else_if);
+        } else if s.if_else != null {
+            this.gen_block(s.if_else);
+        }
+        if !this.terminated { this.eml("  br label %" + merge_lbl); }
+        let else_term: bool = this.terminated;
+
+        // merge
+        this.emit_block_label(merge_lbl);
+        if then_term && else_term {
+            this.eml("  unreachable");
+            this.terminated = true;
+        }
+    }
+
+    fn gen_while(s: Stmt) {
+        let cond_lbl: string = this.new_lbl("while.cond");
+        let body_lbl: string = this.new_lbl("while.body");
+        let end_lbl:  string = this.new_lbl("while.end");
+
+        this.eml("  br label %" + cond_lbl);
+        this.emit_block_label(cond_lbl);
+
+        let cond: string = this.gen_expr(s.while_cond);
+        this.eml("  br i1 " + cond + ", label %" + body_lbl + ", label %" + end_lbl);
+
+        this.emit_block_label(body_lbl);
+        let loop_scope: ScopeNode = this.rel_top;
+        push(this.lbl_stack, new LoopLabels(cond_lbl, end_lbl, loop_scope));
+        this.gen_block(s.while_body);
+        this.lbl_stack = this.drop_last_lbl(this.lbl_stack);
+        if !this.terminated { this.eml("  br label %" + cond_lbl); }
+
+        this.emit_block_label(end_lbl);
+    }
+
+    fn gen_for(s: Stmt) {
+        let cond_lbl: string = this.new_lbl("for.cond");
+        let body_lbl: string = this.new_lbl("for.body");
+        let post_lbl: string = this.new_lbl("for.post");
+        let end_lbl:  string = this.new_lbl("for.end");
+
+        let saved_locals: LocalVar[] = this.clone_locals();
+        this.push_rel_scope();  // scope for for-init heap variables
+
+        // Init
+        if s.for_init_var != null {
+            this.gen_var_decl(s.for_init_var);
+        } else if s.for_init_expr != null {
+            this.gen_expr(s.for_init_expr);
+        }
+
+        let loop_scope: ScopeNode = this.rel_top;
+
+        this.eml("  br label %" + cond_lbl);
+        this.emit_block_label(cond_lbl);
+
+        // Condition
+        if s.for_cond != null {
+            let cond: string = this.gen_expr(s.for_cond);
+            this.eml("  br i1 " + cond + ", label %" + body_lbl + ", label %" + end_lbl);
+        } else {
+            this.eml("  br label %" + body_lbl);
+        }
+
+        // Body
+        this.emit_block_label(body_lbl);
+        push(this.lbl_stack, new LoopLabels(post_lbl, end_lbl, loop_scope));
+        this.gen_block(s.for_body);
+        this.lbl_stack = this.drop_last_lbl(this.lbl_stack);
+        if !this.terminated { this.eml("  br label %" + post_lbl); }
+
+        // Post
+        this.emit_block_label(post_lbl);
+        if s.for_post != null { this.gen_expr(s.for_post); }
+        this.eml("  br label %" + cond_lbl);
+
+        // End: release for-init vars
+        this.emit_block_label(end_lbl);
+        this.emit_cur_scope_releases();
+        this.pop_rel_scope();
+        this.locals = saved_locals;
+    }
+
+    // ── Expression generation ─────────────────────────────────────────────────
+    // Returns the LLVM register / value holding the result.
+
+    fn gen_expr(e: Expr): string {
+        if e == null { return "0"; }
+
+        if e.kind == EXPR_INT    { return e.sval; }
+        if e.kind == EXPR_FLOAT  {
+            // Ensure LLVM sees a decimal point
+            if contains(e.sval, ".") { return e.sval; }
+            return e.sval + ".0";
+        }
+        if e.kind == EXPR_BOOL   {
+            if e.sval == "true" { return "true"; }
+            return "false";
+        }
+        if e.kind == EXPR_NULL   { return "null"; }
+        if e.kind == EXPR_STRING { return this.gen_string_lit(e.sval); }
+
+        if e.kind == EXPR_THIS {
+            let lv: LocalVar = this.find_local("this");
+            if lv == null { return "null"; }
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = load ptr, ptr " + lv.reg);
+            return res;
+        }
+
+        if e.kind == EXPR_IDENT {
+            let lv: LocalVar = this.find_local(e.sval);
+            if lv != null {
+                let res: string = this.new_tmp();
+                this.eml("  " + res + " = load " + lv.llvm_ty + ", ptr " + lv.reg);
+                return res;
+            }
+            let gv: LocalVar = this.find_global(e.sval);
+            if gv != null {
+                let res: string = this.new_tmp();
+                this.eml("  " + res + " = load " + gv.llvm_ty + ", ptr " + gv.reg);
+                return res;
+            }
+            return "0";
+        }
+
+        if e.kind == EXPR_PAREN  { return this.gen_expr(e.left); }
+        if e.kind == EXPR_UNARY  { return this.gen_unary(e); }
+        if e.kind == EXPR_BINARY { return this.gen_binary(e); }
+        if e.kind == EXPR_INC || e.kind == EXPR_DEC { return this.gen_incdec(e); }
+        if e.kind == EXPR_ASSIGN { return this.gen_assign(e); }
+        if e.kind == EXPR_CALL   { return this.gen_call(e); }
+        if e.kind == EXPR_INDEX  { return this.gen_index(e); }
+        if e.kind == EXPR_FIELD  { return this.gen_field_load(e); }
+        if e.kind == EXPR_NEW    { return this.gen_new(e); }
+        if e.kind == EXPR_ARRAY  { return this.gen_array_lit(e); }
+        if e.kind == EXPR_MAP    { return this.gen_map_lit(e); }
+        if e.kind == EXPR_FN     { return this.gen_fn_expr(e); }
+        return "0";
+    }
+
+    fn gen_unary(e: Expr): string {
+        let val: string = this.gen_expr(e.left);
+        let ty: JType = e.left.jtype;
+        if e.sval == "!" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = xor i1 " + val + ", true");
+            return res;
+        }
+        if e.sval == "-" {
+            let res: string = this.new_tmp();
+            if ty != null && ty.kind == TY_FLOAT {
+                this.eml("  " + res + " = fneg double " + val);
+            } else {
+                this.eml("  " + res + " = sub i64 0, " + val);
+            }
+            return res;
+        }
+        return val;
+    }
+
+    fn gen_binary(e: Expr): string {
+        let op: string = e.sval;
+        let lty: JType = e.left.jtype;
+
+        // Short-circuit: && and ||
+        if op == "&&" { return this.gen_and(e); }
+        if op == "||" { return this.gen_or(e);  }
+
+        let lv: string = this.gen_expr(e.left);
+        let rv: string = this.gen_expr(e.right);
+        let res: string = this.new_tmp();
+
+        // Equality / inequality
+        if op == "==" || op == "!=" {
+            if lty != null && lty.kind == TY_FLOAT {
+                let pred: string = "oeq";
+                if op == "!=" { pred = "one"; }
+                this.eml("  " + res + " = fcmp " + pred + " double " + lv + ", " + rv);
+                return res;
+            }
+            if lty != null && lty.kind == TY_STRING {
+                if op == "==" {
+                    this.eml("  " + res + " = call i8 @jerry_string_eq(ptr " + lv + ", ptr " + rv + ")");
+                } else {
+                    this.eml("  " + res + " = call i8 @jerry_string_ne(ptr " + lv + ", ptr " + rv + ")");
+                }
+                let bres: string = this.new_tmp();
+                this.eml("  " + bres + " = icmp ne i8 " + res + ", 0");
+                return bres;
+            }
+            // int, bool, ptr (class/null)
+            let itype: string = "i64";
+            if lty != null && lty.kind == TY_BOOL  { itype = "i1"; }
+            if lty != null && (lty.kind == TY_CLASS || lty.kind == TY_NULL || lty.kind == TY_ARRAY || lty.kind == TY_MAP) { itype = "ptr"; }
+            let pred2: string = "eq";
+            if op == "!=" { pred2 = "ne"; }
+            this.eml("  " + res + " = icmp " + pred2 + " " + itype + " " + lv + ", " + rv);
+            return res;
+        }
+
+        // Comparison operators
+        if op == "<" || op == ">" || op == "<=" || op == ">=" {
+            if lty != null && lty.kind == TY_FLOAT {
+                let fpreds: string = "olt";
+                if op == ">"  { fpreds = "ogt"; }
+                if op == "<=" { fpreds = "ole"; }
+                if op == ">=" { fpreds = "oge"; }
+                this.eml("  " + res + " = fcmp " + fpreds + " double " + lv + ", " + rv);
+                return res;
+            }
+            let ipreds: string = "slt";
+            if op == ">"  { ipreds = "sgt"; }
+            if op == "<=" { ipreds = "sle"; }
+            if op == ">=" { ipreds = "sge"; }
+            this.eml("  " + res + " = icmp " + ipreds + " i64 " + lv + ", " + rv);
+            return res;
+        }
+
+        // Arithmetic
+        if op == "+" {
+            if lty != null && lty.kind == TY_STRING {
+                this.eml("  " + res + " = call ptr @jerry_string_concat(ptr " + lv + ", ptr " + rv + ")");
+                return res;
+            }
+            if lty != null && lty.kind == TY_FLOAT {
+                this.eml("  " + res + " = fadd double " + lv + ", " + rv);
+                return res;
+            }
+            this.eml("  " + res + " = add i64 " + lv + ", " + rv);
+            return res;
+        }
+        if op == "-" {
+            if lty != null && lty.kind == TY_FLOAT {
+                this.eml("  " + res + " = fsub double " + lv + ", " + rv);
+                return res;
+            }
+            this.eml("  " + res + " = sub i64 " + lv + ", " + rv);
+            return res;
+        }
+        if op == "*" {
+            if lty != null && lty.kind == TY_FLOAT {
+                this.eml("  " + res + " = fmul double " + lv + ", " + rv);
+                return res;
+            }
+            this.eml("  " + res + " = mul i64 " + lv + ", " + rv);
+            return res;
+        }
+        if op == "/" {
+            if lty != null && lty.kind == TY_FLOAT {
+                this.eml("  " + res + " = fdiv double " + lv + ", " + rv);
+                return res;
+            }
+            this.eml("  " + res + " = sdiv i64 " + lv + ", " + rv);
+            return res;
+        }
+        if op == "%" {
+            this.eml("  " + res + " = srem i64 " + lv + ", " + rv);
+            return res;
+        }
+        return lv;
+    }
+
+    fn gen_and(e: Expr): string {
+        let lv: string = this.gen_expr(e.left);
+        let false_lbl:  string = this.new_lbl("and.false");
+        let rhs_lbl:    string = this.new_lbl("and.rhs");
+        let merge_lbl:  string = this.new_lbl("and.merge");
+        this.eml("  br i1 " + lv + ", label %" + rhs_lbl + ", label %" + false_lbl);
+        this.emit_block_label(rhs_lbl);
+        let rv: string = this.gen_expr(e.right);
+        let rhs_end: string = this.fn_name + ".rhs_end";  // current block name proxy
+        // We don't track curBlock by name but phi needs the predecessor block label.
+        // Use the rhs_lbl as the predecessor for the phi coming from the rhs path.
+        this.eml("  br label %" + merge_lbl);
+        this.emit_block_label(false_lbl);
+        this.eml("  br label %" + merge_lbl);
+        this.emit_block_label(merge_lbl);
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = phi i1 [ " + rv + ", %" + rhs_lbl + " ], [ false, %" + false_lbl + " ]");
+        return res;
+    }
+
+    fn gen_or(e: Expr): string {
+        let lv: string = this.gen_expr(e.left);
+        let true_lbl:   string = this.new_lbl("or.true");
+        let rhs_lbl:    string = this.new_lbl("or.rhs");
+        let merge_lbl:  string = this.new_lbl("or.merge");
+        this.eml("  br i1 " + lv + ", label %" + true_lbl + ", label %" + rhs_lbl);
+        this.emit_block_label(rhs_lbl);
+        let rv: string = this.gen_expr(e.right);
+        this.eml("  br label %" + merge_lbl);
+        this.emit_block_label(true_lbl);
+        this.eml("  br label %" + merge_lbl);
+        this.emit_block_label(merge_lbl);
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = phi i1 [ true, %" + true_lbl + " ], [ " + rv + ", %" + rhs_lbl + " ]");
+        return res;
+    }
+
+    fn gen_incdec(e: Expr): string {
+        // e.left must be an lvalue (ident, field, or index)
+        let cur_val: string = this.gen_expr(e.left);
+        let ty: JType = e.left.jtype;
+        let res: string = this.new_tmp();
+        if ty != null && ty.kind == TY_FLOAT {
+            if e.kind == EXPR_INC { this.eml("  " + res + " = fadd double " + cur_val + ", 1.0"); }
+            else                  { this.eml("  " + res + " = fsub double " + cur_val + ", 1.0"); }
+        } else {
+            if e.kind == EXPR_INC { this.eml("  " + res + " = add i64 " + cur_val + ", 1"); }
+            else                  { this.eml("  " + res + " = sub i64 " + cur_val + ", 1"); }
+        }
+        // Store back to lvalue
+        let lt: string = this.llvm_ty(ty);
+        this.gen_store_lvalue(e.left, lt, res);
+        return res;
+    }
+
+    fn gen_assign(e: Expr): string {
+        let rhs: string = this.gen_expr(e.right);
+        let lt: string = this.llvm_ty(e.left.jtype);
+        this.gen_store_lvalue(e.left, lt, rhs);
+        return rhs;
+    }
+
+    // Store rhs into the lvalue represented by lv_expr.
+    fn gen_store_lvalue(lv_expr: Expr, lt: string, rhs: string) {
+        if lv_expr.kind == EXPR_IDENT {
+            let lv: LocalVar = this.find_local(lv_expr.sval);
+            if lv != null {
+                if this.is_heap(lv.ty) {
+                    let old: string = this.new_tmp();
+                    this.eml("  " + old + " = load ptr, ptr " + lv.reg);
+                    this.eml("  call void @jerry_retain(ptr " + rhs + ")");
+                    this.emit_store(lt, rhs, lv.reg);
+                    this.eml("  call void @jerry_release(ptr " + old + ")");
+                } else {
+                    this.emit_store(lt, rhs, lv.reg);
+                }
+                return;
+            }
+            let gv: LocalVar = this.find_global(lv_expr.sval);
+            if gv != null {
+                if this.is_heap(gv.ty) {
+                    let old: string = this.new_tmp();
+                    this.eml("  " + old + " = load ptr, ptr " + gv.reg);
+                    this.eml("  call void @jerry_retain(ptr " + rhs + ")");
+                    this.emit_store(lt, rhs, gv.reg);
+                    this.eml("  call void @jerry_release(ptr " + old + ")");
+                } else {
+                    this.emit_store(lt, rhs, gv.reg);
+                }
+            }
+            return;
+        }
+        if lv_expr.kind == EXPR_FIELD {
+            let obj_val: string = this.gen_expr(lv_expr.left);
+            let obj_ty: JType = lv_expr.left.jtype;
+            if obj_ty == null || obj_ty.kind != TY_CLASS { return; }
+            let ci: ClassInfo = this.info.find_class(obj_ty.class_name);
+            if ci == null { return; }
+            let idx: int = this.field_gep_idx(ci, lv_expr.sval);
+            let gep: string = this.new_tmp();
+            this.eml("  " + gep + " = getelementptr %" + obj_ty.class_name +
+                ", ptr " + obj_val + ", i32 0, i32 " + int_to_string(idx));
+            let fi: FieldInfo = ci.find_field(lv_expr.sval);
+            if fi != null && this.is_heap(fi.ty) {
+                let old: string = this.new_tmp();
+                this.eml("  " + old + " = load ptr, ptr " + gep);
+                this.eml("  call void @jerry_retain(ptr " + rhs + ")");
+                this.eml("  store ptr " + rhs + ", ptr " + gep);
+                this.eml("  call void @jerry_release(ptr " + old + ")");
+            } else {
+                this.eml("  store " + lt + " " + rhs + ", ptr " + gep);
+            }
+            return;
+        }
+        if lv_expr.kind == EXPR_INDEX {
+            let base_val: string = this.gen_expr(lv_expr.left);
+            let idx_val:  string = this.gen_expr(lv_expr.right);
+            let base_ty: JType = lv_expr.left.jtype;
+            if base_ty != null && base_ty.kind == TY_ARRAY {
+                let slot: string = this.new_tmp() + ".slot";
+                this.eml("  " + slot + " = alloca " + lt);
+                this.eml("  store " + lt + " " + rhs + ", ptr " + slot);
+                this.eml("  call void @jerry_array_set(ptr " + base_val +
+                    ", i64 " + idx_val + ", ptr " + slot + ")");
+            } else if base_ty != null && base_ty.kind == TY_MAP {
+                let key_lt: string = this.llvm_ty(base_ty.key);
+                let key_slot: string = this.new_tmp() + ".slot";
+                let val_slot: string = this.new_tmp() + ".slot";
+                this.eml("  " + key_slot + " = alloca " + key_lt);
+                this.eml("  store " + key_lt + " " + idx_val + ", ptr " + key_slot);
+                this.eml("  " + val_slot + " = alloca " + lt);
+                this.eml("  store " + lt + " " + rhs + ", ptr " + val_slot);
+                this.eml("  call void @jerry_map_set(ptr " + base_val +
+                    ", ptr " + key_slot + ", ptr " + val_slot + ")");
+            }
+        }
+    }
+
+    fn gen_index(e: Expr): string {
+        let base_val: string = this.gen_expr(e.left);
+        let idx_val:  string = this.gen_expr(e.right);
+        let base_ty: JType = e.left.jtype;
+        if base_ty != null && base_ty.kind == TY_ARRAY {
+            let ptr_reg: string = this.new_tmp();
+            this.eml("  " + ptr_reg + " = call ptr @jerry_array_get(ptr " +
+                base_val + ", i64 " + idx_val + ")");
+            let load_reg: string = this.new_tmp();
+            let elem_lt: string = this.llvm_ty(base_ty.elem);
+            this.eml("  " + load_reg + " = load " + elem_lt + ", ptr " + ptr_reg);
+            return load_reg;
+        }
+        if base_ty != null && base_ty.kind == TY_MAP {
+            let key_lt: string = this.llvm_ty(base_ty.key);
+            let key_slot: string = this.new_tmp() + ".slot";
+            this.eml("  " + key_slot + " = alloca " + key_lt);
+            this.eml("  store " + key_lt + " " + idx_val + ", ptr " + key_slot);
+            let ptr_reg: string = this.new_tmp();
+            this.eml("  " + ptr_reg + " = call ptr @jerry_map_get(ptr " +
+                base_val + ", ptr " + key_slot + ")");
+            let val_lt: string = this.llvm_ty(base_ty.value);
+            let load_reg: string = this.new_tmp();
+            this.eml("  " + load_reg + " = load " + val_lt + ", ptr " + ptr_reg);
+            return load_reg;
+        }
+        return "0";
+    }
+
+    fn gen_field_load(e: Expr): string {
+        let obj_val: string = this.gen_expr(e.left);
+        let obj_ty: JType = e.left.jtype;
+        if obj_ty == null || obj_ty.kind != TY_CLASS { return "0"; }
+        let ci: ClassInfo = this.info.find_class(obj_ty.class_name);
+        if ci == null { return "0"; }
+        // Check if it's a field (not a method reference)
+        let fi: FieldInfo = ci.find_field(e.sval);
+        if fi != null {
+            let idx: int = this.field_gep_idx(ci, e.sval);
+            let gep: string = this.new_tmp();
+            this.eml("  " + gep + " = getelementptr %" + obj_ty.class_name +
+                ", ptr " + obj_val + ", i32 0, i32 " + int_to_string(idx));
+            let load: string = this.new_tmp();
+            this.eml("  " + load + " = load " + this.llvm_ty(fi.ty) + ", ptr " + gep);
+            return load;
+        }
+        return "0";
+    }
+
+    fn gen_new(e: Expr): string {
+        let ci: ClassInfo = this.info.find_class(e.sval);
+        if ci == null { return "null"; }
+
+        // Compute struct size via GEP trick
+        let size_reg: string = this.new_tmp();
+        let size_int: string = this.new_tmp();
+        let obj_reg:  string = this.new_tmp();
+        this.eml("  " + size_reg + " = getelementptr %" + e.sval + ", ptr null, i32 1");
+        this.eml("  " + size_int + " = ptrtoint ptr " + size_reg + " to i64");
+        this.eml("  " + obj_reg  + " = call ptr @jerry_alloc(i64 " + size_int + ")");
+
+        // Store destructor pointer (8 bytes before object header)
+        let dtor_slot: string = this.new_tmp();
+        this.eml("  " + dtor_slot + " = getelementptr i8, ptr " + obj_reg + ", i64 -8");
+        this.eml("  store ptr @" + e.sval + "_destroy_jerry, ptr " + dtor_slot);
+
+        // Set vtable pointer (field 0)
+        let vtable_slot: string = this.new_tmp();
+        this.eml("  " + vtable_slot + " = getelementptr %" + e.sval +
+            ", ptr " + obj_reg + ", i32 0, i32 0");
+        if len(ci.methods) > 0 {
+            this.eml("  store ptr @vtable." + e.sval + ", ptr " + vtable_slot);
+        } else {
+            this.eml("  store ptr null, ptr " + vtable_slot);
+        }
+
+        // Call constructor "new" if present
+        let mt: JType = ci.find_method("new");
+        if mt != null {
+            let arg_str: string = "ptr " + obj_reg;
+            let i: int = 0;
+            while i < len(e.args) {
+                let av: string = this.gen_expr(e.args[i]);
+                let at: JType = e.args[i].jtype;
+                if at == null { at = make_void(); }
+                arg_str = arg_str + ", " + this.llvm_ty(at) + " " + av;
+                i = i + 1;
+            }
+            this.eml("  call void @" + e.sval + "_new_jerry(" + arg_str + ")");
+        }
+        return obj_reg;
+    }
+
+    fn gen_array_lit(e: Expr): string {
+        let elem_ty: JType = make_int();
+        let elem_lt: string = "i64";
+        if len(e.args) > 0 && e.args[0].jtype != null {
+            elem_ty = e.args[0].jtype;
+            elem_lt = this.llvm_ty(elem_ty);
+        }
+        let elem_size: int = this.type_size(elem_ty);
+        let heap_elems: string = "0";
+        if this.is_heap(elem_ty) { heap_elems = "1"; }
+
+        let arr_reg: string = this.new_tmp();
+        this.eml("  " + arr_reg + " = call ptr @jerry_array_new(i64 " +
+            int_to_string(elem_size) + ", i64 " + int_to_string(len(e.args)) +
+            ", i8 " + heap_elems + ")");
+
+        let i: int = 0;
+        while i < len(e.args) {
+            let ev: string = this.gen_expr(e.args[i]);
+            let slot: string = this.new_tmp() + ".slot";
+            this.eml("  " + slot + " = alloca " + elem_lt);
+            this.eml("  store " + elem_lt + " " + ev + ", ptr " + slot);
+            this.eml("  call void @jerry_array_push(ptr " + arr_reg + ", ptr " + slot + ")");
+            i = i + 1;
+        }
+        return arr_reg;
+    }
+
+    fn gen_map_lit(e: Expr): string {
+        let key_ty: JType = make_string();
+        let val_ty: JType = make_int();
+        if len(e.args) > 0 {
+            if e.args[0].jtype != null  { key_ty = e.args[0].jtype; }
+            if e.vals[0].jtype != null  { val_ty = e.vals[0].jtype; }
+        }
+        let string_keys: string = "0";
+        if key_ty.kind == TY_STRING { string_keys = "1"; }
+        let val_size: int = this.type_size(val_ty);
+        let key_lt: string = this.llvm_ty(key_ty);
+        let val_lt: string = this.llvm_ty(val_ty);
+
+        let map_reg: string = this.new_tmp();
+        this.eml("  " + map_reg + " = call ptr @jerry_map_new(i8 " + string_keys +
+            ", i64 " + int_to_string(val_size) + ")");
+
+        let i: int = 0;
+        while i < len(e.args) {
+            let kv: string = this.gen_expr(e.args[i]);
+            let vv: string = this.gen_expr(e.vals[i]);
+            let key_slot: string = this.new_tmp() + ".slot";
+            let val_slot: string = this.new_tmp() + ".slot";
+            this.eml("  " + key_slot + " = alloca " + key_lt);
+            this.eml("  store " + key_lt + " " + kv + ", ptr " + key_slot);
+            this.eml("  " + val_slot + " = alloca " + val_lt);
+            this.eml("  store " + val_lt + " " + vv + ", ptr " + val_slot);
+            this.eml("  call void @jerry_map_set(ptr " + map_reg + ", ptr " +
+                key_slot + ", ptr " + val_slot + ")");
+            i = i + 1;
+        }
+        return map_reg;
+    }
+
+    // ── Call expression generation ────────────────────────────────────────────
+
+    fn gen_call(e: Expr): string {
+        // Method call: e.left is EXPR_FIELD
+        if e.left.kind == EXPR_FIELD {
+            return this.gen_method_call(e);
+        }
+        // Regular call: e.left is EXPR_IDENT (builtin or user function)
+        if e.left.kind == EXPR_IDENT {
+            return this.gen_fn_call(e);
+        }
+        // Higher-order / closure call: e.left is any expr with fn type
+        return this.gen_closure_call(e);
+    }
+
+    fn gen_method_call(e: Expr): string {
+        let field_expr: Expr = e.left;
+        let obj_val: string  = this.gen_expr(field_expr.left);
+        let method: string   = field_expr.sval;
+        let obj_ty: JType    = field_expr.left.jtype;
+
+        if obj_ty == null || obj_ty.kind != TY_CLASS {
+            // Array / string method calls — not currently supported via dot-call
+            // in the self-hosted compiler; fall through returning void
+            let i: int = 0;
+            while i < len(e.args) { this.gen_expr(e.args[i]); i = i + 1; }
+            return "0";
+        }
+
+        let ci: ClassInfo = this.info.find_class(obj_ty.class_name);
+        if ci == null { return "0"; }
+        let mt: JType = ci.find_method(method);
+        if mt == null { return "0"; }
+
+        let arg_str: string = "ptr " + obj_val;
+        let arg_vals: string[] = [];
+        let i: int = 0;
+        while i < len(e.args) {
+            let av: string = this.gen_expr(e.args[i]);
+            push(arg_vals, av);
+            let at: JType = e.args[i].jtype;
+            if at == null { at = make_void(); }
+            let param_lt: string = this.llvm_ty(at);
+            if mt.kind == TY_FN && i < len(mt.params) {
+                param_lt = this.llvm_ty(mt.params[i]);
+            }
+            arg_str = arg_str + ", " + param_lt + " " + av;
+            i = i + 1;
+        }
+
+        let fn_name: string = obj_ty.class_name + "_" + method + "_jerry";
+        let ret_lt: string = "void";
+        if mt.kind == TY_FN && mt.ret != null { ret_lt = this.llvm_ty(mt.ret); }
+
+        if ret_lt == "void" {
+            this.eml("  call void @" + fn_name + "(" + arg_str + ")");
+            this.release_str_lit_args(e.args, arg_vals);
+            return "0";
+        }
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = call " + ret_lt + " @" + fn_name + "(" + arg_str + ")");
+        this.release_str_lit_args(e.args, arg_vals);
+        return res;
+    }
+
+    fn gen_fn_call(e: Expr): string {
+        let name: string = e.left.sval;
+
+        // ── Builtins with special LLVM-level handling ─────────────────────────
+
+        if name == "print" || name == "write" {
+            if len(e.args) < 1 { return "0"; }
+            let av: string  = this.gen_expr(e.args[0]);
+            let at: JType   = e.args[0].jtype;
+            let no_nl: bool = name == "write";
+            this.emit_print(av, at, no_nl);
+            if e.args[0].kind == EXPR_STRING {
+                this.eml("  call void @jerry_release(ptr " + av + ")");
+            }
+            return "0";
+        }
+
+        if name == "println" {
+            this.eml("  call void @jerry_println()");
+            return "0";
+        }
+
+        if name == "len" {
+            if len(e.args) < 1 { return "0"; }
+            let av: string = this.gen_expr(e.args[0]);
+            let at: JType  = e.args[0].jtype;
+            let res: string = this.new_tmp();
+            if at != null && at.kind == TY_STRING {
+                this.eml("  " + res + " = call i64 @jerry_string_len(ptr " + av + ")");
+            } else {
+                this.eml("  " + res + " = call i64 @jerry_array_len(ptr " + av + ")");
+            }
+            return res;
+        }
+
+        if name == "push" {
+            if len(e.args) < 2 { return "0"; }
+            let arr_v: string  = this.gen_expr(e.args[0]);
+            let elem_v: string = this.gen_expr(e.args[1]);
+            let elem_ty: JType = e.args[1].jtype;
+            if elem_ty == null { elem_ty = make_void(); }
+            let elem_lt: string = this.llvm_ty(elem_ty);
+            let slot: string = this.new_tmp() + ".slot";
+            this.eml("  " + slot + " = alloca " + elem_lt);
+            this.eml("  store " + elem_lt + " " + elem_v + ", ptr " + slot);
+            this.eml("  call void @jerry_array_push(ptr " + arr_v + ", ptr " + slot + ")");
+            return "0";
+        }
+
+        if name == "int_to_string" {
+            let av: string = this.gen_expr(e.args[0]);
+            av = this.coerce_to_i64(av, e.args[0].jtype);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_int_to_string(i64 " + av + ")");
+            return res;
+        }
+
+        if name == "float_to_string" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_float_to_string(double " + av + ")");
+            return res;
+        }
+
+        if name == "char_at" {
+            let sv: string = this.gen_expr(e.args[0]);
+            let iv: string = this.gen_expr(e.args[1]);
+            iv = this.coerce_to_i64(iv, e.args[1].jtype);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call i64 @jerry_char_at(ptr " + sv + ", i64 " + iv + ")");
+            return res;
+        }
+
+        if name == "string_slice" {
+            let sv:    string = this.gen_expr(e.args[0]);
+            let sv1:   string = this.gen_expr(e.args[1]);
+            let sv2:   string = this.gen_expr(e.args[2]);
+            sv1 = this.coerce_to_i64(sv1, e.args[1].jtype);
+            sv2 = this.coerce_to_i64(sv2, e.args[2].jtype);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_string_slice(ptr " + sv +
+                ", i64 " + sv1 + ", i64 " + sv2 + ")");
+            return res;
+        }
+
+        if name == "char_to_string" {
+            let av: string = this.gen_expr(e.args[0]);
+            av = this.coerce_to_i64(av, e.args[0].jtype);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_char_to_string(i64 " + av + ")");
+            return res;
+        }
+
+        if name == "read_file" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_read_file(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "write_file" {
+            let pv: string = this.gen_expr(e.args[0]);
+            let cv: string = this.gen_expr(e.args[1]);
+            this.eml("  call void @jerry_write_file(ptr " + pv + ", ptr " + cv + ")");
+            return "0";
+        }
+
+        if name == "getenv" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_getenv(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "delete_file" {
+            let av: string = this.gen_expr(e.args[0]);
+            this.eml("  call void @jerry_delete_file(ptr " + av + ")");
+            return "0";
+        }
+
+        if name == "is_dir" {
+            let av: string = this.gen_expr(e.args[0]);
+            let raw: string = this.new_tmp();
+            let res: string = this.new_tmp();
+            this.eml("  " + raw + " = call i8 @jerry_is_dir(ptr " + av + ")");
+            this.eml("  " + res + " = icmp ne i8 " + raw + ", 0");
+            return res;
+        }
+
+        if name == "list_dir" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_list_dir(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "runtime_lib_path" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_runtime_lib_path()");
+            return res;
+        }
+
+        if name == "exec" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call i64 @jerry_exec(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "exit" {
+            let av: string = this.gen_expr(e.args[0]);
+            this.eml("  call void @jerry_exit(i64 " + av + ")");
+            this.eml("  unreachable");
+            this.terminated = true;
+            return "0";
+        }
+
+        if name == "args" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_args()");
+            return res;
+        }
+
+        if name == "print_err" {
+            let av: string = this.gen_expr(e.args[0]);
+            this.eml("  call void @jerry_print_err(ptr " + av + ")");
+            if e.args[0].kind == EXPR_STRING {
+                this.eml("  call void @jerry_release(ptr " + av + ")");
+            }
+            return "0";
+        }
+
+        if name == "read_stdin" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_read_stdin()");
+            return res;
+        }
+
+        if name == "now_millis" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call i64 @jerry_now_millis()");
+            return res;
+        }
+
+        if name == "now_seconds" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call i64 @jerry_now_seconds()");
+            return res;
+        }
+
+        if name == "now_string" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_now_string()");
+            return res;
+        }
+
+        if name == "each_line" {
+            let pv: string = this.gen_expr(e.args[0]);
+            let cv: string = this.gen_expr(e.args[1]);
+            this.eml("  call void @jerry_each_line(ptr " + pv + ", ptr " + cv + ")");
+            return "0";
+        }
+
+        if name == "panic" {
+            let av: string = this.gen_expr(e.args[0]);
+            this.eml("  call void @jerry_panic(ptr " + av + ")");
+            this.eml("  unreachable");
+            this.terminated = true;
+            return "0";
+        }
+
+        if name == "map_set" {
+            return this.gen_map_set(e);
+        }
+        if name == "map_get" {
+            return this.gen_map_get(e);
+        }
+        if name == "map_has" {
+            return this.gen_map_has(e);
+        }
+        if name == "map_delete" {
+            return this.gen_map_delete(e);
+        }
+        if name == "map_len" {
+            let mv: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call i64 @jerry_map_len(ptr " + mv + ")");
+            return res;
+        }
+        if name == "map_keys" {
+            let mv: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_map_keys(ptr " + mv + ")");
+            return res;
+        }
+
+        // Type conversion builtins
+        if name == "int" {
+            return this.gen_cast_int(e);
+        }
+        if name == "float" {
+            return this.gen_cast_float(e);
+        }
+
+        // ── User-defined function call ─────────────────────────────────────────
+
+        // Check if it's a local closure variable
+        let lv: LocalVar = this.find_local(name);
+        if lv != null && lv.ty != null && lv.ty.kind == TY_FN {
+            let closure_ptr: string = this.new_tmp();
+            this.eml("  " + closure_ptr + " = load ptr, ptr " + lv.reg);
+            return this.gen_closure_call_by_val(lv.ty, closure_ptr, e.args);
+        }
+
+        // Named top-level function
+        let callee_ty: JType = this.info.find_func(name);
+        let fn_llvm: string  = name + "_jerry";
+
+        let arg_str: string  = "";
+        let arg_vals: string[] = [];
+        let i: int = 0;
+        while i < len(e.args) {
+            let av: string = this.gen_expr(e.args[i]);
+            push(arg_vals, av);
+            let at: JType = e.args[i].jtype;
+            if at == null { at = make_void(); }
+            let param_lt: string = this.llvm_ty(at);
+            if callee_ty != null && callee_ty.kind == TY_FN && i < len(callee_ty.params) {
+                param_lt = this.llvm_ty(callee_ty.params[i]);
+            }
+            if len(arg_str) > 0 { arg_str = arg_str + ", "; }
+            arg_str = arg_str + param_lt + " " + av;
+            i = i + 1;
+        }
+
+        let ret_ty: JType = make_void();
+        if callee_ty != null && callee_ty.kind == TY_FN { ret_ty = callee_ty.ret; }
+        let ret_lt: string = this.llvm_ty(ret_ty);
+
+        if ret_lt == "void" {
+            this.eml("  call void @" + fn_llvm + "(" + arg_str + ")");
+            this.release_str_lit_args(e.args, arg_vals);
+            return "0";
+        }
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = call " + ret_lt + " @" + fn_llvm + "(" + arg_str + ")");
+        this.release_str_lit_args(e.args, arg_vals);
+        return res;
+    }
+
+    fn gen_closure_call(e: Expr): string {
+        let callee_val: string = this.gen_expr(e.left);
+        let callee_ty: JType = e.left.jtype;
+        if callee_ty == null || callee_ty.kind != TY_FN { return "0"; }
+        return this.gen_closure_call_by_val(callee_ty, callee_val, e.args);
+    }
+
+    // Call a closure stored at alloca_reg (load the closure ptr, extract fn/env, call).
+    fn gen_closure_call_by_val(fn_ty: JType, closure_reg: string, args: Expr[]): string {
+        // closure_reg is a register holding a ptr to JerryClosure, not an alloca
+        let fn_ptr_slot: string = this.new_tmp();
+        let fn_ptr:      string = this.new_tmp();
+        let env_slot:    string = this.new_tmp();
+        let env_ptr:     string = this.new_tmp();
+        this.eml("  " + fn_ptr_slot + " = getelementptr %JerryClosure, ptr " + closure_reg + ", i32 0, i32 0");
+        this.eml("  " + fn_ptr + " = load ptr, ptr " + fn_ptr_slot);
+        this.eml("  " + env_slot + " = getelementptr %JerryClosure, ptr " + closure_reg + ", i32 0, i32 1");
+        this.eml("  " + env_ptr + " = load ptr, ptr " + env_slot);
+
+        // Build arg list: env ptr + declared args
+        let arg_str: string = "ptr " + env_ptr;
+        let param_types: string = "ptr";
+        let arg_vals: string[] = [];
+        let i: int = 0;
+        while i < len(args) {
+            let av: string = this.gen_expr(args[i]);
+            push(arg_vals, av);
+            let at: JType = args[i].jtype;
+            if at == null { at = make_void(); }
+            let param_lt: string = this.llvm_ty(at);
+            if fn_ty.kind == TY_FN && i < len(fn_ty.params) {
+                param_lt = this.llvm_ty(fn_ty.params[i]);
+            }
+            arg_str    = arg_str    + ", " + param_lt + " " + av;
+            param_types = param_types + ", " + param_lt;
+            i = i + 1;
+        }
+
+        let ret_ty: JType = make_void();
+        if fn_ty.kind == TY_FN && fn_ty.ret != null { ret_ty = fn_ty.ret; }
+        let ret_lt: string = this.llvm_ty(ret_ty);
+
+        let fn_sig: string = ret_lt + " (" + param_types + ")";
+
+        if ret_lt == "void" {
+            this.eml("  call " + fn_sig + " " + fn_ptr + "(" + arg_str + ")");
+            this.release_str_lit_args(args, arg_vals);
+            return "0";
+        }
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = call " + fn_sig + " " + fn_ptr + "(" + arg_str + ")");
+        this.release_str_lit_args(args, arg_vals);
+        return res;
+    }
+
+    // ── Map builtin helpers ───────────────────────────────────────────────────
+
+    fn gen_map_set(e: Expr): string {
+        let mv: string  = this.gen_expr(e.args[0]);
+        let map_ty: JType = e.args[0].jtype;
+        let kv: string  = this.gen_expr(e.args[1]);
+        let vv: string  = this.gen_expr(e.args[2]);
+        let key_ty: JType = make_string();
+        let val_ty: JType = make_int();
+        if map_ty != null && map_ty.kind == TY_MAP {
+            key_ty = map_ty.key;
+            val_ty = map_ty.value;
+        }
+        let key_lt: string = this.llvm_ty(key_ty);
+        let val_lt: string = this.llvm_ty(val_ty);
+        let key_slot: string = this.new_tmp() + ".slot";
+        let val_slot: string = this.new_tmp() + ".slot";
+        this.eml("  " + key_slot + " = alloca " + key_lt);
+        this.eml("  store " + key_lt + " " + kv + ", ptr " + key_slot);
+        this.eml("  " + val_slot + " = alloca " + val_lt);
+        this.eml("  store " + val_lt + " " + vv + ", ptr " + val_slot);
+        this.eml("  call void @jerry_map_set(ptr " + mv + ", ptr " + key_slot + ", ptr " + val_slot + ")");
+        return "0";
+    }
+
+    fn gen_map_get(e: Expr): string {
+        let mv: string  = this.gen_expr(e.args[0]);
+        let map_ty: JType = e.args[0].jtype;
+        let kv: string  = this.gen_expr(e.args[1]);
+        let key_ty: JType = make_string();
+        let val_ty: JType = make_void();
+        if map_ty != null && map_ty.kind == TY_MAP {
+            key_ty = map_ty.key;
+            val_ty = map_ty.value;
+        }
+        let key_lt: string = this.llvm_ty(key_ty);
+        let key_slot: string = this.new_tmp() + ".slot";
+        this.eml("  " + key_slot + " = alloca " + key_lt);
+        this.eml("  store " + key_lt + " " + kv + ", ptr " + key_slot);
+        let vptr: string = this.new_tmp();
+        this.eml("  " + vptr + " = call ptr @jerry_map_get(ptr " + mv + ", ptr " + key_slot + ")");
+        let val_lt: string = this.llvm_ty(val_ty);
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = load " + val_lt + ", ptr " + vptr);
+        return res;
+    }
+
+    fn gen_map_has(e: Expr): string {
+        let mv: string  = this.gen_expr(e.args[0]);
+        let map_ty: JType = e.args[0].jtype;
+        let kv: string  = this.gen_expr(e.args[1]);
+        let key_ty: JType = make_string();
+        if map_ty != null && map_ty.kind == TY_MAP { key_ty = map_ty.key; }
+        let key_lt: string = this.llvm_ty(key_ty);
+        let key_slot: string = this.new_tmp() + ".slot";
+        this.eml("  " + key_slot + " = alloca " + key_lt);
+        this.eml("  store " + key_lt + " " + kv + ", ptr " + key_slot);
+        let raw: string = this.new_tmp();
+        this.eml("  " + raw + " = call i8 @jerry_map_has(ptr " + mv + ", ptr " + key_slot + ")");
+        let res: string = this.new_tmp();
+        this.eml("  " + res + " = icmp ne i8 " + raw + ", 0");
+        return res;
+    }
+
+    fn gen_map_delete(e: Expr): string {
+        let mv: string  = this.gen_expr(e.args[0]);
+        let map_ty: JType = e.args[0].jtype;
+        let kv: string  = this.gen_expr(e.args[1]);
+        let key_ty: JType = make_string();
+        if map_ty != null && map_ty.kind == TY_MAP { key_ty = map_ty.key; }
+        let key_lt: string = this.llvm_ty(key_ty);
+        let key_slot: string = this.new_tmp() + ".slot";
+        this.eml("  " + key_slot + " = alloca " + key_lt);
+        this.eml("  store " + key_lt + " " + kv + ", ptr " + key_slot);
+        this.eml("  call void @jerry_map_delete(ptr " + mv + ", ptr " + key_slot + ")");
+        return "0";
+    }
+
+    // ── Type cast builtins ────────────────────────────────────────────────────
+
+    fn gen_cast_int(e: Expr): string {
+        if len(e.args) < 1 { return "0"; }
+        let av: string = this.gen_expr(e.args[0]);
+        let at: JType  = e.args[0].jtype;
+        let res: string = this.new_tmp();
+        if at != null && at.kind == TY_FLOAT {
+            this.eml("  " + res + " = fptosi double " + av + " to i64");
+            return res;
+        }
+        if at != null && at.kind == TY_BOOL {
+            this.eml("  " + res + " = zext i1 " + av + " to i64");
+            return res;
+        }
+        return av;
+    }
+
+    fn gen_cast_float(e: Expr): string {
+        if len(e.args) < 1 { return "0.0"; }
+        let av: string = this.gen_expr(e.args[0]);
+        let at: JType  = e.args[0].jtype;
+        let res: string = this.new_tmp();
+        if at != null && at.kind == TY_INT {
+            this.eml("  " + res + " = sitofp i64 " + av + " to double");
+            return res;
+        }
+        return av;
+    }
+
+    // ── Print helper ─────────────────────────────────────────────────────────
+
+    fn emit_print(val: string, ty: JType, no_newline: bool) {
+        if ty == null {
+            this.eml("  call void @jerry_print_int(i64 0)");
+        } else if ty.kind == TY_INT {
+            this.eml("  call void @jerry_print_int(i64 " + val + ")");
+        } else if ty.kind == TY_FLOAT {
+            this.eml("  call void @jerry_print_float(double " + val + ")");
+        } else if ty.kind == TY_BOOL {
+            let ext: string = this.new_tmp();
+            this.eml("  " + ext + " = zext i1 " + val + " to i8");
+            this.eml("  call void @jerry_print_bool(i8 " + ext + ")");
+        } else if ty.kind == TY_STRING {
+            this.eml("  call void @jerry_print_string(ptr " + val + ")");
+        } else if ty.kind == TY_ARRAY {
+            this.eml("  call void @jerry_print_array(ptr " + val + ")");
+        } else {
+            this.eml("  call void @jerry_print_int(i64 0)");
+        }
+        if !no_newline {
+            this.eml("  call void @jerry_println()");
+        }
+    }
+
+    // ── Release helper for string literal arguments ───────────────────────────
+
+    fn release_str_lit_args(args: Expr[], arg_vals: string[]) {
+        let i: int = 0;
+        while i < len(args) {
+            if i < len(arg_vals) && args[i].kind == EXPR_STRING {
+                this.eml("  call void @jerry_release(ptr " + arg_vals[i] + ")");
+            }
+            i = i + 1;
+        }
+    }
+
+    // ── AST shape predicates (mirrors Go codegen helpers) ────────────────────
+
+    fn is_simple_ident(e: Expr): bool {
+        if e == null { return false; }
+        return e.kind == EXPR_IDENT;
+    }
+
+    fn is_index_expr(e: Expr): bool {
+        if e == null { return false; }
+        return e.kind == EXPR_INDEX;
+    }
+
+    fn is_field_expr(e: Expr): bool {
+        if e == null { return false; }
+        return e.kind == EXPR_FIELD;
+    }
+
+    fn is_bare_this(e: Expr): bool {
+        if e == null { return false; }
+        return e.kind == EXPR_THIS;
+    }
+
+    fn is_empty_array_lit(e: Expr): bool {
+        if e == null { return false; }
+        return e.kind == EXPR_ARRAY && len(e.args) == 0;
+    }
+
+    // ── Global variable pre-registration ─────────────────────────────────────
+
+    fn preregister_globals(prog: Program) {
+        let i: int = 0;
+        while i < len(prog.tops) {
+            let tl: TopLevel = prog.tops[i];
+            if tl.kind == TL_VAR {
+                let ty: JType = tl.var_value.jtype;
+                if ty == null { ty = make_void(); }
+                let lt: string = this.llvm_ty(ty);
+                let zv: string = this.zero_val(ty);
+                this.em_global("@" + tl.var_name + " = global " + lt + " " + zv + "\n");
+                push(this.globals, new LocalVar(tl.var_name, "@" + tl.var_name, lt, ty));
+            }
+            i = i + 1;
+        }
+    }
+
+    // ── Global initializer function ───────────────────────────────────────────
+
+    fn gen_global_init(prog: Program) {
+        this.eml("define void @jerry_global_init() {");
+        this.eml("entry:");
+
+        let ctx: GenContext = this.save_ctx();
+        this.fn_name  = "jerry_global_init";
+        this.cls_name = "";
+        this.ret_type = make_void();
+        let nl: LocalVar[] = [];
+        this.locals    = nl;
+        this.terminated = false;
+        let nll: LoopLabels[] = [];
+        this.lbl_stack = nll;
+        this.rel_top   = null;
+
+        let i: int = 0;
+        while i < len(prog.tops) {
+            let tl: TopLevel = prog.tops[i];
+            if tl.kind == TL_VAR {
+                let gv: LocalVar = this.find_global(tl.var_name);
+                if gv != null {
+                    let val: string = this.gen_expr(tl.var_value);
+                    this.eml("  store " + gv.llvm_ty + " " + val + ", ptr " + gv.reg);
+                }
+            }
+            i = i + 1;
+        }
+
+        this.eml("  ret void");
+        this.eml("}\n");
+        this.restore_ctx(ctx);
+    }
+
+    // ── Top-level program generation ──────────────────────────────────────────
+
+    fn gen_program(prog: Program) {
+        // 1. Generate class struct types and vtable declarations
+        this.gen_class_types();
+        this.gen_vtable_decls();
+
+        // 2. Count globals for has_globals flag
+        let has_globals: bool = false;
+        let gi: int = 0;
+        while gi < len(prog.tops) {
+            if prog.tops[gi].kind == TL_VAR { has_globals = true; }
+            gi = gi + 1;
+        }
+
+        // 3. Pre-register global variables
+        if has_globals { this.preregister_globals(prog); }
+
+        // 4. Generate class destructors
+        let i: int = 0;
+        while i < len(prog.tops) {
+            let tl: TopLevel = prog.tops[i];
+            if tl.kind == TL_CLASS { this.gen_class_destructor(tl.class_decl); }
+            i = i + 1;
+        }
+
+        // 5. Generate class methods and top-level functions
+        let j: int = 0;
+        while j < len(prog.tops) {
+            let tl: TopLevel = prog.tops[j];
+            if tl.kind == TL_FN {
+                let ft: JType = this.info.find_func(tl.fn_decl.name);
+                this.gen_fn(tl.fn_decl, false, "", ft);
+            }
+            if tl.kind == TL_CLASS { this.gen_class_decl(tl.class_decl); }
+            j = j + 1;
+        }
+
+        // 6. Generate global initializer if needed
+        if has_globals { this.gen_global_init(prog); }
+    }
+
+    fn gen_class_decl(cd: ClassDecl) {
+        let ci: ClassInfo = this.info.find_class(cd.name);
+        if ci == null { return; }
+        let i: int = 0;
+        while i < len(cd.methods) {
+            let md: FnDecl = cd.methods[i];
+            let mt: JType = ci.find_method(md.name);
+            if mt != null {
+                this.gen_fn(md, true, cd.name, mt);
+            }
+            i = i + 1;
+        }
+    }
+
+    // ── Assemble the final module ─────────────────────────────────────────────
+
+    fn assemble(has_globals: bool): string {
+        let mod: string = this.module_header();
+        mod = mod + this.class_buf;
+        mod = mod + this.runtime_decls();
+
+        if len(this.global_buf) > 0 {
+            mod = mod + "\n; ── Global variables ──────────────────────────────────\n";
+            mod = mod + this.global_buf;
+            mod = mod + "\n";
+        }
+
+        // String constants
+        let i: int = 0;
+        while i < len(this.str_consts) {
+            let s: string = this.str_consts[i];
+            let escaped: string = this.llvm_escape(s);
+            let n: int = len(s) + 1;  // +1 for null terminator
+            mod = mod + "@.str." + int_to_string(i) + " = private unnamed_addr constant [" +
+                int_to_string(n) + " x i8] c\"" + escaped + "\\00\"\n";
+            i = i + 1;
+        }
+        mod = mod + "\n";
+
+        // Anonymous functions first (so they appear before their call sites)
+        mod = mod + this.anon_buf;
+
+        // Regular function bodies
+        mod = mod + this.fn_buf;
+
+        // C main wrapper
+        mod = mod + this.c_main_wrapper(has_globals);
+
+        return mod;
+    }
+}
+
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+fn generate(prog: Program, info: CheckInfo): string {
+    let g: Generator = new Generator(info);
+
+    // Check for globals
+    let has_globals: bool = false;
+    let i: int = 0;
+    while i < len(prog.tops) {
+        if prog.tops[i].kind == TL_VAR { has_globals = true; }
+        i = i + 1;
+    }
+
+    g.gen_program(prog);
+    return g.assemble(has_globals);
+}

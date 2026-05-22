@@ -35,7 +35,7 @@ type IncludeDecl struct {
 type FnDecl struct {
 	Pos    lexer.Position
 	// Allow "new" and "init" as method names even though they are keywords.
-	Name   string   `"fn" ( @Ident | @"new" | @"null" )`
+	Name   string   `"fn" ( @Ident | @"new" | @NullKW )`
 	Params []*Param `"(" [ @@ { "," @@ } ] ")"`
 	Ret    *TypeExpr `[ ":" @@ ]`
 	Body   *Block   `@@`
@@ -295,7 +295,7 @@ type MulRest struct {
 
 type UnaryExpr struct {
 	Pos  lexer.Position
-	Op   string        `( @( "!" | "-" )`
+	Op   string        `( @( Bang | Minus )`
 	Expr *UnaryExpr    `  @@ )`
 	Post *PostfixExpr  `| @@`
 }
@@ -328,8 +328,8 @@ type PrimaryExpr struct {
 	MapLit  *MapLit   `| @@`
 	Array   *ArrayLit `| @@`
 	Paren   *Expr     `| "(" @@ ")"`
-	This    bool      `| @"this"`
-	Null    bool      `| @"null"`
+	This    bool      `| @ThisKW`
+	Null    bool      `| @NullKW`
 	Bool    string    `| @BoolLit`
 	Float   string    `| @Float`
 	Int     string    `| @Int`

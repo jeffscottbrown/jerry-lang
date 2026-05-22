@@ -29,6 +29,12 @@ func New() *Checker {
 func Check(prog *ast.Program) (*Info, []CheckError) {
 	c := New()
 
+	// Pre-pass: register all class names so forward and mutual references work.
+	for _, tl := range prog.Stmts {
+		if tl.Class != nil {
+			c.preRegisterClass(tl.Class)
+		}
+	}
 	// First pass: register all top-level declarations (functions and classes)
 	// so forward references work.
 	for _, tl := range prog.Stmts {
@@ -84,6 +90,11 @@ func CheckAll(
 	coreChecker := &Checker{info: info, scope: NewScope(builtinScope)}
 	if coreAST != nil {
 		for _, tl := range coreAST.Stmts {
+			if tl.Class != nil {
+				coreChecker.preRegisterClass(tl.Class)
+			}
+		}
+		for _, tl := range coreAST.Stmts {
 			if tl.FnDecl != nil {
 				coreChecker.registerFn(tl.FnDecl)
 			}
@@ -96,6 +107,13 @@ func CheckAll(
 
 	// project scope: child of core; all project-defined names land here.
 	projectChecker := &Checker{info: info, scope: NewScope(coreScope)}
+	for _, prog := range projectProgs {
+		for _, tl := range prog.Stmts {
+			if tl.Class != nil {
+				projectChecker.preRegisterClass(tl.Class)
+			}
+		}
+	}
 	for _, prog := range projectProgs {
 		for _, tl := range prog.Stmts {
 			if tl.FnDecl != nil {
@@ -159,6 +177,11 @@ func CheckAll(
 			// Stdlib sees: core scope + its own forward-declared names.
 			sc := &Checker{info: info, scope: NewScope(coreScope)}
 			for _, stl := range stdAST.Stmts {
+				if stl.Class != nil {
+					sc.preRegisterClass(stl.Class)
+				}
+			}
+			for _, stl := range stdAST.Stmts {
 				if stl.FnDecl != nil {
 					sc.registerFn(stl.FnDecl)
 				}
@@ -203,6 +226,13 @@ func CheckAll(
 			}
 			// Remote module sees: core scope + its own forward-declared names.
 			rc := &Checker{info: info, scope: NewScope(coreScope)}
+			for _, p := range progs {
+				for _, stl := range p.Stmts {
+					if stl.Class != nil {
+						rc.preRegisterClass(stl.Class)
+					}
+				}
+			}
 			for _, p := range progs {
 				for _, stl := range p.Stmts {
 					if stl.FnDecl != nil {
@@ -395,12 +425,17 @@ func (c *Checker) registerFn(fn *ast.FnDecl) {
 	c.scope.Define(&Symbol{Name: fn.Name, Kind: SymFunc, Type: ft})
 }
 
-func (c *Checker) registerClass(cl *ast.ClassDecl) {
-	// Register the class name first so self-referencing types resolve correctly.
+// preRegisterClass adds the class name to the scope so that subsequent
+// registerClass calls can resolve forward references to it.
+func (c *Checker) preRegisterClass(cl *ast.ClassDecl) {
 	ci := NewClassInfo(cl.Name)
 	c.info.Classes[cl.Name] = ci
 	c.scope.Define(&Symbol{Name: cl.Name, Kind: SymClass,
 		Type: ClassType(cl.Name)})
+}
+
+func (c *Checker) registerClass(cl *ast.ClassDecl) {
+	ci := c.info.Classes[cl.Name]
 
 	for _, m := range cl.Members {
 		if m.Field != nil {
@@ -841,6 +876,12 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(call.Args[0])
 			}
 			return String
+		case "string_contains", "string_starts_with", "string_ends_with":
+			if len(call.Args) == 2 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Bool
 		case "char_at":
 			if len(call.Args) == 2 {
 				c.checkExpr(call.Args[0])
@@ -869,6 +910,33 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(a)
 			}
 			return Void
+		case "getenv":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return String
+		case "delete_file":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Void
+		case "is_dir":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Bool
+		case "list_dir":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return ArrayOf(String)
+		case "runtime_lib_path":
+			return String
+		case "exec":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Int
 		case "exit":
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])
