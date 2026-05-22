@@ -455,6 +455,22 @@ JerryStr* jerry_runtime_lib_path(void) {
     return jerry_string_new("", 0);
 }
 
+JerryStr* jerry_stdlib_dir_path(void) {
+    const char* env = getenv("JERRY_STDLIB");
+    if (env && env[0]) return jerry_string_new(env, (int64_t)strlen(env));
+    if (g_argv && g_argv[0]) {
+        char resolved[4096];
+        if (realpath(g_argv[0], resolved)) {
+            char* slash = strrchr(resolved, '/');
+            if (slash) { *slash = '\0'; }
+            strncat(resolved, "/../share/jerry/stdlib",
+                    sizeof(resolved) - strlen(resolved) - 1);
+            return jerry_string_new(resolved, (int64_t)strlen(resolved));
+        }
+    }
+    return jerry_string_new("", 0);
+}
+
 /* ── I/O extras ─────────────────────────────────────────────────────────────── */
 
 void jerry_print_err(JerryStr* s) {

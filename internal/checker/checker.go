@@ -932,6 +932,8 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 			return ArrayOf(String)
 		case "runtime_lib_path":
 			return String
+		case "stdlib_dir_path":
+			return String
 		case "exec":
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])

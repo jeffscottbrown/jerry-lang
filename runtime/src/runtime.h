@@ -75,6 +75,7 @@ void       jerry_delete_file(JerryStr* path);
 int8_t     jerry_is_dir(JerryStr* path);
 JerryArray* jerry_list_dir(JerryStr* path);
 JerryStr*  jerry_runtime_lib_path(void);
+JerryStr*  jerry_stdlib_dir_path(void);
 int64_t    jerry_exec(JerryArray* args);
 
 /* ── Arrays ─────────────────────────────────────────────────────────────────── */

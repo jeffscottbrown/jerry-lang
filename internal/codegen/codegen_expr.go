@@ -690,6 +690,11 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  %s = call ptr @jerry_runtime_lib_path()\n", res)
 			return res, checker.String, nil
 
+		case "stdlib_dir_path":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_stdlib_dir_path()\n", res)
+			return res, checker.String, nil
+
 		case "exec":
 			argVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {

@@ -66,6 +66,11 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
         run: ./jerry-bin test tests/
 
+      - name: Install stdlib
+        run: |
+          mkdir -p stdlib-dist
+          cp stdlib/*.jer stdlib-dist/
+
       - name: Build self-hosted compiler
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
@@ -74,6 +79,7 @@ jobs:
       - name: Smoke-test self-hosted compiler
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
           ./jerry-compiler examples/hello.jer -o hello-selfhosted
           ./hello-selfhosted
@@ -85,3 +91,5 @@ jobs:
           ./classes-selfhosted
           ./jerry-compiler examples/closures.jer -o closures-selfhosted
           ./closures-selfhosted
+          ./jerry-compiler examples/strings.jer -o strings-selfhosted
+          ./strings-selfhosted

@@ -84,16 +84,18 @@ A real driver reads a file, generates IR, and invokes clang itself.
 has the stdlib builtins hardcoded, which works for the core language but won't
 scale.
 
-- [ ] **3a. Decide stdlib embedding strategy**
-  Preferred: install stdlib `.jer` files to `<prefix>/share/jerry/stdlib/` at
-  install time. The driver reads them from there, same as the runtime lib path
-  discovery in Phase 1.
+- [x] **3a. Decide stdlib embedding strategy**
+  Install stdlib `.jer` files to `<prefix>/share/jerry/stdlib/` via
+  `make install-stdlib`. The driver discovers them via `JERRY_STDLIB` env var
+  or `<binary>/../share/jerry/stdlib` (Homebrew layout).
 
-- [ ] **3b. Implement `include @name` in the self-hosted compiler**
-  When the driver encounters `include @name`, it reads
-  `<stdlib_dir>/name.jer` and prepends it to the source before compiling.
+- [x] **3b. Implement `include @name` in the self-hosted compiler**
+  Added `stdlib_dir_path()` builtin (all five layers). `main.jer` scans for
+  `include @name` lines, strips them, reads `core.jer` + named stdlib files,
+  and prepends their content before parsing. Fixed `gen_and`/`gen_or` phi
+  predecessor bug exposed by complex boolean conditions in the new code.
 
-- [ ] **3c. Update Homebrew formula to install stdlib files**
+- [x] **3c. Update Homebrew formula to install stdlib files**
   ```ruby
   (share/"jerry"/"stdlib").install Dir["stdlib/*.jer"]
   ```

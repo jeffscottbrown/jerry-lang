@@ -33,6 +33,75 @@ fn expand_src(arg: string): string[] {
     return result;
 }
 
+// Scan src for `include @name` lines and return unique stdlib names found.
+// Core is always included implicitly so it is excluded from results.
+fn collect_stdlib_names(src: string): string[] {
+    let names: string[] = [];
+    let n: int = len(src);
+    let i: int = 0;
+    while i < n {
+        // find end of line
+        let j: int = i;
+        while j < n && char_at(src, j) != 10 {
+            j = j + 1;
+        }
+        let line: string = string_slice(src, i, j);
+        // skip leading whitespace
+        let k: int = 0;
+        let ll: int = len(line);
+        while k < ll && (char_at(line, k) == 32 || char_at(line, k) == 9) {
+            k = k + 1;
+        }
+        let trimmed: string = string_slice(line, k, ll);
+        if string_starts_with(trimmed, "include @") {
+            let name: string = string_slice(trimmed, 9, len(trimmed));
+            // trim trailing whitespace
+            let nl: int = len(name);
+            while nl > 0 && (char_at(name, nl - 1) == 32 || char_at(name, nl - 1) == 9 || char_at(name, nl - 1) == 13) {
+                nl = nl - 1;
+            }
+            name = string_slice(name, 0, nl);
+            if name != "core" && len(name) > 0 {
+                // check not already in list
+                let found: bool = false;
+                let m: int = 0;
+                while m < len(names) {
+                    if names[m] == name { found = true; }
+                    m = m + 1;
+                }
+                if !found { push(names, name); }
+            }
+        }
+        i = j + 1;
+    }
+    return names;
+}
+
+// Return src with all `include @name` and `include "remote"` lines removed.
+fn strip_includes(src: string): string {
+    let result: string = "";
+    let n: int = len(src);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(src, j) != 10 {
+            j = j + 1;
+        }
+        let line: string = string_slice(src, i, j);
+        let k: int = 0;
+        let ll: int = len(line);
+        while k < ll && (char_at(line, k) == 32 || char_at(line, k) == 9) {
+            k = k + 1;
+        }
+        let trimmed: string = string_slice(line, k, ll);
+        if !string_starts_with(trimmed, "include @") && !string_starts_with(trimmed, "include \"") {
+            result = result + line + "\n";
+        }
+        i = j + 1;
+    }
+    return result;
+}
+
 fn main() {
     let argv: string[] = args();
 
@@ -86,8 +155,40 @@ fn main() {
         fi = fi + 1;
     }
 
+    // ── Resolve stdlib includes ───────────────────────────────────────────────
+    let stdlib_names: string[] = collect_stdlib_names(src);
+    let needs_stdlib: bool = len(stdlib_names) > 0;
+    let stdlib_dir: string = "";
+    if needs_stdlib {
+        stdlib_dir = stdlib_dir_path();
+        if len(stdlib_dir) == 0 {
+            print_err("jerry-compiler: stdlib directory not found");
+            print_err("Run `make install-stdlib` or set JERRY_STDLIB to the stdlib directory");
+            exit(1);
+        }
+    }
+
+    // Always prepend core.jer, then any explicitly included stdlib modules.
+    // Strip include directives from source so they don't cause parse errors.
+    let src_clean: string = strip_includes(src);
+    let prelude: string = "";
+
+    let core_path: string = stdlib_dir_path() + "/core.jer";
+    if is_dir(stdlib_dir_path()) {
+        prelude = read_file(core_path);
+    }
+
+    let si: int = 0;
+    while si < len(stdlib_names) {
+        let mod_path: string = stdlib_dir + "/" + stdlib_names[si] + ".jer";
+        prelude = prelude + read_file(mod_path);
+        si = si + 1;
+    }
+
+    let full_src: string = prelude + src_clean;
+
     // ── Compile ──────────────────────────────────────────────────────────────
-    let prog: Program = parse(src);
+    let prog: Program = parse(full_src);
     let result: CheckResult = type_check(prog);
     if result.has_errors() {
         print_err(result.error_string());

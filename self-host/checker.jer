@@ -821,6 +821,7 @@ fn make_builtin_scope(): Scope {
     install_fn(s, "is_dir",              p1s, b_ty);
     install_fn(s, "list_dir",            p1s, s_arr);
     install_fn(s, "runtime_lib_path",    p0,  s_ty);
+    install_fn(s, "stdlib_dir_path",     p0,  s_ty);
     let p1sa: JType[] = []; push(p1sa, s_arr);
     install_fn(s, "exec",                p1sa, i_ty);
     install_fn(s, "string_to_int",       p1s, i_ty);

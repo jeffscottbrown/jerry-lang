@@ -1,4 +1,4 @@
-.PHONY: build test install install-runtime run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -73,6 +73,12 @@ install-runtime:
 	rm /tmp/jerry_runtime.o
 	@echo "Installed: $(PREFIX)/lib/jerry_runtime.a"
 	@echo "To use it: export JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a"
+
+install-stdlib:
+	mkdir -p $(PREFIX)/share/jerry/stdlib
+	cp stdlib/*.jer $(PREFIX)/share/jerry/stdlib/
+	@echo "Installed: $(PREFIX)/share/jerry/stdlib/"
+	@echo "To use it: export JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib"
 
 clean:
 	rm -rf bin/

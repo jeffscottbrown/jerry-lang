@@ -70,6 +70,9 @@ func installBuiltins(s *Scope) {
 	// runtime_lib_path(): string — path to jerry_runtime.a for the current install
 	s.Define(&Symbol{Name: "runtime_lib_path", Kind: SymFunc,
 		Type: FuncType([]*Type{}, String)})
+	// stdlib_dir_path(): string — path to the stdlib directory for the current install
+	s.Define(&Symbol{Name: "stdlib_dir_path", Kind: SymFunc,
+		Type: FuncType([]*Type{}, String)})
 	// exec(args): int — run a subprocess; returns exit code
 	s.Define(&Symbol{Name: "exec", Kind: SymFunc,
 		Type: FuncType([]*Type{ArrayOf(String)}, Int)})

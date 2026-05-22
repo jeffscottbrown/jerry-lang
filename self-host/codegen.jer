@@ -94,6 +94,7 @@ class Generator {
     ret_type:  JType;
     fn_name:   string;       // LLVM name of current function
     cls_name:  string;       // current class name (for method codegen)
+    cur_block: string;       // name of the current basic block (for phi predecessors)
     terminated: bool;
     lbl_stack: LoopLabels[];
     rel_top:   ScopeNode;    // linked-list head for release scopes
@@ -313,6 +314,7 @@ class Generator {
 
     fn emit_block_label(name: string) {
         this.eml(name + ":");
+        this.cur_block  = name;
         this.terminated = false;
     }
 
@@ -435,6 +437,7 @@ class Generator {
             "declare i8   @jerry_is_dir(ptr)\n" +
             "declare ptr  @jerry_list_dir(ptr)\n" +
             "declare ptr  @jerry_runtime_lib_path()\n" +
+            "declare ptr  @jerry_stdlib_dir_path()\n" +
             "declare i64  @jerry_exec(ptr)\n" +
             "declare void @jerry_each_line(ptr, ptr)\n" +
             "declare void @jerry_capture_args(i64, ptr)\n" +
@@ -571,6 +574,7 @@ class Generator {
         let ctx: GenContext = this.save_ctx();
         this.fn_name   = llvm_name;
         this.cls_name  = class_name;
+        this.cur_block = "entry";
         this.ret_type  = ft.ret;
         let new_locals: LocalVar[] = [];
         this.locals    = new_locals;
@@ -1127,15 +1131,15 @@ class Generator {
         this.eml("  br i1 " + lv + ", label %" + rhs_lbl + ", label %" + false_lbl);
         this.emit_block_label(rhs_lbl);
         let rv: string = this.gen_expr(e.right);
-        let rhs_end: string = this.fn_name + ".rhs_end";  // current block name proxy
-        // We don't track curBlock by name but phi needs the predecessor block label.
-        // Use the rhs_lbl as the predecessor for the phi coming from the rhs path.
+        // After gen_expr(e.right), cur_block is the actual last block of the RHS.
+        // The phi must reference cur_block, not rhs_lbl, when RHS spans multiple blocks.
+        let rhs_end: string = this.cur_block;
         this.eml("  br label %" + merge_lbl);
         this.emit_block_label(false_lbl);
         this.eml("  br label %" + merge_lbl);
         this.emit_block_label(merge_lbl);
         let res: string = this.new_tmp();
-        this.eml("  " + res + " = phi i1 [ " + rv + ", %" + rhs_lbl + " ], [ false, %" + false_lbl + " ]");
+        this.eml("  " + res + " = phi i1 [ " + rv + ", %" + rhs_end + " ], [ false, %" + false_lbl + " ]");
         return res;
     }
 
@@ -1147,12 +1151,14 @@ class Generator {
         this.eml("  br i1 " + lv + ", label %" + true_lbl + ", label %" + rhs_lbl);
         this.emit_block_label(rhs_lbl);
         let rv: string = this.gen_expr(e.right);
+        // After gen_expr(e.right), cur_block is the actual last block of the RHS.
+        let rhs_end: string = this.cur_block;
         this.eml("  br label %" + merge_lbl);
         this.emit_block_label(true_lbl);
         this.eml("  br label %" + merge_lbl);
         this.emit_block_label(merge_lbl);
         let res: string = this.new_tmp();
-        this.eml("  " + res + " = phi i1 [ true, %" + true_lbl + " ], [ " + rv + ", %" + rhs_lbl + " ]");
+        this.eml("  " + res + " = phi i1 [ true, %" + true_lbl + " ], [ " + rv + ", %" + rhs_end + " ]");
         return res;
     }
 
@@ -1616,6 +1622,12 @@ class Generator {
         if name == "runtime_lib_path" {
             let res: string = this.new_tmp();
             this.eml("  " + res + " = call ptr @jerry_runtime_lib_path()");
+            return res;
+        }
+
+        if name == "stdlib_dir_path" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_stdlib_dir_path()");
             return res;
         }
 
