@@ -1,9 +1,11 @@
 #include "runtime.h"
+#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -134,6 +136,30 @@ JerryStr* jerry_char_to_string(int64_t code) {
     return jerry_string_new(buf, 1);
 }
 
+int8_t jerry_string_contains(JerryStr* s, JerryStr* sub) {
+    if (s == NULL || sub == NULL) return 0;
+    if (sub->len == 0) return 1;
+    if (sub->len > s->len) return 0;
+    for (int64_t i = 0; i <= s->len - sub->len; i++) {
+        if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0) return 1;
+    }
+    return 0;
+}
+
+int8_t jerry_string_starts_with(JerryStr* s, JerryStr* prefix) {
+    if (s == NULL || prefix == NULL) return 0;
+    if (prefix->len == 0) return 1;
+    if (prefix->len > s->len) return 0;
+    return (int8_t)(memcmp(s->data, prefix->data, (size_t)prefix->len) == 0);
+}
+
+int8_t jerry_string_ends_with(JerryStr* s, JerryStr* suffix) {
+    if (s == NULL || suffix == NULL) return 0;
+    if (suffix->len == 0) return 1;
+    if (suffix->len > s->len) return 0;
+    return (int8_t)(memcmp(s->data + s->len - suffix->len, suffix->data, (size_t)suffix->len) == 0);
+}
+
 JerryStr* jerry_int_to_string(int64_t n) {
     char buf[32];
     int  len = snprintf(buf, sizeof(buf), "%lld", (long long)n);
@@ -215,6 +241,36 @@ void jerry_write_file(JerryStr* path, JerryStr* content) {
     }
     fwrite(content->data, 1, (size_t)content->len, f);
     fclose(f);
+}
+
+void jerry_delete_file(JerryStr* path) {
+    if (path == NULL) return;
+    remove(path->data);
+}
+
+int8_t jerry_is_dir(JerryStr* path) {
+    if (path == NULL) return 0;
+    struct stat st;
+    if (stat(path->data, &st) != 0) return 0;
+    return S_ISDIR(st.st_mode) ? 1 : 0;
+}
+
+JerryArray* jerry_list_dir(JerryStr* path) {
+    JerryArray* result = jerry_array_new(sizeof(void*), 8, 1);
+    if (path == NULL) return result;
+    struct dirent** entries;
+    int n = scandir(path->data, &entries, NULL, alphasort);
+    if (n < 0) return result;
+    for (int i = 0; i < n; i++) {
+        const char* name = entries[i]->d_name;
+        if (name[0] != '.') {  /* skip hidden / . / .. */
+            JerryStr* s = jerry_string_new(name, (int64_t)strlen(name));
+            jerry_array_push(result, &s);
+        }
+        free(entries[i]);
+    }
+    free(entries);
+    return result;
 }
 
 JerryStr* jerry_getenv(JerryStr* name) {
@@ -379,6 +435,24 @@ JerryArray* jerry_args(void) {
         jerry_array_push(arr, &s);
     }
     return arr;
+}
+
+/* Returns JERRY_RUNTIME env var, or <binary_dir>/../lib/jerry_runtime.a.
+   Mirrors the same discovery logic as internal/build/build.go:runtimeLibPath(). */
+JerryStr* jerry_runtime_lib_path(void) {
+    const char* env = getenv("JERRY_RUNTIME");
+    if (env && env[0]) return jerry_string_new(env, (int64_t)strlen(env));
+    if (g_argv && g_argv[0]) {
+        char resolved[4096];
+        if (realpath(g_argv[0], resolved)) {
+            char* slash = strrchr(resolved, '/');
+            if (slash) { *slash = '\0'; }
+            strncat(resolved, "/../lib/jerry_runtime.a",
+                    sizeof(resolved) - strlen(resolved) - 1);
+            return jerry_string_new(resolved, (int64_t)strlen(resolved));
+        }
+    }
+    return jerry_string_new("", 0);
 }
 
 /* ── I/O extras ─────────────────────────────────────────────────────────────── */

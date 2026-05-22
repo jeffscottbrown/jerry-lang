@@ -876,6 +876,12 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 				c.checkExpr(call.Args[0])
 			}
 			return String
+		case "string_contains", "string_starts_with", "string_ends_with":
+			if len(call.Args) == 2 {
+				c.checkExpr(call.Args[0])
+				c.checkExpr(call.Args[1])
+			}
+			return Bool
 		case "char_at":
 			if len(call.Args) == 2 {
 				c.checkExpr(call.Args[0])
@@ -908,6 +914,23 @@ func (c *Checker) checkCall(base *ast.PrimaryExpr, calleeTy *Type, call *ast.Cal
 			if len(call.Args) == 1 {
 				c.checkExpr(call.Args[0])
 			}
+			return String
+		case "delete_file":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Void
+		case "is_dir":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return Bool
+		case "list_dir":
+			if len(call.Args) == 1 {
+				c.checkExpr(call.Args[0])
+			}
+			return ArrayOf(String)
+		case "runtime_lib_path":
 			return String
 		case "exec":
 			if len(call.Args) == 1 {

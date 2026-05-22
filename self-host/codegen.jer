@@ -431,6 +431,10 @@ class Generator {
             "declare ptr  @jerry_read_file(ptr)\n" +
             "declare void @jerry_write_file(ptr, ptr)\n" +
             "declare ptr  @jerry_getenv(ptr)\n" +
+            "declare void @jerry_delete_file(ptr)\n" +
+            "declare i8   @jerry_is_dir(ptr)\n" +
+            "declare ptr  @jerry_list_dir(ptr)\n" +
+            "declare ptr  @jerry_runtime_lib_path()\n" +
             "declare i64  @jerry_exec(ptr)\n" +
             "declare void @jerry_each_line(ptr, ptr)\n" +
             "declare void @jerry_capture_args(i64, ptr)\n" +
@@ -1584,6 +1588,34 @@ class Generator {
             let av: string = this.gen_expr(e.args[0]);
             let res: string = this.new_tmp();
             this.eml("  " + res + " = call ptr @jerry_getenv(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "delete_file" {
+            let av: string = this.gen_expr(e.args[0]);
+            this.eml("  call void @jerry_delete_file(ptr " + av + ")");
+            return "0";
+        }
+
+        if name == "is_dir" {
+            let av: string = this.gen_expr(e.args[0]);
+            let raw: string = this.new_tmp();
+            let res: string = this.new_tmp();
+            this.eml("  " + raw + " = call i8 @jerry_is_dir(ptr " + av + ")");
+            this.eml("  " + res + " = icmp ne i8 " + raw + ", 0");
+            return res;
+        }
+
+        if name == "list_dir" {
+            let av: string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_list_dir(ptr " + av + ")");
+            return res;
+        }
+
+        if name == "runtime_lib_path" {
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_runtime_lib_path()");
             return res;
         }
 

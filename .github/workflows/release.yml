@@ -59,6 +59,14 @@ jobs:
             -o ${{ matrix.asset_name }} \
             ./cmd/jerry
 
+      - name: Build runtime library (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        run: |
+          cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+          ar rcs jerry_runtime.a jerry_runtime.o
+
       - name: Verify version string
         # Only run on native (not cross-compiled) targets
         if: |
@@ -70,14 +78,14 @@ jobs:
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
         run: |
           ./${{ matrix.asset_name }} run examples/hello.jer
           ./${{ matrix.asset_name }} run examples/fibonacci.jer
           ./${{ matrix.asset_name }} run examples/strings.jer
 
       - name: Create archive
-        # Both stdlib and the C runtime are embedded in the binary.
-        # The archive contains only the binary itself.
         run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
 
       - name: Upload build artifact

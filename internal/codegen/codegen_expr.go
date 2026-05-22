@@ -611,6 +611,21 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  %s = call ptr @jerry_char_to_string(i64 %s)\n", res, argVal)
 			return res, checker.String, nil
 
+		case "string_contains", "string_starts_with", "string_ends_with":
+			sVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			subVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			raw := g.newTmp()
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i8 @jerry_%s(ptr %s, ptr %s)\n", raw, base.Ident, sVal, subVal)
+			fmt.Fprintf(out, "  %s = icmp ne i8 %s, 0\n", res, raw)
+			return res, checker.Bool, nil
+
 		case "read_file":
 			argVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {
@@ -640,6 +655,39 @@ func (g *Generator) genCall(
 			}
 			res := g.newTmp()
 			fmt.Fprintf(out, "  %s = call ptr @jerry_getenv(ptr %s)\n", res, argVal)
+			return res, checker.String, nil
+
+		case "delete_file":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			fmt.Fprintf(out, "  call void @jerry_delete_file(ptr %s)\n", argVal)
+			return "0", checker.Void, nil
+
+		case "is_dir":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			raw := g.newTmp()
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i8 @jerry_is_dir(ptr %s)\n", raw, argVal)
+			fmt.Fprintf(out, "  %s = icmp ne i8 %s, 0\n", res, raw)
+			return res, checker.Bool, nil
+
+		case "list_dir":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_list_dir(ptr %s)\n", res, argVal)
+			return res, checker.ArrayOf(checker.String), nil
+
+		case "runtime_lib_path":
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_runtime_lib_path()\n", res)
 			return res, checker.String, nil
 
 		case "exec":

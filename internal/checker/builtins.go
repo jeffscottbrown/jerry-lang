@@ -31,6 +31,15 @@ func installBuiltins(s *Scope) {
 	// float_to_string(f): string
 	s.Define(&Symbol{Name: "float_to_string", Kind: SymFunc,
 		Type: FuncType([]*Type{Float}, String)})
+	// string_contains(s, sub): bool
+	s.Define(&Symbol{Name: "string_contains", Kind: SymFunc,
+		Type: FuncType([]*Type{String, String}, Bool)})
+	// string_starts_with(s, prefix): bool
+	s.Define(&Symbol{Name: "string_starts_with", Kind: SymFunc,
+		Type: FuncType([]*Type{String, String}, Bool)})
+	// string_ends_with(s, suffix): bool
+	s.Define(&Symbol{Name: "string_ends_with", Kind: SymFunc,
+		Type: FuncType([]*Type{String, String}, Bool)})
 	// char_at(s, i): int  — returns Unicode code point at index i
 	s.Define(&Symbol{Name: "char_at", Kind: SymFunc,
 		Type: FuncType([]*Type{String, Int}, Int)})
@@ -49,6 +58,18 @@ func installBuiltins(s *Scope) {
 	// getenv(name): string — read an environment variable; returns "" if unset
 	s.Define(&Symbol{Name: "getenv", Kind: SymFunc,
 		Type: FuncType([]*Type{String}, String)})
+	// delete_file(path): void — remove a file; silently ignores errors
+	s.Define(&Symbol{Name: "delete_file", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, Void)})
+	// is_dir(path): bool — true if path is an existing directory
+	s.Define(&Symbol{Name: "is_dir", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, Bool)})
+	// list_dir(path): string[] — sorted filenames (not full paths) in a directory
+	s.Define(&Symbol{Name: "list_dir", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, ArrayOf(String))})
+	// runtime_lib_path(): string — path to jerry_runtime.a for the current install
+	s.Define(&Symbol{Name: "runtime_lib_path", Kind: SymFunc,
+		Type: FuncType([]*Type{}, String)})
 	// exec(args): int — run a subprocess; returns exit code
 	s.Define(&Symbol{Name: "exec", Kind: SymFunc,
 		Type: FuncType([]*Type{ArrayOf(String)}, Int)})

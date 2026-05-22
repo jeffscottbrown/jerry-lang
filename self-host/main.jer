@@ -1,7 +1,92 @@
-// Stdin driver: parse, type-check, and generate LLVM IR from Jerry source.
-// Usage: jerry run self-host/ < source.jer
+// Jerry self-hosted compilation driver.
+//
+// Usage (single file):
+//   jerry-compiler source.jer [-o output]
+//
+// Usage (directory — compiles all non-test .jer files, sorted):
+//   jerry-compiler src/ [-o output]
+//
+// Usage (multiple files):
+//   jerry-compiler a.jer b.jer [-o output]
+//
+// Flags:
+//   -o <path>   output binary path (default: a.out)
+//   --ir        write LLVM IR to stdout instead of compiling to a binary
+
+// Collect .jer source file paths from a single argument (file or directory).
+// Directories expand to all non-test .jer files in sorted order.
+fn expand_src(arg: string): string[] {
+    let result: string[] = [];
+    if is_dir(arg) {
+        let names: string[] = list_dir(arg);
+        let i: int = 0;
+        while i < len(names) {
+            let name: string = names[i];
+            if string_ends_with(name, ".jer") && !string_ends_with(name, "_test.jer") {
+                push(result, arg + "/" + name);
+            }
+            i = i + 1;
+        }
+    } else {
+        push(result, arg);
+    }
+    return result;
+}
+
 fn main() {
-    let src: string = read_stdin();
+    let argv: string[] = args();
+
+    // ── Parse flags ──────────────────────────────────────────────────────────
+    let src_args: string[] = [];
+    let out_path: string = "a.out";
+    let ir_only: bool = false;
+
+    let i: int = 0;
+    while i < len(argv) {
+        let a: string = argv[i];
+        if a == "-o" {
+            i = i + 1;
+            if i < len(argv) { out_path = argv[i]; }
+        } else if a == "--ir" {
+            ir_only = true;
+        } else {
+            push(src_args, a);
+        }
+        i = i + 1;
+    }
+
+    if len(src_args) == 0 {
+        print_err("usage: jerry-compiler <source.jer|dir/> [more...] [-o output] [--ir]");
+        exit(1);
+    }
+
+    // ── Expand directories to file lists ─────────────────────────────────────
+    let src_files: string[] = [];
+    let j: int = 0;
+    while j < len(src_args) {
+        let expanded: string[] = expand_src(src_args[j]);
+        let k: int = 0;
+        while k < len(expanded) {
+            push(src_files, expanded[k]);
+            k = k + 1;
+        }
+        j = j + 1;
+    }
+
+    if len(src_files) == 0 {
+        print_err("jerry-compiler: no .jer files found");
+        exit(1);
+    }
+
+    // ── Read and concatenate sources ─────────────────────────────────────────
+    let src: string = "";
+    let fi: int = 0;
+    while fi < len(src_files) {
+        src = src + read_file(src_files[fi]);
+        fi = fi + 1;
+    }
+
+    // ── Compile ──────────────────────────────────────────────────────────────
     let prog: Program = parse(src);
     let result: CheckResult = type_check(prog);
     if result.has_errors() {
@@ -9,5 +94,30 @@ fn main() {
         exit(1);
     }
     let ir: string = generate(prog, result.info);
-    write(ir);
+
+    if ir_only {
+        write(ir);
+        return;
+    }
+
+    // ── Write IR to temp file, invoke clang ──────────────────────────────────
+    let tmp: string = "/tmp/jerry-" + int_to_string(now_millis()) + ".ll";
+    write_file(tmp, ir);
+
+    let runtime_lib: string = runtime_lib_path();
+    if len(runtime_lib) == 0 {
+        delete_file(tmp);
+        print_err("jerry-compiler: runtime library not found");
+        print_err("Run `make install-runtime` or set JERRY_RUNTIME to jerry_runtime.a");
+        exit(1);
+    }
+
+    let clang_args: string[] = ["clang", "-O1", tmp, runtime_lib, "-o", out_path, "-lm"];
+    let code: int = exec(clang_args);
+    delete_file(tmp);
+
+    if code != 0 {
+        print_err("jerry-compiler: clang exited with code " + int_to_string(code));
+        exit(code);
+    }
 }
