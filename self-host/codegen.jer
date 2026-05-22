@@ -1385,11 +1385,18 @@ class Generator {
     }
 
     fn gen_map_lit(e: Expr): string {
+        // Determine key/value types.
+        // For empty literals the checker propagates the declared type to e.jtype,
+        // so we can use it directly instead of defaulting to string keys.
         let key_ty: JType = make_string();
         let val_ty: JType = make_int();
         if len(e.args) > 0 {
             if e.args[0].jtype != null  { key_ty = e.args[0].jtype; }
             if e.vals[0].jtype != null  { val_ty = e.vals[0].jtype; }
+        } else if e.jtype != null && e.jtype.kind == TY_MAP &&
+                  e.jtype.key != null && e.jtype.key.kind != TY_VOID {
+            key_ty = e.jtype.key;
+            if e.jtype.value != null { val_ty = e.jtype.value; }
         }
         let string_keys: string = "0";
         if key_ty.kind == TY_STRING { string_keys = "1"; }

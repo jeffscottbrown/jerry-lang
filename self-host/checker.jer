@@ -359,6 +359,11 @@ class Checker {
                 if !empty_arr && !empty_map && !jtype_equals(decl_ty, val_ty) {
                     this.error("var '" + s.var_name + "': declared " + decl_ty.to_string() + " but got " + val_ty.to_string(), s.line, s.col);
                 }
+                // Propagate the declared type back to the literal so codegen
+                // can use it (e.g. to pick string_keys for empty map literals).
+                if (empty_arr || empty_map) && s.var_value != null {
+                    s.var_value.jtype = decl_ty;
+                }
             } else {
                 decl_ty = val_ty;
             }
