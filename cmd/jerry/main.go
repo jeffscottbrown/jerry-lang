@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,7 +29,6 @@ import (
 	"github.com/jeffscottbrown/jerry-lang/internal/build"
 	"github.com/jeffscottbrown/jerry-lang/internal/modfile"
 	"github.com/jeffscottbrown/jerry-lang/internal/module"
-	"github.com/jeffscottbrown/jerry-lang/internal/parser"
 )
 
 // Version is injected at build time via -ldflags "-X main.Version=v1.2.3"
@@ -60,18 +60,26 @@ func main() {
 	case "lsp":
 		runLsp()
 
-	case "compile":
-		outBin, target, srcs := parseCompileArgs(os.Args[2:])
+	// _ir: hidden bootstrap subcommand — uses the Go compilation pipeline to
+	// emit LLVM IR to stdout. Used by `make build-compiler` to build
+	// jerry-compiler before jerry-compiler itself is available. Not in usage().
+	case "_ir":
+		srcs, _ := splitSrcs(os.Args[2:])
 		if len(srcs) == 0 {
 			fatalf("no source files given")
 		}
-		if outBin == "" {
-			outBin = strings.TrimSuffix(srcs[0], filepath.Ext(srcs[0]))
-		}
-		if err := build.Compile(srcs, outBin, target); err != nil {
+		ir, err := build.CompileToIR(srcs)
+		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+		fmt.Print(ir)
+
+	case "compile":
+		if len(os.Args) < 3 {
+			fatalf("no source files given")
+		}
+		runJerryCompiler(os.Args[2:])
 
 	case "run":
 		srcs, rest := splitSrcs(os.Args[2:])
@@ -84,10 +92,7 @@ func main() {
 		}
 		defer os.RemoveAll(tmp)
 		bin := filepath.Join(tmp, "a.out")
-		if err := build.Compile(srcs, bin, ""); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		runJerryCompiler(append(srcs, "-o", bin))
 		runCmd := exec.Command(bin, rest...)
 		runCmd.Stdin = os.Stdin
 		runCmd.Stdout = os.Stdout
@@ -100,16 +105,10 @@ func main() {
 		}
 
 	case "ir":
-		srcs, _ := splitSrcs(os.Args[2:])
-		if len(srcs) == 0 {
+		if len(os.Args) < 3 {
 			fatalf("no source files given")
 		}
-		ir, err := build.CompileToIR(srcs)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		fmt.Print(ir)
+		runJerryCompiler(append(os.Args[2:], "--ir"))
 
 	case "get":
 		if len(os.Args) < 3 {
@@ -200,18 +199,12 @@ func cmdSweep() error {
 	// Collect remote imports referenced in project files.
 	referenced := map[string]bool{}
 	for _, src := range srcs {
-		data, err := os.ReadFile(src)
+		remotes, err := scanRemoteIncludes(src)
 		if err != nil {
-			return err
+			continue // ignore errors during sweep
 		}
-		prog, err := parser.Parse(src, string(data))
-		if err != nil {
-			continue // ignore parse errors during tidy
-		}
-		for _, tl := range prog.Stmts {
-			if tl.Include != nil && tl.Include.Remote != "" {
-				referenced[tl.Include.Remote] = true
-			}
+		for _, r := range remotes {
+			referenced[r] = true
 		}
 	}
 
@@ -332,8 +325,7 @@ func splitAtVersion(arg string) (modPath, version string, ok bool) {
 // generated test main.
 func cmdTest(args []string) error {
 	// Collect files: explicit .jer args, directory args, or cwd fallback.
-	// Directories contribute both source files and test files; the two sets
-	// are tracked separately.
+	// Directories contribute both source files and test files.
 	var testFiles []string   // *_test.jer
 	var sourceFiles []string // other .jer files (code under test)
 
@@ -375,30 +367,16 @@ func cmdTest(args []string) error {
 		return nil
 	}
 
-	// Parse each test file and collect test function names per file.
+	// Scan each test file for fn test_*() functions using simple text parsing.
 	type fileTests struct {
 		path  string
 		names []string
 	}
 	var allTests []fileTests
 	for _, path := range testFiles {
-		data, err := os.ReadFile(path)
+		names, err := scanTestFunctions(path)
 		if err != nil {
-			return fmt.Errorf("cannot read %s: %w", path, err)
-		}
-		prog, err := parser.Parse(path, string(data))
-		if err != nil {
-			return fmt.Errorf("parse error in %s: %w", path, err)
-		}
-		var names []string
-		for _, tl := range prog.Stmts {
-			if tl.FnDecl == nil {
-				continue
-			}
-			fn := tl.FnDecl
-			if strings.HasPrefix(fn.Name, "test_") && len(fn.Params) == 0 {
-				names = append(names, fn.Name)
-			}
+			return err
 		}
 		if len(names) > 0 {
 			allTests = append(allTests, fileTests{path, names})
@@ -413,20 +391,9 @@ func cmdTest(args []string) error {
 	// provides main(), so including another would cause a duplicate error.
 	var filteredSources []string
 	for _, path := range sourceFiles {
-		data, err := os.ReadFile(path)
+		hasMain, err := fileDefinesMain(path)
 		if err != nil {
-			return fmt.Errorf("cannot read %s: %w", path, err)
-		}
-		prog, err := parser.Parse(path, string(data))
-		if err != nil {
-			return fmt.Errorf("parse error in %s: %w", path, err)
-		}
-		hasMain := false
-		for _, tl := range prog.Stmts {
-			if tl.FnDecl != nil && tl.FnDecl.Name == "main" {
-				hasMain = true
-				break
-			}
+			return err
 		}
 		if !hasMain {
 			filteredSources = append(filteredSources, path)
@@ -466,9 +433,7 @@ func cmdTest(args []string) error {
 	defer os.RemoveAll(tmpDir)
 	bin := filepath.Join(tmpDir, "test")
 
-	if err := build.Compile(srcs, bin, ""); err != nil {
-		return err
-	}
+	runJerryCompiler(append(srcs, "-o", bin))
 
 	// Run.
 	runCmd := exec.Command(bin)
@@ -481,6 +446,57 @@ func cmdTest(args []string) error {
 		return fmt.Errorf("test run failed: %w", err)
 	}
 	return nil
+}
+
+// scanTestFunctions scans a .jer file for top-level fn test_*() declarations
+// using simple line-by-line text parsing. Returns function names found.
+func scanTestFunctions(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read %s: %w", path, err)
+	}
+	defer f.Close()
+	var names []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		// Match: fn test_NAME() or fn test_NAME(): void
+		if !strings.HasPrefix(line, "fn test_") {
+			continue
+		}
+		rest := line[3:] // strip "fn "
+		paren := strings.Index(rest, "(")
+		if paren < 0 {
+			continue
+		}
+		name := rest[:paren]
+		// Ensure no parameters (empty parens or just whitespace)
+		close := strings.Index(rest[paren:], ")")
+		if close < 0 {
+			continue
+		}
+		if strings.TrimSpace(rest[paren+1:paren+close]) == "" {
+			names = append(names, name)
+		}
+	}
+	return names, scanner.Err()
+}
+
+// fileDefinesMain reports whether a .jer file contains a top-level fn main declaration.
+func fileDefinesMain(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, fmt.Errorf("cannot read %s: %w", path, err)
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "fn main(") || strings.HasPrefix(line, "fn main():") {
+			return true, nil
+		}
+	}
+	return false, scanner.Err()
 }
 
 // ── jerry create ─────────────────────────────────────────────────────────────
@@ -844,6 +860,73 @@ func toRubyClass(name string) string {
 		}
 	}
 	return sb.String()
+}
+
+// ── jerry-compiler discovery and invocation ───────────────────────────────────
+
+// findJerryCompiler returns the path to the jerry-compiler binary.
+// Search order:
+//  1. JERRY_COMPILER env var
+//  2. <directory of this binary>/jerry-compiler
+//  3. jerry-compiler on PATH
+func findJerryCompiler() (string, error) {
+	if p := os.Getenv("JERRY_COMPILER"); p != "" {
+		return p, nil
+	}
+	if exe, err := os.Executable(); err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), "jerry-compiler")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	if p, err := exec.LookPath("jerry-compiler"); err == nil {
+		return p, nil
+	}
+	return "", fmt.Errorf("jerry-compiler not found; run `make install` or set JERRY_COMPILER")
+}
+
+// runJerryCompiler invokes jerry-compiler with args, inheriting stdio.
+// Exits the process if jerry-compiler is not found or exits non-zero.
+func runJerryCompiler(args []string) {
+	bin, err := findJerryCompiler()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "jerry: "+err.Error())
+		os.Exit(1)
+	}
+	cmd := exec.Command(bin, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		if exit, ok := err.(*exec.ExitError); ok {
+			os.Exit(exit.ExitCode())
+		}
+		fmt.Fprintf(os.Stderr, "jerry: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// scanRemoteIncludes scans a .jer file for `include "..."` remote declarations.
+func scanRemoteIncludes(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var remotes []string
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, `include "`) {
+			continue
+		}
+		rest := line[len(`include "`):]
+		end := strings.Index(rest, `"`)
+		if end > 0 {
+			remotes = append(remotes, rest[:end])
+		}
+	}
+	return remotes, scanner.Err()
 }
 
 func fatalf(format string, args ...any) {

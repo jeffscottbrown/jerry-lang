@@ -104,25 +104,26 @@ scale.
 
 ## Phase 4 — Replace Go Compilation Pipeline
 
-- [ ] **4a. Make `jerry compile/run/ir` invoke the self-hosted binary**
-  `cmd/jerry/main.go` becomes a thin shim: locate the `jerry-compiler` binary
-  installed alongside `jerry`, exec it with the right arguments. All actual
-  compilation happens in the self-hosted binary.
+- [x] **4a. Make `jerry compile/run/ir` invoke the self-hosted binary**
+  `cmd/jerry/main.go` is a thin shim: `findJerryCompiler()` checks
+  `JERRY_COMPILER` env, then `<binary-dir>/jerry-compiler`, then PATH.
+  `compile`/`run`/`ir`/`test` all delegate compilation to jerry-compiler.
+  `cmdTest` replaced Go parser with text-scanning (`bufio.Scanner`) to find
+  `fn test_*()` functions. `cmdSweep` likewise uses text scanning.
+  Hidden `jerry _ir` subcommand uses the Go codegen pipeline directly —
+  bootstrap escape hatch for building jerry-compiler itself.
 
-- [ ] **4b. Build `jerry-compiler` binary as part of the release process**
-  Release pipeline: (1) build Go `jerry`, (2) use Go `jerry` to compile
-  `self-host/*.jer` into `jerry-compiler`, (3) ship both. The Homebrew formula
-  runs this in `def install`.
+- [x] **4b. Build `jerry-compiler` binary as part of the release process**
+  CI: `jerry _ir self-host/*.jer | clang ... -o jerry-compiler`; both binaries
+  bundled in the release archive. Homebrew formula builds jerry-compiler in
+  `def install` using `jerry _ir` + `ENV.cc`. `make build-compiler` target
+  added for local bootstrap.
 
-- [ ] **4c. Remove `internal/codegen`** — Go LLVM IR generator
-
-- [ ] **4d. Remove `internal/checker`** — Go type checker
-
-- [ ] **4e. Remove `internal/parser`** — Go parser / Participle grammar
-
-- [ ] **4f. Remove `internal/ast`** — Go AST definitions
-
-- [ ] **4g. Remove `internal/build`** — Go compilation pipeline / driver
+- [ ] **4c. Remove `internal/codegen`** — blocked by LSP dependency
+- [ ] **4d. Remove `internal/checker`** — blocked by LSP dependency
+- [ ] **4e. Remove `internal/parser`** — blocked by LSP dependency (+ `jerry _ir` bootstrap)
+- [ ] **4f. Remove `internal/ast`** — blocked by LSP dependency
+- [ ] **4g. Remove `internal/build`** — blocked by LSP dependency (+ `jerry _ir` bootstrap)
 
 ---
 

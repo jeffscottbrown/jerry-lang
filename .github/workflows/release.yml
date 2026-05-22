@@ -77,19 +77,47 @@ jobs:
           (matrix.goos == 'darwin' && runner.os == 'macOS')
         run: ./${{ matrix.asset_name }} --version
 
+      - name: Build stdlib (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        run: |
+          mkdir -p stdlib-dist
+          cp stdlib/*.jer stdlib-dist/
+
+      - name: Build jerry-compiler (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./${{ matrix.asset_name }} _ir self-host/*.jer > jerry-compiler-bootstrap.ll
+          cc ${{ matrix.cc_arch_flag }} -O1 jerry-compiler-bootstrap.ll jerry_runtime.a \
+            -o jerry-compiler -lm
+          rm jerry-compiler-bootstrap.ll
+
       - name: Smoke-test binary (native only)
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+          JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
         run: |
           ./${{ matrix.asset_name }} run examples/hello.jer
           ./${{ matrix.asset_name }} run examples/fibonacci.jer
           ./${{ matrix.asset_name }} run examples/strings.jer
 
       - name: Create archive
-        run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+        run: |
+          if [ -f jerry-compiler ]; then
+            tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} jerry-compiler
+          else
+            tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

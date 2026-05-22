@@ -1,4 +1,4 @@
-.PHONY: build test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build build-compiler test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -8,6 +8,16 @@ JERRY = go run ./cmd/jerry
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/jerry ./cmd/jerry
+
+# Build the self-hosted jerry-compiler binary using the Go bootstrap pipeline.
+# Uses the hidden `jerry _ir` subcommand which invokes the Go codegen directly,
+# bypassing the jerry-compiler dependency. Run this once after a fresh checkout.
+build-compiler: build install-runtime install-stdlib
+	bin/jerry _ir self-host/*.jer > /tmp/jerry-compiler-bootstrap.ll
+	clang -O1 /tmp/jerry-compiler-bootstrap.ll $(PREFIX)/lib/jerry_runtime.a \
+		-o bin/jerry-compiler -lm
+	rm /tmp/jerry-compiler-bootstrap.ll
+	@echo "Built: bin/jerry-compiler"
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 

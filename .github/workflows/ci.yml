@@ -49,9 +49,25 @@ jobs:
           cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
 
-      - name: Smoke-test compiled binary
+      - name: Install stdlib
+        run: |
+          mkdir -p stdlib-dist
+          cp stdlib/*.jer stdlib-dist/
+
+      - name: Build jerry-compiler (self-hosted)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-bin _ir self-host/*.jer > jerry-compiler-bootstrap.ll
+          cc -O1 jerry-compiler-bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
+          rm jerry-compiler-bootstrap.ll
+
+      - name: Smoke-test (jerry run via self-hosted compiler)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+          JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
         run: |
           ./jerry-bin --version
           ./jerry-bin run examples/hello.jer
@@ -61,22 +77,22 @@ jobs:
           ./jerry-bin run examples/closures.jer
           ./jerry-bin run examples/strings.jer
 
-      - name: Jerry tests
+      - name: Jerry tests (via self-hosted compiler)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
-        run: ./jerry-bin test tests/
-
-      - name: Install stdlib
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+          JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
         run: |
-          mkdir -p stdlib-dist
-          cp stdlib/*.jer stdlib-dist/
+          ./jerry-bin test tests/arrays_test.jer
+          ./jerry-bin test tests/classes_test.jer
+          ./jerry-bin test tests/closures_test.jer
+          ./jerry-bin test tests/control_flow_test.jer
+          ./jerry-bin test tests/functions_test.jer
+          ./jerry-bin test tests/primitives_test.jer
+          ./jerry-bin test tests/stdlib_test.jer
+          ./jerry-bin test tests/strings_test.jer
 
-      - name: Build self-hosted compiler
-        env:
-          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
-        run: ./jerry-bin compile self-host/*.jer -o jerry-compiler
-
-      - name: Smoke-test self-hosted compiler
+      - name: Smoke-test self-hosted compiler directly
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
