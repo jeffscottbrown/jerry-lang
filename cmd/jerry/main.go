@@ -26,7 +26,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/jeffscottbrown/jerry-lang/internal/build"
 	"github.com/jeffscottbrown/jerry-lang/internal/modfile"
 	"github.com/jeffscottbrown/jerry-lang/internal/module"
 )
@@ -59,21 +58,6 @@ func main() {
 
 	case "lsp":
 		runLsp()
-
-	// _ir: hidden bootstrap subcommand — uses the Go compilation pipeline to
-	// emit LLVM IR to stdout. Used by `make build-compiler` to build
-	// jerry-compiler before jerry-compiler itself is available. Not in usage().
-	case "_ir":
-		srcs, _ := splitSrcs(os.Args[2:])
-		if len(srcs) == 0 {
-			fatalf("no source files given")
-		}
-		ir, err := build.CompileToIR(srcs)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		fmt.Print(ir)
 
 	case "compile":
 		if len(os.Args) < 3 {
@@ -258,22 +242,6 @@ func cmdSweep() error {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-func parseCompileArgs(args []string) (outBin, target string, srcs []string) {
-	for i := 0; i < len(args); i++ {
-		switch {
-		case args[i] == "-o" && i+1 < len(args):
-			outBin = args[i+1]
-			i++
-		case args[i] == "--target" && i+1 < len(args):
-			target = args[i+1]
-			i++
-		default:
-			srcs = append(srcs, args[i])
-		}
-	}
-	return
-}
 
 func splitSrcs(args []string) (srcs, rest []string) {
 	i := 0

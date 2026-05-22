@@ -21,6 +21,7 @@ jobs:
             goos: linux
             goarch: amd64
             cc_arch_flag: ""
+            jerry_target: ""
             asset_name: jerry-linux-x86_64
 
           - name: macos-x86_64
@@ -28,6 +29,7 @@ jobs:
             goos: darwin
             goarch: amd64
             cc_arch_flag: "-arch x86_64"
+            jerry_target: "x86_64-apple-darwin"
             asset_name: jerry-macos-x86_64
 
           - name: macos-arm64
@@ -35,6 +37,7 @@ jobs:
             goos: darwin
             goarch: arm64
             cc_arch_flag: "-arch arm64"
+            jerry_target: ""
             asset_name: jerry-macos-arm64
 
     steps:
@@ -85,6 +88,24 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
+      - name: Download seed jerry-compiler (from latest release)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        run: |
+          VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/jeffscottbrown/jerry-lang/releases/latest \
+            | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
+          ASSET="jerry-${OS}-${ARCH}"
+          curl -fsSL \
+            "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/${ASSET}.tar.gz" \
+            | tar xz jerry-compiler
+          chmod +x jerry-compiler
+          mv jerry-compiler jerry-compiler-seed
+
       - name: Build jerry-compiler (native only)
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
@@ -93,10 +114,11 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          ./${{ matrix.asset_name }} _ir self-host/*.jer > jerry-compiler-bootstrap.ll
-          cc ${{ matrix.cc_arch_flag }} -O1 jerry-compiler-bootstrap.ll jerry_runtime.a \
-            -o jerry-compiler -lm
-          rm jerry-compiler-bootstrap.ll
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+          fi
+          ./jerry-compiler-seed self-host/ -o jerry-compiler $TARGET_FLAG
 
       - name: Smoke-test binary (native only)
         if: |

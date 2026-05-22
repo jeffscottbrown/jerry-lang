@@ -9,14 +9,15 @@ JERRY = go run ./cmd/jerry
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/jerry ./cmd/jerry
 
-# Build the self-hosted jerry-compiler binary using the Go bootstrap pipeline.
-# Uses the hidden `jerry _ir` subcommand which invokes the Go codegen directly,
-# bypassing the jerry-compiler dependency. Run this once after a fresh checkout.
-build-compiler: build install-runtime install-stdlib
-	bin/jerry _ir self-host/*.jer > /tmp/jerry-compiler-bootstrap.ll
-	clang -O1 /tmp/jerry-compiler-bootstrap.ll $(PREFIX)/lib/jerry_runtime.a \
-		-o bin/jerry-compiler -lm
-	rm /tmp/jerry-compiler-bootstrap.ll
+# Rebuild the self-hosted jerry-compiler binary from source using a seed binary.
+# The seed is the jerry-compiler currently on PATH (e.g. installed via Homebrew),
+# or override with: make build-compiler JERRY_COMPILER_SEED=/path/to/jerry-compiler
+JERRY_COMPILER_SEED ?= jerry-compiler
+
+build-compiler: install-runtime install-stdlib
+	JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a \
+	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
+		$(JERRY_COMPILER_SEED) self-host/ -o bin/jerry-compiler
 	@echo "Built: bin/jerry-compiler"
 
 # ── Run examples ──────────────────────────────────────────────────────────────

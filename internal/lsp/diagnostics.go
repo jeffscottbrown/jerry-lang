@@ -2,16 +2,38 @@ package lsp
 
 import (
 	"errors"
+	"io/fs"
+	"os"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	"github.com/jeffscottbrown/jerry-lang/internal/ast"
-	"github.com/jeffscottbrown/jerry-lang/internal/build"
 	"github.com/jeffscottbrown/jerry-lang/internal/checker"
 	"github.com/jeffscottbrown/jerry-lang/internal/parser"
+	"github.com/jeffscottbrown/jerry-lang/stdlib"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
+
+// stdlibFS returns the filesystem for stdlib lookups.
+// If JERRY_STDLIB points to a directory, an OS-based FS rooted there is returned.
+// Otherwise the embedded FS baked into the binary is used.
+func stdlibFS() fs.FS {
+	if dir := os.Getenv("JERRY_STDLIB"); dir != "" {
+		return os.DirFS(dir)
+	}
+	return stdlib.Files
+}
+
+// parseStdlibFile reads and parses a stdlib module by name (without .jer extension).
+func parseStdlibFile(fsys fs.FS, name string) (*ast.Program, error) {
+	filename := name + ".jer"
+	data, err := fs.ReadFile(fsys, filename)
+	if err != nil {
+		return nil, err
+	}
+	return parser.Parse("stdlib/"+filename, string(data))
+}
 
 // diagnoseAndPublish runs parse + check on src and sends publishDiagnostics to
 // the client via ctx.Notify.
@@ -32,10 +54,10 @@ func diagnose(uri, src string) []protocol.Diagnostic {
 		return []protocol.Diagnostic{parseErrToDiagnostic(parseErr)}
 	}
 
-	fsys := build.StdlibFS()
+	fsys := stdlibFS()
 
 	// core.jer is always in scope.
-	coreAST, _ := build.ParseStdlibFile(fsys, "core")
+	coreAST, _ := parseStdlibFile(fsys, "core")
 
 	// Load any explicitly included stdlib modules.
 	stdlibASTs := make(map[string]*ast.Program)
@@ -47,7 +69,7 @@ func diagnose(uri, src string) []protocol.Diagnostic {
 		if _, already := stdlibASTs[name]; already {
 			continue
 		}
-		if stdAST, err := build.ParseStdlibFile(fsys, name); err == nil {
+		if stdAST, err := parseStdlibFile(fsys, name); err == nil {
 			stdlibASTs[name] = stdAST
 		}
 	}
