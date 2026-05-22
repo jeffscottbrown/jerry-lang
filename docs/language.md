@@ -30,19 +30,20 @@ jerry run foo.jer
 6. [Functions](#functions)
 7. [Closures and function values](#closures-and-function-values)
 8. [Arrays](#arrays)
-9. [Strings](#strings)
-10. [Classes](#classes)
-11. [Memory model](#memory-model)
-12. [Testing](#testing)
-13. [Built-in functions](#built-in-functions)
-14. [The always-available core library](#the-always-available-core-library)
-15. [Time and the `Timer` class](#time-and-the-timer-class)
-16. [Modules and remote packages](#modules-and-remote-packages)
-17. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-18. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-19. [Working program: end-to-end example](#working-program-end-to-end-example)
-20. [Showcase: gdgrep](#showcase-gdgrep)
-21. [CLI reference](#cli-reference)
+9. [Maps](#maps)
+10. [Strings](#strings)
+11. [Classes](#classes)
+12. [Memory model](#memory-model)
+13. [Testing](#testing)
+14. [Built-in functions](#built-in-functions)
+15. [The always-available core library](#the-always-available-core-library)
+16. [Time and the `Timer` class](#time-and-the-timer-class)
+17. [Modules and remote packages](#modules-and-remote-packages)
+18. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+19. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+20. [Working program: end-to-end example](#working-program-end-to-end-example)
+21. [Showcase: gdgrep](#showcase-gdgrep)
+22. [CLI reference](#cli-reference)
 
 ---
 
@@ -286,6 +287,82 @@ Useful built-ins for arrays:
 
 ---
 
+## Maps
+
+Maps are hash tables keyed by `string` or `int`, declared as
+`map<KeyType, ValueType>`. An empty map literal is `{}`.
+
+```jerry
+fn main() {
+    // string keys
+    let scores: map<string, int> = {};
+    map_set(scores, "alice", 95);
+    map_set(scores, "bob",   87);
+    print(int_to_string(map_get(scores, "alice")));  // 95
+
+    // index operator works for both get and set
+    scores["carol"] = 91;
+    print(int_to_string(scores["carol"]));           // 91
+}
+```
+
+### Map literals
+
+Pre-populate a map with a brace literal:
+
+```jerry
+fn main() {
+    let codes: map<string, int> = {"ok": 200, "not_found": 404, "error": 500};
+    print(int_to_string(codes["ok"]));  // 200
+
+    let labels: map<int, string> = {1: "one", 2: "two", 3: "three"};
+    print(labels[2]);  // two
+}
+```
+
+### int keys
+
+Maps with `int` keys work identically — just declare the type:
+
+```jerry
+fn main() {
+    let m: map<int, string> = {};
+    map_set(m, 42, "answer");
+    print(map_get(m, 42));  // answer
+}
+```
+
+### Map builtins
+
+| Builtin                              | Description                                   |
+|--------------------------------------|-----------------------------------------------|
+| `map_set(m, key, value): void`       | Insert or overwrite `key → value`             |
+| `map_get(m, key): V`                 | Retrieve value for `key`                      |
+| `map_has(m, key): bool`              | True if `key` is present                      |
+| `map_delete(m, key): void`           | Remove `key` (no-op if absent)                |
+| `map_len(m): int`                    | Number of entries                             |
+| `map_keys(m): K[]`                   | Array of all keys (unordered)                 |
+
+The index operator `m[key]` is sugar for `map_get` on the right-hand side and
+`map_set` on the left-hand side.
+
+### Iterating over a map
+
+Use `map_keys` to iterate:
+
+```jerry
+fn main() {
+    let word_count: map<string, int> = {"the": 3, "quick": 1, "brown": 1};
+    let keys: string[] = map_keys(word_count);
+    for (let i: int = 0; i < len(keys); i++) {
+        let k: string = keys[i];
+        print(k + ": " + int_to_string(map_get(word_count, k)));
+    }
+}
+```
+
+---
+
 ## Strings
 
 Strings are UTF-8 and indexed by code-point position via `char_at`. They are
@@ -295,16 +372,18 @@ Strings are UTF-8 and indexed by code-point position via `char_at`. They are
 fn main() {
     let s: string = "Hello, Jerry!";
 
-    print("len = " + int_to_string(len(s)));               // 13
-    print("char_at(0) = " + int_to_string(char_at(s, 0))); // 72  ('H')
-    print("char_to_string(72) = " + char_to_string(72));   // H
-    print("slice = " + string_slice(s, 0, 5));             // Hello
+    print("len = " + int_to_string(len(s)));                    // 13
+    print("char_at(0) = " + int_to_string(char_at(s, 0)));     // 72  ('H')
+    print("char_to_string(72) = " + char_to_string(72));        // H
+    print("slice = " + string_slice(s, 0, 5));                  // Hello
+    print(bool_to_string(string_starts_with(s, "Hello")));      // true
+    print(bool_to_string(string_ends_with(s, "Jerry!")));       // true
+    print(bool_to_string(string_contains(s, "Jerry")));         // true
 }
 ```
 
-For higher-level operations (split, join, trim, starts/ends_with, contains,
-case-folding, …) reach for the remote
-[`jerry-string`](#the-jerry-string-remote-module) module.
+For higher-level operations (split, join, trim, case-folding, …) reach for the
+remote [`jerry-string`](#the-jerry-string-remote-module) module.
 
 ---
 
@@ -586,12 +665,25 @@ These are always available — no `include` required.
 | `string_ends_with(s, suffix): bool`              | True if `s` ends with `suffix`       |
 | `push(arr, x): void`                             | Append to array                      |
 
+### Maps
+
+| Builtin                        | Description                                   |
+|--------------------------------|-----------------------------------------------|
+| `map_set(m, key, val): void`   | Insert or overwrite `key → val`               |
+| `map_get(m, key): V`           | Retrieve value for `key`                      |
+| `map_has(m, key): bool`        | True if `key` is present                      |
+| `map_delete(m, key): void`     | Remove `key` (no-op if absent)                |
+| `map_len(m): int`              | Number of entries                             |
+| `map_keys(m): K[]`             | Array of all keys (unordered)                 |
+
 ### Process & environment
 
 | Builtin                         | Description                                      |
 |---------------------------------|--------------------------------------------------|
 | `exec(args: string[]): int`     | Run a subprocess; returns its exit code          |
 | `getenv(name: string): string`  | Value of an environment variable (empty if unset)|
+| `exit(code: int): void`         | Terminate the process                            |
+| `panic(msg: string): void`      | Abort with an error message                      |
 
 ### Time
 
@@ -600,13 +692,6 @@ These are always available — no `include` required.
 | `now_millis(): int`      | Unix epoch milliseconds                  |
 | `now_seconds(): int`     | Unix epoch seconds                       |
 | `now_string(): string`   | Local time as `YYYY-MM-DD HH:MM:SS`      |
-
-### Process
-
-| Builtin                    | Description                            |
-|----------------------------|----------------------------------------|
-| `exit(code: int): void`    | Terminate the process                  |
-| `panic(msg: string): void` | Abort with an error message            |
 
 ---
 

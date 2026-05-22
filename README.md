@@ -181,6 +181,7 @@ The action automatically detects the runner OS and architecture (Linux x86_64, m
 | Functions | `fn add(a: int, b: int): int { return a + b; }` |
 | Classes | `class Point { x: int; y: int; }` |
 | Arrays | `let nums: int[] = [1, 2, 3];` |
+| Maps | `let m: map<string, int> = {"a": 1}; m["b"] = 2;` |
 | Closures | `let double = fn(x: int): int { return x * 2; };` |
 | For / while | `for (let i: int = 0; i < 10; i++) { ... }` |
 
