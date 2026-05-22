@@ -57,7 +57,7 @@ at install time so the jerry binary can find it by path instead.
 Today `self-host/main.jer` reads source from stdin and writes LLVM IR to stdout.
 A real driver reads a file, generates IR, and invokes clang itself.
 
-- [ ] **2a. Rewrite `self-host/main.jer` as a file-based driver**
+- [x] **2a. Rewrite `self-host/main.jer` as a file-based driver**
   - Read source file path from `args()[1]`
   - Parse `-o <output>` flag from args, default `a.out`
   - Run the existing parse → type_check → generate pipeline
@@ -66,11 +66,12 @@ A real driver reads a file, generates IR, and invokes clang itself.
   - `exec(["clang", "-O1", tmp_ir, runtime_lib, "-o", out_path])`
   - Delete the temp IR file
 
-- [ ] **2b. Add self-hosted driver invocation to CI**
-  `jerry run self-host/ <source.jer>` as a sanity check alongside the existing
-  Go-based tests.
+- [x] **2b. Add self-hosted driver invocation to CI**
+  Build `jerry-compiler` from `self-host/*.jer` using the Go jerry, then use it
+  to compile and run examples/hello.jer, fibonacci.jer, arrays.jer, classes.jer,
+  closures.jer.
 
-- [ ] **2c. Handle multiple source files / directory mode**
+- [x] **2c. Handle multiple source files / directory mode**
   The Go compiler accepts a directory and compiles all `.jer` files sorted by
   filename. Decide and implement the same in the self-hosted driver
   (likely: concatenate files in sorted order before parsing).

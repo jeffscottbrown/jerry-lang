@@ -65,3 +65,23 @@ jobs:
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
         run: ./jerry-bin test tests/
+
+      - name: Build self-hosted compiler
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+        run: ./jerry-bin compile self-host/*.jer -o jerry-compiler
+
+      - name: Smoke-test self-hosted compiler
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+        run: |
+          ./jerry-compiler examples/hello.jer -o hello-selfhosted
+          ./hello-selfhosted
+          ./jerry-compiler examples/fibonacci.jer -o fib-selfhosted
+          ./fib-selfhosted
+          ./jerry-compiler examples/arrays.jer -o arrays-selfhosted
+          ./arrays-selfhosted
+          ./jerry-compiler examples/classes.jer -o classes-selfhosted
+          ./classes-selfhosted
+          ./jerry-compiler examples/closures.jer -o closures-selfhosted
+          ./closures-selfhosted
