@@ -79,6 +79,24 @@ fn test_string_ends_with() {
     assert_false(string_ends_with("", "a"), "empty string");
 }
 
+fn test_string_index_of() {
+    assert_eq_int(string_index_of("hello world", "world"), 6, "index of suffix");
+    assert_eq_int(string_index_of("hello world", "hello"), 0, "index of prefix");
+    assert_eq_int(string_index_of("hello world", "lo"), 3, "index of middle");
+    assert_eq_int(string_index_of("hello world", ""), 0, "index of empty sub");
+    assert_eq_int(string_index_of("hello", "xyz"), -1, "index of absent");
+    assert_eq_int(string_index_of("", "a"), -1, "index of in empty string");
+    assert_eq_int(string_index_of("abcabc", "bc"), 1, "index of first occurrence");
+}
+
+fn test_string_to_int() {
+    assert_eq_int(string_to_int("0"), 0, "zero");
+    assert_eq_int(string_to_int("42"), 42, "positive");
+    assert_eq_int(string_to_int("-7"), -7, "negative");
+    assert_eq_int(string_to_int("1000000"), 1000000, "large");
+    assert_eq_int(string_to_int("  99"), 99, "leading space");
+}
+
 fn test_string_equality() {
     assert_true("hello" == "hello", "equal strings");
     assert_false("hello" == "world", "unequal strings");

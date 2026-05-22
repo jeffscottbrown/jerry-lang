@@ -40,6 +40,15 @@ func installBuiltins(s *Scope) {
 	// string_ends_with(s, suffix): bool
 	s.Define(&Symbol{Name: "string_ends_with", Kind: SymFunc,
 		Type: FuncType([]*Type{String, String}, Bool)})
+	// string_index_of(s, sub): int  — first index of sub in s, or -1
+	s.Define(&Symbol{Name: "string_index_of", Kind: SymFunc,
+		Type: FuncType([]*Type{String, String}, Int)})
+	// string_to_int(s): int  — parse decimal integer string
+	s.Define(&Symbol{Name: "string_to_int", Kind: SymFunc,
+		Type: FuncType([]*Type{String}, Int)})
+	// read_bytes(n): string  — read exactly n bytes from stdin
+	s.Define(&Symbol{Name: "read_bytes", Kind: SymFunc,
+		Type: FuncType([]*Type{Int}, String)})
 	// char_at(s, i): int  — returns Unicode code point at index i
 	s.Define(&Symbol{Name: "char_at", Kind: SymFunc,
 		Type: FuncType([]*Type{String, Int}, Int)})

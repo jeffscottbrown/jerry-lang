@@ -611,6 +611,37 @@ func (g *Generator) genCall(
 			fmt.Fprintf(out, "  %s = call ptr @jerry_char_to_string(i64 %s)\n", res, argVal)
 			return res, checker.String, nil
 
+		case "string_index_of":
+			sVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			subVal, err := g.genExpr(call.Args[1], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_string_index_of(ptr %s, ptr %s)\n", res, sVal, subVal)
+			return res, checker.Int, nil
+
+		case "string_to_int":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call i64 @jerry_string_to_int(ptr %s)\n", res, argVal)
+			return res, checker.Int, nil
+
+		case "read_bytes":
+			argVal, err := g.genExpr(call.Args[0], out)
+			if err != nil {
+				return "", nil, err
+			}
+			res := g.newTmp()
+			fmt.Fprintf(out, "  %s = call ptr @jerry_read_bytes(i64 %s)\n", res, argVal)
+			return res, checker.String, nil
+
 		case "string_contains", "string_starts_with", "string_ends_with":
 			sVal, err := g.genExpr(call.Args[0], out)
 			if err != nil {

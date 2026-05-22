@@ -160,6 +160,39 @@ int8_t jerry_string_ends_with(JerryStr* s, JerryStr* suffix) {
     return (int8_t)(memcmp(s->data + s->len - suffix->len, suffix->data, (size_t)suffix->len) == 0);
 }
 
+int64_t jerry_string_index_of(JerryStr* s, JerryStr* sub) {
+    if (s == NULL || sub == NULL) return -1;
+    if (sub->len == 0) return 0;
+    if (sub->len > s->len) return -1;
+    for (int64_t i = 0; i <= s->len - sub->len; i++) {
+        if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0) return i;
+    }
+    return -1;
+}
+
+int64_t jerry_string_to_int(JerryStr* s) {
+    if (s == NULL || s->len == 0) return 0;
+    /* strtoll requires a null-terminated string */
+    char buf[64];
+    int64_t n = s->len < (int64_t)sizeof(buf) ? s->len : (int64_t)sizeof(buf) - 1;
+    memcpy(buf, s->data, (size_t)n);
+    buf[n] = '\0';
+    return (int64_t)strtoll(buf, NULL, 10);
+}
+
+JerryStr* jerry_read_bytes(int64_t n) {
+    if (n <= 0) return jerry_string_new("", 0);
+    char* buf = malloc((size_t)n);
+    if (!buf) {
+        fprintf(stderr, "jerry: read_bytes: out of memory\n");
+        exit(1);
+    }
+    int64_t got = (int64_t)fread(buf, 1, (size_t)n, stdin);
+    JerryStr* s = jerry_string_new(buf, got);
+    free(buf);
+    return s;
+}
+
 JerryStr* jerry_int_to_string(int64_t n) {
     char buf[32];
     int  len = snprintf(buf, sizeof(buf), "%lld", (long long)n);

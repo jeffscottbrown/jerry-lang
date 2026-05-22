@@ -834,6 +834,7 @@ fn make_builtin_scope(): Scope {
     install_fn(s, "string_starts_with",  p_ss, b_ty);
     install_fn(s, "string_ends_with",    p_ss, b_ty);
     install_fn(s, "string_index_of",     p_ss, i_ty);
+    install_fn(s, "read_bytes",          p1i,  s_ty);
     install_fn(s, "string_to_upper",     p1s, s_ty);
     install_fn(s, "string_to_lower",     p1s, s_ty);
     install_fn(s, "string_trim",         p1s, s_ty);

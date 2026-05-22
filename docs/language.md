@@ -663,6 +663,9 @@ These are always available — no `include` required.
 | `string_contains(s, sub): bool`                  | True if `s` contains `sub`           |
 | `string_starts_with(s, prefix): bool`            | True if `s` starts with `prefix`     |
 | `string_ends_with(s, suffix): bool`              | True if `s` ends with `suffix`       |
+| `string_index_of(s, sub): int`                   | First index of `sub` in `s`, or `-1` |
+| `string_to_int(s: string): int`                  | Parse a decimal integer string       |
+| `read_bytes(n: int): string`                     | Read exactly `n` bytes from stdin    |
 | `push(arr, x): void`                             | Append to array                      |
 
 ### Maps

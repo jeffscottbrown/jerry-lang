@@ -58,6 +58,9 @@ JerryStr*  jerry_char_to_string(int64_t code);            /* char code → 1-cha
 int8_t     jerry_string_contains(JerryStr* s, JerryStr* sub);
 int8_t     jerry_string_starts_with(JerryStr* s, JerryStr* prefix);
 int8_t     jerry_string_ends_with(JerryStr* s, JerryStr* suffix);
+int64_t    jerry_string_index_of(JerryStr* s, JerryStr* sub);
+int64_t    jerry_string_to_int(JerryStr* s);
+JerryStr*  jerry_read_bytes(int64_t n);
 JerryStr* jerry_int_to_string(int64_t n);
 JerryStr* jerry_float_to_string(double f);
 

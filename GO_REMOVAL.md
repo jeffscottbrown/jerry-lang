@@ -4,11 +4,11 @@ The self-hosted compiler (`self-host/*.jer`) already generates correct LLVM IR
 for real programs. This checklist tracks the work to remove Go from the pipeline
 entirely so the `jerry` binary is itself compiled from Jerry.
 
-**Current state (2026-05-21):** 239 Jerry tests passing. Self-hosted compiler
-is fully bootstrapped — `jerry-compiler` compiles itself (`jerry-compiler-v2`)
-and all 239 tests pass through the second-generation binary. Phases 1–4 and
-5a complete. Remaining: 5b (release ships pre-built jerry binary built by
-jerry), Phases 6–8 (LSP in Jerry, then remove Go).
+**Current state (2026-05-21):** 251 Jerry tests passing. Self-hosted compiler
+is fully bootstrapped — `jerry-compiler` compiles itself and all 251 tests pass
+through the second-generation binary. Phases 1–5a and 6a–6c complete.
+Remaining: 5b, 6d (`stdlib/json.jer`), Phase 7 (LSP in Jerry), Phase 8
+(remove Go).
 
 ---
 
@@ -155,17 +155,17 @@ parse and emit JSON, read a fixed number of bytes from stdin (Content-Length
 framing), and convert strings to integers.  These additions also benefit
 general-purpose Jerry programs.
 
-- [ ] **6a. Add `read_bytes(n: int): string` builtin**
+- [x] **6a. Add `read_bytes(n: int): string` builtin**
   Read exactly `n` bytes from stdin and return them as a string.  Wire through
   all five layers.  This is the primitive needed to read JSON-RPC message bodies
   after parsing the `Content-Length` header.
 
-- [ ] **6b. Add `string_index_of(s: string, sub: string): int` builtin**
+- [x] **6b. Add `string_index_of(s: string, sub: string): int` builtin**
   Return the 0-based index of the first occurrence of `sub` in `s`, or `-1` if
   not found.  Wire through all five layers.  Needed for JSON parsing (finding
   `:`, `"`, `{`, `}`, etc.) and for splitting the `Content-Length` header line.
 
-- [ ] **6c. Add `string_to_int(s: string): int` builtin**
+- [x] **6c. Add `string_to_int(s: string): int` builtin**
   Parse a decimal integer string and return its value.  Wire through all five
   layers.  Needed to convert the `Content-Length` header value to an integer.
 
