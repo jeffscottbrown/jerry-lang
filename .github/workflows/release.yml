@@ -20,18 +20,21 @@ jobs:
             os: ubuntu-latest
             goos: linux
             goarch: amd64
+            cc_arch_flag: ""
             asset_name: jerry-linux-x86_64
 
           - name: macos-x86_64
             os: macos-latest
             goos: darwin
             goarch: amd64
+            cc_arch_flag: "-arch x86_64"
             asset_name: jerry-macos-x86_64
 
           - name: macos-arm64
             os: macos-latest      # GitHub's Apple Silicon runner
             goos: darwin
             goarch: arm64
+            cc_arch_flag: "-arch arm64"
             asset_name: jerry-macos-arm64
 
     steps:
@@ -64,7 +67,7 @@ jobs:
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
         run: |
-          cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+          cc -O2 ${{ matrix.cc_arch_flag }} -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
 
       - name: Verify version string
