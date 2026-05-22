@@ -38,12 +38,13 @@ jerry run foo.jer
 14. [Built-in functions](#built-in-functions)
 15. [The always-available core library](#the-always-available-core-library)
 16. [Time and the `Timer` class](#time-and-the-timer-class)
-17. [Modules and remote packages](#modules-and-remote-packages)
-18. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-19. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-20. [Working program: end-to-end example](#working-program-end-to-end-example)
-21. [Showcase: gdgrep](#showcase-gdgrep)
-22. [CLI reference](#cli-reference)
+17. [JSON with `@json`](#json-with-json)
+18. [Modules and remote packages](#modules-and-remote-packages)
+19. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+20. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+21. [Working program: end-to-end example](#working-program-end-to-end-example)
+22. [Showcase: gdgrep](#showcase-gdgrep)
+23. [CLI reference](#cli-reference)
 
 ---
 
@@ -742,6 +743,64 @@ fn main() {
 ```
 
 The full source is in [`stdlib/time.jer`](../stdlib/time.jer).
+
+---
+
+## JSON with `@json`
+
+The stdlib module `@json` provides a recursive-descent JSON parser, a
+serializer, and helpers for building and querying JSON objects.
+
+```jerry
+include @json
+
+fn main() {
+    // Parse
+    let v: JsonValue = json_parse("{\"name\": \"jerry\", \"version\": 1}");
+    print(json_get_string(v, "name"));           // jerry
+    print(int_to_string(json_get_int(v, "version")));  // 1
+
+    // Build and serialize
+    let resp: JsonValue = json_new_object();
+    json_set_string(resp, "status", "ok");
+    json_set_bool(resp, "ready", true);
+    print(json_stringify(resp));                 // {"status":"ok","ready":true}
+}
+```
+
+### Kind constants
+
+| Constant      | Value | Meaning          |
+|---------------|-------|------------------|
+| `JSON_NULL`   | 0     | JSON `null`      |
+| `JSON_BOOL`   | 1     | boolean          |
+| `JSON_INT`    | 2     | integer number   |
+| `JSON_FLOAT`  | 3     | floating-point   |
+| `JSON_STRING` | 4     | string           |
+| `JSON_ARRAY`  | 5     | array            |
+| `JSON_OBJECT` | 6     | object           |
+
+### Key functions
+
+| Function | Description |
+|---|---|
+| `json_parse(s): JsonValue` | Parse a JSON string |
+| `json_stringify(v): string` | Serialize to JSON |
+| `json_new_object(): JsonValue` | Create an empty object |
+| `json_new_array(): JsonValue` | Create an empty array |
+| `json_null_val() / json_bool_val(b) / json_int_val(n) / json_string_val(s)` | Value constructors |
+| `json_get_string(obj, key): string` | Get string field |
+| `json_get_int(obj, key): int` | Get int field |
+| `json_get_bool(obj, key): bool` | Get bool field |
+| `json_get_object(obj, key): JsonValue` | Get nested object |
+| `json_get_array(obj, key): JsonValue` | Get array field |
+| `json_get_val(obj, key): JsonValue` | Get raw value (any type) |
+| `json_has_key(obj, key): bool` | Check key existence |
+| `json_set_string/int/bool/object/array(obj, key, val)` | Set or overwrite a field |
+| `json_set_val(obj, key, val)` | Set raw value |
+| `json_array_push_string/int/object(arr, val)` | Append to array |
+
+The full source is in [`stdlib/json.jer`](../stdlib/json.jer).
 
 ---
 

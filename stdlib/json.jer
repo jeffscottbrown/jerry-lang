@@ -1,0 +1,460 @@
+// stdlib/json.jer — JSON parser and serializer.
+//
+// Usage:
+//   include @json
+//
+//   let v: JsonValue = json_parse("{\"x\": 1}");
+//   let x: int = json_get_int(v, "x");                // 1
+//
+//   let obj: JsonValue = json_new_object();
+//   json_set_string(obj, "msg", "hello");
+//   print(json_stringify(obj));                        // {"msg":"hello"}
+//
+// Depends on builtins: char_at, string_slice, string_to_int, int_to_string,
+// float_to_string, len, push, char_to_string (all always available).
+
+// ── Kind constants ─────────────────────────────────────────────────────────────
+
+let JSON_NULL:   int = 0;
+let JSON_BOOL:   int = 1;
+let JSON_INT:    int = 2;
+let JSON_FLOAT:  int = 3;
+let JSON_STRING: int = 4;
+let JSON_ARRAY:  int = 5;
+let JSON_OBJECT: int = 6;
+
+// ── JsonValue node ─────────────────────────────────────────────────────────────
+//
+// A single JSON value of any type.  The `kind` field selects which storage
+// field is active.  Arrays and objects are zero-initialized by jerry_alloc,
+// so unset pointer fields are null.
+
+class JsonValue {
+    kind:      int;      // JSON_NULL … JSON_OBJECT
+    bool_val:  bool;
+    int_val:   int;
+    float_val: float;
+    str_val:   string;
+    arr_val:   JsonValue[];   // JSON_ARRAY elements
+    obj_keys:  string[];      // JSON_OBJECT keys   (parallel arrays)
+    obj_vals:  JsonValue[];   // JSON_OBJECT values (parallel arrays)
+
+    fn new() {
+        this.kind = JSON_NULL;
+    }
+}
+
+// ── Factory functions ──────────────────────────────────────────────────────────
+
+fn json_null_val(): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_NULL;
+    return v;
+}
+
+fn json_bool_val(b: bool): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_BOOL;
+    v.bool_val = b;
+    return v;
+}
+
+fn json_int_val(n: int): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_INT;
+    v.int_val = n;
+    return v;
+}
+
+fn json_float_val(f: float): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_FLOAT;
+    v.float_val = f;
+    return v;
+}
+
+fn json_string_val(s: string): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_STRING;
+    v.str_val = s;
+    return v;
+}
+
+fn json_new_object(): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_OBJECT;
+    let keys: string[]    = [];
+    let vals: JsonValue[] = [];
+    v.obj_keys = keys;
+    v.obj_vals = vals;
+    return v;
+}
+
+fn json_new_array(): JsonValue {
+    let v: JsonValue = new JsonValue();
+    v.kind = JSON_ARRAY;
+    let arr: JsonValue[] = [];
+    v.arr_val = arr;
+    return v;
+}
+
+// ── Parser ─────────────────────────────────────────────────────────────────────
+
+class JsonParser {
+    src: string;
+    pos: int;
+
+    fn new() {
+        this.src = "";
+        this.pos = 0;
+    }
+
+    fn skip_ws() {
+        while this.pos < len(this.src) {
+            let c: int = char_at(this.src, this.pos);
+            if c != 32 && c != 9 && c != 10 && c != 13 { return; }
+            this.pos = this.pos + 1;
+        }
+    }
+
+    fn parse_value(): JsonValue {
+        this.skip_ws();
+        if this.pos >= len(this.src) { return null; }
+        let c: int = char_at(this.src, this.pos);
+        if c == 123 { return this.parse_object(); }    // '{'
+        if c == 91  { return this.parse_array(); }     // '['
+        if c == 34  { return this.parse_jstring(); }   // '"'
+        if c == 116 { return this.parse_true_val(); }  // 't'
+        if c == 102 { return this.parse_false_val(); } // 'f'
+        if c == 110 { return this.parse_null_val(); }  // 'n'
+        return this.parse_number();
+    }
+
+    fn parse_object(): JsonValue {
+        this.pos = this.pos + 1; // skip '{'
+        let v: JsonValue = json_new_object();
+        this.skip_ws();
+        if this.pos < len(this.src) && char_at(this.src, this.pos) == 125 {
+            this.pos = this.pos + 1; // empty object: '}'
+            return v;
+        }
+        while this.pos < len(this.src) {
+            this.skip_ws();
+            if this.pos >= len(this.src) { return v; }
+            if char_at(this.src, this.pos) == 125 {   // '}'
+                this.pos = this.pos + 1;
+                return v;
+            }
+            if char_at(this.src, this.pos) != 34 { return v; } // malformed: expected "
+            let key_node: JsonValue = this.parse_jstring();
+            let key: string = "";
+            if key_node != null { key = key_node.str_val; }
+            this.skip_ws();
+            if this.pos < len(this.src) && char_at(this.src, this.pos) == 58 { // ':'
+                this.pos = this.pos + 1;
+            }
+            let val: JsonValue = this.parse_value();
+            push(v.obj_keys, key);
+            push(v.obj_vals, val);
+            this.skip_ws();
+            if this.pos >= len(this.src) { return v; }
+            let next: int = char_at(this.src, this.pos);
+            if next == 125 { this.pos = this.pos + 1; return v; } // '}'
+            if next == 44  { this.pos = this.pos + 1; }           // ','
+        }
+        return v;
+    }
+
+    fn parse_array(): JsonValue {
+        this.pos = this.pos + 1; // skip '['
+        let v: JsonValue = json_new_array();
+        this.skip_ws();
+        if this.pos < len(this.src) && char_at(this.src, this.pos) == 93 {
+            this.pos = this.pos + 1; // empty array: ']'
+            return v;
+        }
+        while this.pos < len(this.src) {
+            this.skip_ws();
+            if this.pos >= len(this.src) { return v; }
+            if char_at(this.src, this.pos) == 93 {    // ']'
+                this.pos = this.pos + 1;
+                return v;
+            }
+            let elem: JsonValue = this.parse_value();
+            push(v.arr_val, elem);
+            this.skip_ws();
+            if this.pos >= len(this.src) { return v; }
+            let next: int = char_at(this.src, this.pos);
+            if next == 93 { this.pos = this.pos + 1; return v; }  // ']'
+            if next == 44 { this.pos = this.pos + 1; }            // ','
+        }
+        return v;
+    }
+
+    // parse_jstring parses a JSON string starting at the opening '"'.
+    // Uses chunk-based accumulation to avoid O(n²) character-by-character concat.
+    fn parse_jstring(): JsonValue {
+        this.pos = this.pos + 1; // skip opening '"'
+        let result: string = "";
+        let chunk_start: int = this.pos;
+        while this.pos < len(this.src) {
+            let c: int = char_at(this.src, this.pos);
+            if c == 34 { // closing '"'
+                result = result + string_slice(this.src, chunk_start, this.pos);
+                this.pos = this.pos + 1;
+                return json_string_val(result);
+            }
+            if c == 92 { // backslash escape
+                result = result + string_slice(this.src, chunk_start, this.pos);
+                this.pos = this.pos + 1;
+                if this.pos >= len(this.src) { return json_string_val(result); }
+                let esc: int = char_at(this.src, this.pos);
+                if      esc == 110 { result = result + "\n"; }
+                else if esc == 116 { result = result + "\t"; }
+                else if esc == 114 { result = result + char_to_string(13); } // \r
+                else if esc == 34  { result = result + "\""; }
+                else if esc == 92  { result = result + "\\"; }
+                else if esc == 47  { result = result + "/"; }
+                else               { result = result + char_to_string(esc); }
+                this.pos = this.pos + 1;
+                chunk_start = this.pos;
+            } else {
+                this.pos = this.pos + 1;
+            }
+        }
+        return json_string_val(result); // unterminated — return what we have
+    }
+
+    fn parse_number(): JsonValue {
+        let start: int = this.pos;
+        if this.pos < len(this.src) && char_at(this.src, this.pos) == 45 { // '-'
+            this.pos = this.pos + 1;
+        }
+        while this.pos < len(this.src) {
+            let c: int = char_at(this.src, this.pos);
+            if c < 48 || c > 57 { break; } // not a digit
+            this.pos = this.pos + 1;
+        }
+        let is_float: bool = false;
+        if this.pos < len(this.src) && char_at(this.src, this.pos) == 46 { // '.'
+            is_float = true;
+            this.pos = this.pos + 1;
+            while this.pos < len(this.src) {
+                let c: int = char_at(this.src, this.pos);
+                if c < 48 || c > 57 { break; }
+                this.pos = this.pos + 1;
+            }
+        }
+        if this.pos < len(this.src) {
+            let e: int = char_at(this.src, this.pos);
+            if e == 101 || e == 69 { // 'e' or 'E'
+                is_float = true;
+                this.pos = this.pos + 1;
+                if this.pos < len(this.src) {
+                    let sign: int = char_at(this.src, this.pos);
+                    if sign == 43 || sign == 45 { this.pos = this.pos + 1; }
+                }
+                while this.pos < len(this.src) {
+                    let c: int = char_at(this.src, this.pos);
+                    if c < 48 || c > 57 { break; }
+                    this.pos = this.pos + 1;
+                }
+            }
+        }
+        let num_str: string = string_slice(this.src, start, this.pos);
+        if is_float {
+            // Approximate: store integer part as float (no string_to_float yet)
+            return json_float_val(float(string_to_int(num_str)));
+        }
+        return json_int_val(string_to_int(num_str));
+    }
+
+    fn parse_true_val(): JsonValue {
+        this.pos = this.pos + 4; // skip 'true'
+        return json_bool_val(true);
+    }
+
+    fn parse_false_val(): JsonValue {
+        this.pos = this.pos + 5; // skip 'false'
+        return json_bool_val(false);
+    }
+
+    fn parse_null_val(): JsonValue {
+        this.pos = this.pos + 4; // skip 'null'
+        return json_null_val();
+    }
+}
+
+// ── Top-level entry point ──────────────────────────────────────────────────────
+
+fn json_parse(s: string): JsonValue {
+    let p: JsonParser = new JsonParser();
+    p.src = s;
+    p.pos = 0;
+    return p.parse_value();
+}
+
+// ── Object accessors ───────────────────────────────────────────────────────────
+
+fn json_has_key(v: JsonValue, key: string): bool {
+    if v == null || v.kind != JSON_OBJECT { return false; }
+    let i: int = 0;
+    while i < len(v.obj_keys) {
+        if v.obj_keys[i] == key { return true; }
+        i = i + 1;
+    }
+    return false;
+}
+
+fn json_get_val(v: JsonValue, key: string): JsonValue {
+    if v == null || v.kind != JSON_OBJECT { return null; }
+    let i: int = 0;
+    while i < len(v.obj_keys) {
+        if v.obj_keys[i] == key { return v.obj_vals[i]; }
+        i = i + 1;
+    }
+    return null;
+}
+
+fn json_get_string(v: JsonValue, key: string): string {
+    let val: JsonValue = json_get_val(v, key);
+    if val == null || val.kind != JSON_STRING { return ""; }
+    return val.str_val;
+}
+
+fn json_get_int(v: JsonValue, key: string): int {
+    let val: JsonValue = json_get_val(v, key);
+    if val == null || val.kind != JSON_INT { return 0; }
+    return val.int_val;
+}
+
+fn json_get_bool(v: JsonValue, key: string): bool {
+    let val: JsonValue = json_get_val(v, key);
+    if val == null || val.kind != JSON_BOOL { return false; }
+    return val.bool_val;
+}
+
+fn json_get_object(v: JsonValue, key: string): JsonValue {
+    let val: JsonValue = json_get_val(v, key);
+    if val == null || val.kind != JSON_OBJECT { return null; }
+    return val;
+}
+
+fn json_get_array(v: JsonValue, key: string): JsonValue {
+    let val: JsonValue = json_get_val(v, key);
+    if val == null || val.kind != JSON_ARRAY { return null; }
+    return val;
+}
+
+// ── Object setters ─────────────────────────────────────────────────────────────
+
+fn json_set_val(v: JsonValue, key: string, val: JsonValue) {
+    if v == null || v.kind != JSON_OBJECT { return; }
+    let i: int = 0;
+    while i < len(v.obj_keys) {
+        if v.obj_keys[i] == key {
+            v.obj_vals[i] = val;
+            return;
+        }
+        i = i + 1;
+    }
+    push(v.obj_keys, key);
+    push(v.obj_vals, val);
+}
+
+fn json_set_string(v: JsonValue, key: string, val: string) {
+    json_set_val(v, key, json_string_val(val));
+}
+
+fn json_set_int(v: JsonValue, key: string, val: int) {
+    json_set_val(v, key, json_int_val(val));
+}
+
+fn json_set_bool(v: JsonValue, key: string, val: bool) {
+    json_set_val(v, key, json_bool_val(val));
+}
+
+fn json_set_object(v: JsonValue, key: string, val: JsonValue) {
+    json_set_val(v, key, val);
+}
+
+fn json_set_array(v: JsonValue, key: string, val: JsonValue) {
+    json_set_val(v, key, val);
+}
+
+fn json_set_null(v: JsonValue, key: string) {
+    json_set_val(v, key, json_null_val());
+}
+
+// ── Array helpers ──────────────────────────────────────────────────────────────
+
+fn json_array_push_string(arr: JsonValue, val: string) {
+    if arr == null || arr.kind != JSON_ARRAY { return; }
+    push(arr.arr_val, json_string_val(val));
+}
+
+fn json_array_push_int(arr: JsonValue, val: int) {
+    if arr == null || arr.kind != JSON_ARRAY { return; }
+    push(arr.arr_val, json_int_val(val));
+}
+
+fn json_array_push_object(arr: JsonValue, val: JsonValue) {
+    if arr == null || arr.kind != JSON_ARRAY { return; }
+    push(arr.arr_val, val);
+}
+
+// ── Serializer ─────────────────────────────────────────────────────────────────
+
+fn json_escape_string(s: string): string {
+    let result: string = "";
+    let chunk_start: int = 0;
+    let i: int = 0;
+    while i < len(s) {
+        let c: int = char_at(s, i);
+        if c == 34 || c == 92 || c == 10 || c == 13 || c == 9 {
+            result = result + string_slice(s, chunk_start, i);
+            if      c == 34 { result = result + "\\\""; }
+            else if c == 92 { result = result + "\\\\"; }
+            else if c == 10 { result = result + "\\n"; }
+            else if c == 13 { result = result + "\\r"; }
+            else             { result = result + "\\t"; }
+            chunk_start = i + 1;
+        }
+        i = i + 1;
+    }
+    result = result + string_slice(s, chunk_start, len(s));
+    return result;
+}
+
+fn json_stringify(v: JsonValue): string {
+    if v == null { return "null"; }
+    if v.kind == JSON_NULL   { return "null"; }
+    if v.kind == JSON_BOOL   {
+        if v.bool_val { return "true"; }
+        return "false";
+    }
+    if v.kind == JSON_INT    { return int_to_string(v.int_val); }
+    if v.kind == JSON_FLOAT  { return float_to_string(v.float_val); }
+    if v.kind == JSON_STRING { return "\"" + json_escape_string(v.str_val) + "\""; }
+    if v.kind == JSON_ARRAY {
+        let result: string = "[";
+        let i: int = 0;
+        while i < len(v.arr_val) {
+            if i > 0 { result = result + ","; }
+            result = result + json_stringify(v.arr_val[i]);
+            i = i + 1;
+        }
+        return result + "]";
+    }
+    if v.kind == JSON_OBJECT {
+        let result: string = "{";
+        let i: int = 0;
+        while i < len(v.obj_keys) {
+            if i > 0 { result = result + ","; }
+            result = result + "\"" + json_escape_string(v.obj_keys[i]) + "\":" + json_stringify(v.obj_vals[i]);
+            i = i + 1;
+        }
+        return result + "}";
+    }
+    return "null";
+}

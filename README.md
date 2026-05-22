@@ -195,6 +195,7 @@ modules, see the **[Jerry Language Guide](docs/language.md)**.
 - **[Language Guide](docs/language.md)** — practical tour of every feature with runnable snippets.
 - [`stdlib/core.jer`](stdlib/core.jer) — always-available numeric and bool helpers.
 - [`stdlib/time.jer`](stdlib/time.jer) — `Timer` class and `millis_to_duration`.
+- [`stdlib/json.jer`](stdlib/json.jer) — JSON parser, serializer, and object helpers.
 - [`examples/`](examples/) — short, self-contained programs.
 - [**gdgrep**](https://github.com/jeffscottbrown/gdgrep) — full-sized utility written in Jerry; a good reference project.
 

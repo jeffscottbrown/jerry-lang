@@ -4,11 +4,10 @@ The self-hosted compiler (`self-host/*.jer`) already generates correct LLVM IR
 for real programs. This checklist tracks the work to remove Go from the pipeline
 entirely so the `jerry` binary is itself compiled from Jerry.
 
-**Current state (2026-05-21):** 251 Jerry tests passing. Self-hosted compiler
-is fully bootstrapped — `jerry-compiler` compiles itself and all 251 tests pass
-through the second-generation binary. Phases 1–5a and 6a–6c complete.
-Remaining: 5b, 6d (`stdlib/json.jer`), Phase 7 (LSP in Jerry), Phase 8
-(remove Go).
+**Current state (2026-05-21):** 325 Jerry tests passing. Self-hosted compiler
+is fully bootstrapped — `jerry-compiler` compiles itself and all tests pass
+through the second-generation binary. Phases 1–5a and 6a–6d complete.
+Remaining: 5b, Phase 7 (LSP in Jerry), Phase 8 (remove Go).
 
 ---
 
@@ -169,7 +168,7 @@ general-purpose Jerry programs.
   Parse a decimal integer string and return its value.  Wire through all five
   layers.  Needed to convert the `Content-Length` header value to an integer.
 
-- [ ] **6d. Implement `stdlib/json.jer` — JSON parser and serializer in Jerry**
+- [x] **6d. Implement `stdlib/json.jer` — JSON parser and serializer in Jerry**
   Define a `JsonValue` class with a `kind` discriminant
   (`NULL=0 BOOL=1 INT=2 FLOAT=3 STRING=4 ARRAY=5 OBJECT=6`) and typed fields
   (`bool_val`, `int_val`, `float_val`, `str_val`, `arr_val: JsonValue[]`,

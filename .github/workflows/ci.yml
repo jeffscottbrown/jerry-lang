@@ -88,6 +88,7 @@ jobs:
           ./jerry-bin test tests/closures_test.jer
           ./jerry-bin test tests/control_flow_test.jer
           ./jerry-bin test tests/functions_test.jer
+          ./jerry-bin test tests/json_test.jer
           ./jerry-bin test tests/map_test.jer
           ./jerry-bin test tests/primitives_test.jer
           ./jerry-bin test tests/stdlib_test.jer
@@ -132,3 +133,4 @@ jobs:
           ./jerry-bin test tests/arrays_test.jer
           ./jerry-bin test tests/classes_test.jer
           ./jerry-bin test tests/map_test.jer
+          ./jerry-bin test tests/json_test.jer

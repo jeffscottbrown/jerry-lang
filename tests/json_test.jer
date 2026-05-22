@@ -1,0 +1,253 @@
+// tests/json_test.jer — JSON parser and serializer tests
+include @testing
+include @json
+
+// ── json_parse: primitives ─────────────────────────────────────────────────────
+
+fn test_parse_null() {
+    let v: JsonValue = json_parse("null");
+    assert_eq_int(v.kind, JSON_NULL, "null kind");
+}
+
+fn test_parse_true() {
+    let v: JsonValue = json_parse("true");
+    assert_eq_int(v.kind, JSON_BOOL, "true kind");
+    assert_eq_bool(v.bool_val, true, "true value");
+}
+
+fn test_parse_false() {
+    let v: JsonValue = json_parse("false");
+    assert_eq_int(v.kind, JSON_BOOL, "false kind");
+    assert_eq_bool(v.bool_val, false, "false value");
+}
+
+fn test_parse_int() {
+    let v: JsonValue = json_parse("42");
+    assert_eq_int(v.kind, JSON_INT, "int kind");
+    assert_eq_int(v.int_val, 42, "int value");
+}
+
+fn test_parse_negative_int() {
+    let v: JsonValue = json_parse("-7");
+    assert_eq_int(v.kind, JSON_INT, "neg int kind");
+    assert_eq_int(v.int_val, -7, "neg int value");
+}
+
+fn test_parse_zero() {
+    let v: JsonValue = json_parse("0");
+    assert_eq_int(v.kind, JSON_INT, "zero kind");
+    assert_eq_int(v.int_val, 0, "zero value");
+}
+
+fn test_parse_string() {
+    let v: JsonValue = json_parse("\"hello\"");
+    assert_eq_int(v.kind, JSON_STRING, "string kind");
+    assert_eq_string(v.str_val, "hello", "string value");
+}
+
+fn test_parse_empty_string() {
+    let v: JsonValue = json_parse("\"\"");
+    assert_eq_int(v.kind, JSON_STRING, "empty string kind");
+    assert_eq_string(v.str_val, "", "empty string value");
+}
+
+fn test_parse_string_with_escapes() {
+    let v: JsonValue = json_parse("\"hello\\nworld\"");
+    assert_eq_int(v.kind, JSON_STRING, "escape kind");
+    assert_eq_int(char_at(v.str_val, 5), 10, "newline char");
+    assert_eq_string(string_slice(v.str_val, 0, 5), "hello", "before newline");
+    assert_eq_string(string_slice(v.str_val, 6, 11), "world", "after newline");
+}
+
+fn test_parse_string_with_quote_escape() {
+    let v: JsonValue = json_parse("\"say \\\"hi\\\"\"");
+    assert_eq_string(v.str_val, "say \"hi\"", "quote escape");
+}
+
+fn test_parse_string_with_backslash() {
+    let v: JsonValue = json_parse("\"a\\\\b\"");
+    assert_eq_string(v.str_val, "a\\b", "backslash escape");
+}
+
+// ── json_parse: objects ────────────────────────────────────────────────────────
+
+fn test_parse_empty_object() {
+    let v: JsonValue = json_parse("{}");
+    assert_eq_int(v.kind, JSON_OBJECT, "empty object kind");
+    assert_eq_int(len(v.obj_keys), 0, "empty object no keys");
+}
+
+fn test_parse_object_string_value() {
+    let v: JsonValue = json_parse("{\"name\": \"jerry\"}");
+    assert_eq_int(v.kind, JSON_OBJECT, "object kind");
+    assert_eq_string(json_get_string(v, "name"), "jerry", "string field");
+}
+
+fn test_parse_object_int_value() {
+    let v: JsonValue = json_parse("{\"n\": 99}");
+    assert_eq_int(json_get_int(v, "n"), 99, "int field");
+}
+
+fn test_parse_object_bool_value() {
+    let v: JsonValue = json_parse("{\"ok\": true}");
+    assert_eq_bool(json_get_bool(v, "ok"), true, "bool field");
+}
+
+fn test_parse_object_null_value() {
+    let v: JsonValue = json_parse("{\"x\": null}");
+    let xv: JsonValue = json_get_val(v, "x");
+    assert_eq_int(xv.kind, JSON_NULL, "null field");
+}
+
+fn test_parse_object_multiple_fields() {
+    let v: JsonValue = json_parse("{\"a\": 1, \"b\": \"two\", \"c\": true}");
+    assert_eq_int(json_get_int(v, "a"), 1, "field a");
+    assert_eq_string(json_get_string(v, "b"), "two", "field b");
+    assert_eq_bool(json_get_bool(v, "c"), true, "field c");
+}
+
+fn test_parse_nested_object() {
+    let v: JsonValue = json_parse("{\"outer\": {\"inner\": 42}}");
+    let outer: JsonValue = json_get_object(v, "outer");
+    assert_eq_int(json_get_int(outer, "inner"), 42, "nested int");
+}
+
+fn test_parse_has_key() {
+    let v: JsonValue = json_parse("{\"x\": 1}");
+    assert_eq_bool(json_has_key(v, "x"), true,  "has x");
+    assert_eq_bool(json_has_key(v, "y"), false, "no y");
+}
+
+// ── json_parse: arrays ────────────────────────────────────────────────────────
+
+fn test_parse_empty_array() {
+    let v: JsonValue = json_parse("[]");
+    assert_eq_int(v.kind, JSON_ARRAY, "empty array kind");
+    assert_eq_int(len(v.arr_val), 0, "empty array length");
+}
+
+fn test_parse_int_array() {
+    let v: JsonValue = json_parse("[1, 2, 3]");
+    assert_eq_int(v.kind, JSON_ARRAY, "array kind");
+    assert_eq_int(len(v.arr_val), 3, "array length");
+    assert_eq_int(v.arr_val[0].int_val, 1, "elem 0");
+    assert_eq_int(v.arr_val[1].int_val, 2, "elem 1");
+    assert_eq_int(v.arr_val[2].int_val, 3, "elem 2");
+}
+
+fn test_parse_string_array() {
+    let v: JsonValue = json_parse("[\"a\", \"b\"]");
+    assert_eq_string(v.arr_val[0].str_val, "a", "str elem 0");
+    assert_eq_string(v.arr_val[1].str_val, "b", "str elem 1");
+}
+
+fn test_parse_mixed_array() {
+    let v: JsonValue = json_parse("[1, \"two\", true, null]");
+    assert_eq_int(v.arr_val[0].kind, JSON_INT,    "mixed[0] int");
+    assert_eq_int(v.arr_val[1].kind, JSON_STRING, "mixed[1] string");
+    assert_eq_int(v.arr_val[2].kind, JSON_BOOL,   "mixed[2] bool");
+    assert_eq_int(v.arr_val[3].kind, JSON_NULL,   "mixed[3] null");
+}
+
+// ── json_parse: whitespace ────────────────────────────────────────────────────
+
+fn test_parse_whitespace_around_value() {
+    let v: JsonValue = json_parse("  42  ");
+    assert_eq_int(v.int_val, 42, "leading/trailing whitespace");
+}
+
+fn test_parse_object_with_whitespace() {
+    let v: JsonValue = json_parse("{ \"x\" : 1 , \"y\" : 2 }");
+    assert_eq_int(json_get_int(v, "x"), 1, "x with spaces");
+    assert_eq_int(json_get_int(v, "y"), 2, "y with spaces");
+}
+
+// ── json_stringify ─────────────────────────────────────────────────────────────
+
+fn test_stringify_null() {
+    assert_eq_string(json_stringify(json_null_val()), "null", "stringify null");
+}
+
+fn test_stringify_bool() {
+    assert_eq_string(json_stringify(json_bool_val(true)),  "true",  "stringify true");
+    assert_eq_string(json_stringify(json_bool_val(false)), "false", "stringify false");
+}
+
+fn test_stringify_int() {
+    assert_eq_string(json_stringify(json_int_val(0)),   "0",   "stringify 0");
+    assert_eq_string(json_stringify(json_int_val(42)),  "42",  "stringify 42");
+    assert_eq_string(json_stringify(json_int_val(-7)),  "-7",  "stringify -7");
+}
+
+fn test_stringify_string() {
+    assert_eq_string(json_stringify(json_string_val("hello")), "\"hello\"", "stringify string");
+    assert_eq_string(json_stringify(json_string_val("")),      "\"\"",      "stringify empty");
+}
+
+fn test_stringify_string_escaping() {
+    assert_eq_string(json_stringify(json_string_val("a\"b")),  "\"a\\\"b\"",  "escape quote");
+    assert_eq_string(json_stringify(json_string_val("a\\b")),  "\"a\\\\b\"",  "escape backslash");
+    assert_eq_string(json_stringify(json_string_val("a\nb")),  "\"a\\nb\"",   "escape newline");
+    assert_eq_string(json_stringify(json_string_val("a\tb")),  "\"a\\tb\"",   "escape tab");
+}
+
+fn test_stringify_empty_object() {
+    let v: JsonValue = json_new_object();
+    assert_eq_string(json_stringify(v), "{}", "stringify empty object");
+}
+
+fn test_stringify_object() {
+    let v: JsonValue = json_new_object();
+    json_set_string(v, "name", "jerry");
+    json_set_int(v, "ver", 1);
+    let s: string = json_stringify(v);
+    assert_eq_string(s, "{\"name\":\"jerry\",\"ver\":1}", "stringify object");
+}
+
+fn test_stringify_empty_array() {
+    let v: JsonValue = json_new_array();
+    assert_eq_string(json_stringify(v), "[]", "stringify empty array");
+}
+
+fn test_stringify_array() {
+    let v: JsonValue = json_new_array();
+    json_array_push_int(v, 1);
+    json_array_push_int(v, 2);
+    json_array_push_int(v, 3);
+    assert_eq_string(json_stringify(v), "[1,2,3]", "stringify array");
+}
+
+fn test_stringify_nested() {
+    let inner: JsonValue = json_new_object();
+    json_set_string(inner, "msg", "ok");
+    let outer: JsonValue = json_new_object();
+    json_set_object(outer, "result", inner);
+    assert_eq_string(json_stringify(outer), "{\"result\":{\"msg\":\"ok\"}}", "stringify nested");
+}
+
+// ── Round-trip ─────────────────────────────────────────────────────────────────
+
+fn test_roundtrip_object() {
+    let src: string = "{\"method\":\"initialize\",\"id\":1,\"jsonrpc\":\"2.0\"}";
+    let v: JsonValue = json_parse(src);
+    assert_eq_string(json_get_string(v, "method"), "initialize", "rt method");
+    assert_eq_int(json_get_int(v, "id"), 1, "rt id");
+    assert_eq_string(json_get_string(v, "jsonrpc"), "2.0", "rt jsonrpc");
+}
+
+fn test_roundtrip_array_in_object() {
+    let v: JsonValue = json_parse("{\"items\":[1,2,3]}");
+    let arr: JsonValue = json_get_array(v, "items");
+    assert_eq_int(len(arr.arr_val), 3, "rt array len");
+    assert_eq_int(arr.arr_val[2].int_val, 3, "rt array elem");
+}
+
+// ── json_set_val overwrites existing key ──────────────────────────────────────
+
+fn test_set_overwrites() {
+    let v: JsonValue = json_new_object();
+    json_set_int(v, "x", 1);
+    json_set_int(v, "x", 99);
+    assert_eq_int(json_get_int(v, "x"), 99, "overwrite");
+    assert_eq_int(len(v.obj_keys), 1, "no duplicate key");
+}
