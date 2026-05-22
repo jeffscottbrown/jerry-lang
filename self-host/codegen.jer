@@ -447,6 +447,9 @@ class Generator {
             "declare i64  @jerry_now_millis()\n" +
             "declare i64  @jerry_now_seconds()\n" +
             "declare ptr  @jerry_now_string()\n" +
+            "declare i8   @jerry_string_contains(ptr, ptr)\n" +
+            "declare i8   @jerry_string_starts_with(ptr, ptr)\n" +
+            "declare i8   @jerry_string_ends_with(ptr, ptr)\n" +
             "declare ptr  @jerry_map_new(i8, i64)\n" +
             "declare void @jerry_map_set(ptr, ptr, ptr)\n" +
             "declare ptr  @jerry_map_get(ptr, ptr)\n" +
@@ -1705,6 +1708,16 @@ class Generator {
             this.eml("  unreachable");
             this.terminated = true;
             return "0";
+        }
+
+        if name == "string_contains" || name == "string_starts_with" || name == "string_ends_with" {
+            let sv:  string = this.gen_expr(e.args[0]);
+            let sub: string = this.gen_expr(e.args[1]);
+            let raw: string = this.new_tmp();
+            let res: string = this.new_tmp();
+            this.eml("  " + raw + " = call i8 @jerry_" + name + "(ptr " + sv + ", ptr " + sub + ")");
+            this.eml("  " + res + " = icmp ne i8 " + raw + ", 0");
+            return res;
         }
 
         if name == "map_set" {

@@ -4,10 +4,11 @@ The self-hosted compiler (`self-host/*.jer`) already generates correct LLVM IR
 for real programs. This checklist tracks the work to remove Go from the pipeline
 entirely so the `jerry` binary is itself compiled from Jerry.
 
-**Current state (2026-05-21):** 439 tests passing. `exec(args: string[]): int`
-builtin just added. Self-hosted compiler handles: primitives, strings, arrays,
-maps, classes, closures, higher-order functions, recursion. All on branch
-`self-hosting`.
+**Current state (2026-05-21):** 239 Jerry tests passing. Self-hosted compiler
+is fully bootstrapped — `jerry-compiler` compiles itself (`jerry-compiler-v2`)
+and all 239 tests pass through the second-generation binary. Phases 1–4 and
+5a complete. Remaining: 5b (release ships pre-built jerry binary built by
+jerry), Phases 6–8 (LSP in Jerry, then remove Go).
 
 ---
 
@@ -119,19 +120,27 @@ scale.
   `def install` using `jerry _ir` + `ENV.cc`. `make build-compiler` target
   added for local bootstrap.
 
-- [ ] **4c. Remove `internal/codegen`** — blocked by LSP dependency
-- [ ] **4d. Remove `internal/checker`** — blocked by LSP dependency
-- [ ] **4e. Remove `internal/parser`** — blocked by LSP dependency (+ `jerry _ir` bootstrap)
-- [ ] **4f. Remove `internal/ast`** — blocked by LSP dependency
-- [ ] **4g. Remove `internal/build`** — blocked by LSP dependency (+ `jerry _ir` bootstrap)
+- [ ] **4c. Remove `internal/codegen`** — blocked until Phase 7 (LSP in Jerry) is complete
+- [ ] **4d. Remove `internal/checker`** — blocked until Phase 7
+- [ ] **4e. Remove `internal/parser`** — blocked until Phase 7
+- [ ] **4f. Remove `internal/ast`** — blocked until Phase 7
+- [ ] **4g. Remove `internal/build`** — blocked until Phase 7 and until `jerry _ir` bootstrap
+  is no longer needed (Phase 8: Homebrew downloads pre-built jerry-compiler instead of
+  building from Go source)
 
 ---
 
 ## Phase 5 — Bootstrap
 
-- [ ] **5a. Compile `self-host/*.jer` using the self-hosted compiler itself**
+- [x] **5a. Compile `self-host/*.jer` using the self-hosted compiler itself**
   True self-hosting: the self-hosted compiler compiles itself. Compare output
   IR against the Go-compiled version to verify correctness.
+  Fixed self-hosted codegen bug: `string_contains`/`string_starts_with`/
+  `string_ends_with` were missing IR declarations and `gen_fn_call` cases,
+  causing them to fall through to the user-function path and emit wrong name
+  and void return type. Added tests in `tests/strings_test.jer`.
+  CI now bootstraps a `jerry-compiler-v2` and runs smoke tests + Jerry tests
+  through it (239 passing).
 
 - [ ] **5b. The `jerry` binary is now a Jerry binary**
   The release ships a pre-compiled `jerry` binary built by an earlier version
@@ -139,13 +148,118 @@ scale.
 
 ---
 
-## Phase 6 — Remove Go Entirely
+## Phase 6 — Jerry Language Capabilities for LSP
 
-- [ ] **6a. Drop `depends_on "go" => :build` from Homebrew formula**
-  The formula downloads a pre-compiled jerry binary (or bootstraps from a
-  known-good previous release) instead of building from Go source.
+The LSP server uses JSON-RPC 2.0 over stdio and requires Jerry to be able to
+parse and emit JSON, read a fixed number of bytes from stdin (Content-Length
+framing), and convert strings to integers.  These additions also benefit
+general-purpose Jerry programs.
 
-- [ ] **6b. Delete all remaining Go source files**
+- [ ] **6a. Add `read_bytes(n: int): string` builtin**
+  Read exactly `n` bytes from stdin and return them as a string.  Wire through
+  all five layers.  This is the primitive needed to read JSON-RPC message bodies
+  after parsing the `Content-Length` header.
 
-- [ ] **6c. Update CI/CD**
-  Remove `go test`, remove Go toolchain setup steps, add jerry-native test runner.
+- [ ] **6b. Add `string_index_of(s: string, sub: string): int` builtin**
+  Return the 0-based index of the first occurrence of `sub` in `s`, or `-1` if
+  not found.  Wire through all five layers.  Needed for JSON parsing (finding
+  `:`, `"`, `{`, `}`, etc.) and for splitting the `Content-Length` header line.
+
+- [ ] **6c. Add `string_to_int(s: string): int` builtin**
+  Parse a decimal integer string and return its value.  Wire through all five
+  layers.  Needed to convert the `Content-Length` header value to an integer.
+
+- [ ] **6d. Implement `stdlib/json.jer` — JSON parser and serializer in Jerry**
+  Define a `JsonValue` class with a `kind` discriminant
+  (`NULL=0 BOOL=1 INT=2 FLOAT=3 STRING=4 ARRAY=5 OBJECT=6`) and typed fields
+  (`bool_val`, `int_val`, `float_val`, `str_val`, `arr_val: JsonValue[]`,
+  `obj_keys: string[]`, `obj_vals: JsonValue[]`).
+  Implement `json_parse(s: string): JsonValue` (recursive descent using
+  `string_index_of`, `char_at`, `string_slice`) and
+  `json_stringify(v: JsonValue): string`.
+  Expose helpers: `json_get_string`, `json_get_int`, `json_get_bool`,
+  `json_get_object`, `json_build_object`, `json_set_string`, etc.
+  Install to `stdlib/json.jer`; usable via `include @json`.
+
+---
+
+## Phase 7 — LSP Server in Jerry
+
+Port `internal/lsp` (451 lines across 5 Go files) to a standalone
+`jerry-lsp` binary written in Jerry.  The binary speaks LSP over stdio,
+delegating parse+check to the self-hosted compiler pipeline.
+
+- [ ] **7a. JSON-RPC stdio transport (`lsp/transport.jer`)**
+  Read `Content-Length: N\r\n\r\n` header then `N` bytes via `read_bytes`.
+  Dispatch to handler by `method` field.  Write responses with correct
+  `Content-Length` framing using `write` + `flush` (add `flush_stdout()`
+  builtin if needed).
+
+- [ ] **7b. Document store (`lsp/documents.jer`)**
+  `map<string, string>` keyed by URI.  `store_doc`, `load_doc`, `delete_doc`.
+
+- [ ] **7c. Diagnostics (`lsp/diagnostics.jer`)**
+  On `textDocument/didOpen` and `textDocument/didChange`, run the self-hosted
+  parse → type_check pipeline on the document text (reusing the same code as
+  `jerry-compiler`).  Convert `ParseError` / `CheckError` positions to LSP
+  0-based `Range` and emit `textDocument/publishDiagnostics`.
+  Strip `include` lines before parsing (same as `main.jer`) and prepend
+  `core.jer` + named stdlib files.
+
+- [ ] **7d. Completions (`lsp/completion.jer`)**
+  Build a static list of Jerry keywords, primitive types, bool literals, and
+  known builtins/stdlib functions (matching the current Go list).  On
+  `textDocument/completion`, parse the document text to extract user-defined
+  `fn` and `class` names and append them to the static list.  Return as a
+  JSON array of `CompletionItem` objects.
+
+- [ ] **7e. Code lens + execute command (`lsp/codelens.jer`)**
+  On `textDocument/codeLens`, parse the document and find `fn main()` with no
+  params.  Return a `▶ Run` lens at that position using command `jerry.run`.
+  On `workspace/executeCommand` for `jerry.run`, invoke
+  `exec(["jerry", "run", file_path])` and notify the client with the output via
+  `window/showMessage`.
+
+- [ ] **7f. LSP server main + event loop (`lsp/main.jer`)**
+  Handle `initialize` (advertise TextDocumentSync=Full, CompletionProvider,
+  CodeLensProvider, ExecuteCommandProvider), `initialized`, `shutdown`.
+  Loop: read next message → dispatch to handler → send response/notification.
+
+- [ ] **7g. Build `jerry-lsp` binary in CI, release, and Homebrew**
+  CI: `jerry _ir lsp/*.jer > jerry-lsp-bootstrap.ll && cc ... -o jerry-lsp`.
+  Release archive includes `jerry-lsp`.  Homebrew `def install` builds it the
+  same way as `jerry-compiler` and installs to `bin/jerry-lsp`.
+
+- [ ] **7h. Update `jerry lsp` in `cmd/jerry/main.go`**
+  `findJerryLsp()` checks `JERRY_LSP` env → `<exe-dir>/jerry-lsp` → PATH.
+  `cmdLsp` execs it with inherited stdio (same pattern as `jerry-compiler`).
+
+- [ ] **7i. Remove `internal/lsp` Go package**
+  Delete the five Go files.  Remove the `glsp` dependency from `go.mod`.
+
+- [ ] **7j. Remove blocked Go internal packages (4c–4f)**
+  `internal/lsp` was the last consumer.  Delete `internal/codegen`,
+  `internal/checker`, `internal/parser`, `internal/ast`.
+  `internal/build` stays until Phase 8 eliminates the `jerry _ir` bootstrap.
+
+---
+
+## Phase 8 — Remove Go Entirely
+
+- [ ] **8a. Drop `depends_on "go" => :build` from Homebrew formula**
+  The formula downloads pre-compiled `jerry`, `jerry-compiler`, and `jerry-lsp`
+  from the GitHub release (or bootstraps from a known-good previous release)
+  instead of building from Go source.  `jerry _ir` and `internal/build` are no
+  longer needed; remove them.
+
+- [ ] **8b. Delete `internal/build` and the hidden `jerry _ir` subcommand**
+  The last remaining Go internal package.  The Homebrew formula no longer builds
+  from source.  CI bootstrap switches to downloading a pinned release binary.
+
+- [ ] **8c. Delete all remaining Go source files**
+  `cmd/jerry/main.go` becomes a Jerry program; `go.mod` / `go.sum` deleted.
+
+- [ ] **8d. Update CI/CD**
+  Remove `actions/setup-go`, `go vet`, `go test`, and Go build steps.
+  Add jerry-native test runner (`jerry-compiler` + `jerry test`).
+  Pin a bootstrap release binary for the CI self-hosting step.

@@ -54,6 +54,31 @@ fn test_char_to_string() {
     assert_eq_string(char_to_string(48), "0", "char 0");
 }
 
+fn test_string_contains() {
+    assert_true(string_contains("hello world", "world"), "contains suffix");
+    assert_true(string_contains("hello world", "hello"), "contains prefix");
+    assert_true(string_contains("hello world", "lo wo"), "contains middle");
+    assert_true(string_contains("hello", ""), "contains empty");
+    assert_false(string_contains("hello", "xyz"), "not contains");
+    assert_false(string_contains("", "a"), "empty haystack");
+}
+
+fn test_string_starts_with() {
+    assert_true(string_starts_with("hello world", "hello"), "starts with prefix");
+    assert_true(string_starts_with("hello", ""), "starts with empty");
+    assert_true(string_starts_with("hello", "hello"), "starts with full string");
+    assert_false(string_starts_with("hello world", "world"), "does not start with suffix");
+    assert_false(string_starts_with("", "a"), "empty string");
+}
+
+fn test_string_ends_with() {
+    assert_true(string_ends_with("hello world", "world"), "ends with suffix");
+    assert_true(string_ends_with("hello", ""), "ends with empty");
+    assert_true(string_ends_with("hello", "hello"), "ends with full string");
+    assert_false(string_ends_with("hello world", "hello"), "does not end with prefix");
+    assert_false(string_ends_with("", "a"), "empty string");
+}
+
 fn test_string_equality() {
     assert_true("hello" == "hello", "equal strings");
     assert_false("hello" == "world", "unequal strings");

@@ -1,8 +1,8 @@
 # The Jerry Language Guide
 
 Jerry is a small, statically-typed, JavaScript-flavoured language that compiles
-to native binaries through LLVM IR. The compiler is written in Go and ships as
-a single `jerry` CLI.
+to native binaries through LLVM IR. The compiler is self-hosted — written in
+Jerry itself — and ships as a `jerry` CLI alongside a `jerry-compiler` binary.
 
 This guide is a practical tour: every section is short, every snippet is
 runnable. Save any snippet as `foo.jer` and run it with:
@@ -581,7 +581,17 @@ These are always available — no `include` required.
 | `len(s): int`                                    | Length of string or array            |
 | `char_at(s: string, i: int): int`                | Code point at index `i`              |
 | `string_slice(s: string, start: int, end: int)`  | Substring `s[start:end]`             |
+| `string_contains(s, sub): bool`                  | True if `s` contains `sub`           |
+| `string_starts_with(s, prefix): bool`            | True if `s` starts with `prefix`     |
+| `string_ends_with(s, suffix): bool`              | True if `s` ends with `suffix`       |
 | `push(arr, x): void`                             | Append to array                      |
+
+### Process & environment
+
+| Builtin                         | Description                                      |
+|---------------------------------|--------------------------------------------------|
+| `exec(args: string[]): int`     | Run a subprocess; returns its exit code          |
+| `getenv(name: string): string`  | Value of an environment variable (empty if unset)|
 
 ### Time
 
@@ -593,10 +603,10 @@ These are always available — no `include` required.
 
 ### Process
 
-| Builtin                | Description                            |
-|------------------------|----------------------------------------|
-| `exit(code: int): void`| Terminate the process                  |
-| `panic(msg: string): void` | Abort with an error message        |
+| Builtin                    | Description                            |
+|----------------------------|----------------------------------------|
+| `exit(code: int): void`    | Terminate the process                  |
+| `panic(msg: string): void` | Abort with an error message            |
 
 ---
 

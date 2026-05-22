@@ -4,7 +4,7 @@
 [![Release](https://github.com/jeffscottbrown/jerry-lang/actions/workflows/release.yml/badge.svg)](https://github.com/jeffscottbrown/jerry-lang/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/jeffscottbrown/jerry-lang)](https://github.com/jeffscottbrown/jerry-lang/releases/latest)
 
-Jerry is a statically-typed, JavaScript-style language that compiles to native binaries via LLVM IR. The compiler is written in Go.
+Jerry is a statically-typed, JavaScript-style language that compiles to native binaries via LLVM IR. The compiler is self-hosted — written in Jerry itself.
 The language is experimental and a proof of concept.
 
 📖 **[Read the Jerry Language Guide](docs/language.md)** for a full tour of the language, standard library, and remote modules.
@@ -81,37 +81,29 @@ brew tap jeffscottbrown/jerry
 brew install jerry
 ```
 
-### go install
-
-Requires Go 1.26+.
-
-```sh
-go install github.com/jeffscottbrown/jerry-lang/cmd/jerry@latest
-```
-
 ### Download from GitHub Releases
 
 Pre-built binaries for macOS (x86_64, arm64) and Linux (x86_64) are available on the [Releases page](https://github.com/jeffscottbrown/jerry-lang/releases/latest).
 
 1. Download the archive for your platform.
 2. Verify the checksum against `checksums.txt`.
-3. Extract and move the `jerry` binary onto your `PATH`.
+3. Extract and move the `jerry` and `jerry-compiler` binaries onto your `PATH`.
 
 ```sh
 # Example for macOS Apple Silicon
 curl -fsSL https://github.com/jeffscottbrown/jerry-lang/releases/latest/download/jerry-macos-arm64.tar.gz | tar -xz
-sudo mv jerry-macos-arm64 /usr/local/bin/jerry
+sudo mv jerry jerry-compiler /usr/local/bin/
 ```
 
 ### Build from source
 
-Requires Go 1.26+ and clang.
+Requires Go 1.26+ and clang (Go is used for the bootstrap shim; `jerry-compiler` is built from Jerry source).
 
 ```sh
 git clone https://github.com/jeffscottbrown/jerry-lang.git
 cd jerry-lang
-go build -o jerry ./cmd/jerry
-sudo mv jerry /usr/local/bin/
+make build-compiler   # builds jerry + jerry-compiler
+sudo cp bin/jerry bin/jerry-compiler /usr/local/bin/
 ```
 
 ## Usage

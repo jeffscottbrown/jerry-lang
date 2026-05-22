@@ -88,6 +88,7 @@ jobs:
           ./jerry-bin test tests/closures_test.jer
           ./jerry-bin test tests/control_flow_test.jer
           ./jerry-bin test tests/functions_test.jer
+          ./jerry-bin test tests/map_test.jer
           ./jerry-bin test tests/primitives_test.jer
           ./jerry-bin test tests/stdlib_test.jer
           ./jerry-bin test tests/strings_test.jer
@@ -109,3 +110,25 @@ jobs:
           ./closures-selfhosted
           ./jerry-compiler examples/strings.jer -o strings-selfhosted
           ./strings-selfhosted
+
+      - name: Bootstrap (jerry-compiler compiles itself)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler self-host/ -o jerry-compiler-v2
+          ./jerry-compiler-v2 examples/hello.jer -o hello-v2
+          ./hello-v2
+          ./jerry-compiler-v2 examples/fibonacci.jer -o fib-v2
+          ./fib-v2
+
+      - name: Jerry tests (via bootstrapped compiler)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+          JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler-v2
+        run: |
+          ./jerry-bin test tests/strings_test.jer
+          ./jerry-bin test tests/arrays_test.jer
+          ./jerry-bin test tests/classes_test.jer
+          ./jerry-bin test tests/map_test.jer
