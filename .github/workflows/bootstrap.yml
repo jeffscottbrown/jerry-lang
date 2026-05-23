@@ -99,8 +99,10 @@ jobs:
       - name: Restore old Go codegen from git history (Linux only)
         if: inputs.platform == 'linux-x86_64'
         run: |
-          # Restore internal packages from the last commit that had Go codegen.
+          # Restore internal packages AND cmd/jerry from the last commit that
+          # had Go codegen. cmd/jerry/main.go at that commit has the _ir case.
           git checkout "${IR_BOOTSTRAP_COMMIT}" -- \
+            cmd/jerry \
             internal/codegen \
             internal/checker \
             internal/parser \
@@ -121,17 +123,15 @@ jobs:
         run: |
           # Collect self-host/ sources in sorted order (excluding _test files)
           SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          # Emit LLVM IR and compile to a jerry-compiler binary
-          ./jerry-go _ir $SRCS \
-            | clang -x ir - \
-              jerry_runtime.a \
-              -o jerry-compiler \
-              -lm
+          # Emit LLVM IR, compile to object, then link with runtime
+          ./jerry-go _ir $SRCS | clang -x ir -c - -o jerry-bootstrap.o
+          clang jerry-bootstrap.o jerry_runtime.a -o jerry-compiler -lm
           chmod +x jerry-compiler
 
       - name: Clean up restored Go codegen (Linux only)
         if: inputs.platform == 'linux-x86_64'
         run: |
+          git checkout HEAD -- cmd/jerry
           rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
           rm -f stdlib/stdlib.go
 
