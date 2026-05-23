@@ -18,8 +18,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # Linux bootstrap needs full history for git checkout 741e43b
 
       - name: Install clang (Linux)
         if: runner.os == 'Linux'
@@ -37,26 +35,8 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # Linux: use old Go codegen (_ir path) — no seed binary needed.
-      # macOS: download jerry-compiler from latest release.
-      - name: Build jerry-compiler seed from Go codegen (Linux only)
-        if: runner.os == 'Linux'
-        run: |
-          git checkout 741e43b -- \
-            cmd/jerry internal/codegen internal/checker \
-            internal/parser internal/ast internal/build \
-            stdlib/stdlib.go go.mod go.sum
-          go build -o jerry-go-old ./cmd/jerry
-          git checkout HEAD -- cmd/jerry go.mod go.sum
-          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
-          rm -f stdlib/stdlib.go
-          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          ./jerry-go-old _ir $SRCS > self-host-bootstrap.ll
-          clang -O0 self-host-bootstrap.ll jerry_runtime.a -o jerry-compiler-seed -lm
-          chmod +x jerry-compiler-seed
-
-      - name: Download seed jerry-compiler (macOS only)
-        if: runner.os == 'macOS'
+      # Download seed jerry-compiler from the latest release (all platforms).
+      - name: Download seed jerry-compiler
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -72,15 +52,7 @@ jobs:
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
-      # On Linux the seed is Go-based so it already produced the binary directly.
-      # On macOS the seed is a Jerry binary — use --ir + clang to avoid OOM.
-      - name: Build jerry-compiler (Linux — seed already produced it)
-        if: runner.os == 'Linux'
-        run: |
-          cp jerry-compiler-seed jerry-compiler
-
-      - name: Build jerry-compiler (macOS — emit IR then compile)
-        if: runner.os == 'macOS'
+      - name: Build jerry-compiler (emit IR then compile)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
