@@ -152,16 +152,29 @@ jobs:
           chmod +x jerry-compiler
 
       # ── Both platforms: compile current self-host/ with the seed ─────────────
-      - name: Build new jerry-compiler from self-host/
+      - name: Smoke-test seed compiler
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler examples/hello.jer -o hello-seed-test
+          ./hello-seed-test
+
+      - name: Emit IR for self-host/
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler self-host/ --ir > self-host.ll
+          wc -l self-host.ll
+
+      - name: Compile IR to jerry-compiler-new
         run: |
           TARGET_FLAG=""
           if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
             TARGET_FLAG="--target x86_64-apple-darwin"
           fi
-          ./jerry-compiler self-host/ -o jerry-compiler-new $TARGET_FLAG
+          clang $TARGET_FLAG -O1 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
           chmod +x jerry-compiler-new
 
       - name: Smoke-test new compiler
