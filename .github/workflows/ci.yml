@@ -52,12 +52,20 @@ jobs:
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
-      - name: Build jerry-compiler (emit IR then compile)
+      - name: Build jerry-compiler (two-stage bootstrap)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          ./jerry-compiler-seed self-host/ --ir > self-host.ll
+          # Stage 1: the v0.7.0 seed doesn't know flush_stdout; compile self-host/
+          # with that call removed so the seed can type-check main.jer.
+          grep -v 'flush_stdout()' self-host/main.jer > /tmp/main_patched.jer
+          SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort | tr '\n' ' ')
+          ./jerry-compiler-seed $SRCS /tmp/main_patched.jer --ir > self-host-stage1.ll
+          clang -O0 self-host-stage1.ll jerry_runtime.a -o jerry-compiler-stage1 -lm
+          chmod +x jerry-compiler-stage1
+          # Stage 2: stage-1 compiler knows flush_stdout; compile the full source.
+          ./jerry-compiler-stage1 self-host/ --ir > self-host.ll
           clang -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
           chmod +x jerry-compiler
 
