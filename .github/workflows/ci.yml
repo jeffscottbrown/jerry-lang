@@ -48,7 +48,27 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      - name: Download seed jerry-compiler (from latest release)
+      # Linux: use old Go codegen (_ir path) — no seed binary needed.
+      # macOS: download jerry-compiler from latest release.
+      - name: Build jerry-compiler seed from Go codegen (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          git fetch --depth=1 origin 741e43b || git fetch --unshallow
+          git checkout 741e43b -- \
+            cmd/jerry internal/codegen internal/checker \
+            internal/parser internal/ast internal/build \
+            stdlib/stdlib.go go.mod go.sum
+          go build -o jerry-go-old ./cmd/jerry
+          git checkout HEAD -- cmd/jerry go.mod go.sum
+          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
+          rm -f stdlib/stdlib.go
+          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
+          ./jerry-go-old _ir $SRCS > self-host-bootstrap.ll
+          clang -O0 self-host-bootstrap.ll jerry_runtime.a -o jerry-compiler-seed -lm
+          chmod +x jerry-compiler-seed
+
+      - name: Download seed jerry-compiler (macOS only)
+        if: runner.os == 'macOS'
         run: |
           VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/jeffscottbrown/jerry-lang/releases/latest \
@@ -63,12 +83,22 @@ jobs:
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
-      - name: Build jerry-compiler (self-hosted)
+      # On Linux the seed is Go-based so it already produced the binary directly.
+      # On macOS the seed is a Jerry binary — use --ir + clang to avoid OOM.
+      - name: Build jerry-compiler (Linux — seed already produced it)
+        if: runner.os == 'Linux'
+        run: |
+          cp jerry-compiler-seed jerry-compiler
+
+      - name: Build jerry-compiler (macOS — emit IR then compile)
+        if: runner.os == 'macOS'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          ./jerry-compiler-seed self-host/ -o jerry-compiler
+          ./jerry-compiler-seed self-host/ --ir > self-host.ll
+          clang -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
+          chmod +x jerry-compiler
 
       - name: Build jerry-test (self-hosted)
         env:
