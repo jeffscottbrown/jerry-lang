@@ -140,12 +140,19 @@ jobs:
         run: |
           VERSION="${{ inputs.seed_version }}"
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          # For the x86_64 bootstrap we may only have an arm64 seed available.
+          # Try native arch first, fall back to arm64 (runs via Rosetta).
           ARCH=$(uname -m)
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
           ASSET="jerry-${OS}-${ARCH}"
-          curl -fsSL \
+          if ! curl -fsSL \
             "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/${ASSET}.tar.gz" \
-            | tar xz jerry-compiler
+            | tar xz jerry-compiler 2>/dev/null; then
+            echo "Native asset not found, trying arm64 seed (Rosetta fallback)..."
+            curl -fsSL \
+              "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/jerry-${OS}-arm64.tar.gz" \
+              | tar xz jerry-compiler
+          fi
           chmod +x jerry-compiler
 
       # ── macOS: compile current self-host/ with the downloaded seed ──────────────
