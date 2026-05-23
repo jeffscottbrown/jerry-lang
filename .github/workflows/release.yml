@@ -54,16 +54,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y clang
 
-      - name: Build jerry
+      - name: Build jerry-lsp and jerry-get (Go, cross-compiled)
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
         run: |
-          go build \
-            -ldflags "-X main.Version=${{ github.ref_name }}" \
-            -o ${{ matrix.asset_name }} \
-            ./cmd/jerry
+          go build -o jerry-lsp ./cmd/jerry-lsp
+          go build -o jerry-get ./cmd/jerry-get
 
       - name: Build runtime library (native only)
         if: |
@@ -73,12 +71,13 @@ jobs:
           cc -O2 ${{ matrix.cc_arch_flag }} -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
 
-      - name: Verify version string
-        # Only run on native (not cross-compiled) targets
+      - name: Verify Go binaries built
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
-        run: ./${{ matrix.asset_name }} --version
+        run: |
+          [ -f jerry-lsp ] && echo "jerry-lsp: OK"
+          [ -f jerry-get ] && echo "jerry-get: OK"
 
       - name: Build stdlib (native only)
         if: |
@@ -162,6 +161,23 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep $TARGET_FLAG
 
+      - name: Build jerry-main (native Jerry dispatcher)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+          fi
+          # Inject the release version into version.jer, compile, then restore dev default.
+          echo "fn jerry_version(): string { return \"${{ github.ref_name }}\"; }" > cmd/jerry-main/version.jer
+          ./jerry-compiler cmd/jerry-main/ -o ${{ matrix.asset_name }} $TARGET_FLAG
+          echo 'fn jerry_version(): string { return "dev"; }' > cmd/jerry-main/version.jer
+
       - name: Smoke-test binary (native only)
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
@@ -170,7 +186,13 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
           JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
+          JERRY_TEST: ${{ github.workspace }}/jerry-test
+          JERRY_CREATE: ${{ github.workspace }}/jerry-create
+          JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
+          JERRY_GET: ${{ github.workspace }}/jerry-get
+          JERRY_LSP: ${{ github.workspace }}/jerry-lsp
         run: |
+          ./${{ matrix.asset_name }} --version
           ./${{ matrix.asset_name }} run examples/hello.jer
           ./${{ matrix.asset_name }} run examples/fibonacci.jer
           ./${{ matrix.asset_name }} run examples/strings.jer
@@ -182,6 +204,8 @@ jobs:
           [ -f jerry-test ]     && EXTRAS="$EXTRAS jerry-test"
           [ -f jerry-create ]   && EXTRAS="$EXTRAS jerry-create"
           [ -f jerry-sweep ]    && EXTRAS="$EXTRAS jerry-sweep"
+          [ -f jerry-lsp ]      && EXTRAS="$EXTRAS jerry-lsp"
+          [ -f jerry-get ]      && EXTRAS="$EXTRAS jerry-get"
           tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS
 
       - name: Upload build artifact

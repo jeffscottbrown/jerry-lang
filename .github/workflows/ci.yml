@@ -36,8 +36,11 @@ jobs:
       - name: go test
         run: go test ./...
 
-      - name: Build jerry
-        run: go build -o jerry-bin ./cmd/jerry
+      - name: Build jerry (Go wrapper, for go test)
+        run: |
+          go build -o jerry-bin ./cmd/jerry
+          go build -o jerry-lsp-bin ./cmd/jerry-lsp
+          go build -o jerry-get-bin ./cmd/jerry-get
 
       - name: Build runtime library
         run: |
@@ -92,24 +95,37 @@ jobs:
         run: |
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep
 
+      - name: Build jerry-main (self-hosted Jerry dispatcher)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler cmd/jerry-main/ -o jerry-native
+
       - name: Smoke-test (jerry run via self-hosted compiler)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
           JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
+          JERRY_TEST: ${{ github.workspace }}/jerry-test
           JERRY_CREATE: ${{ github.workspace }}/jerry-create
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
+          JERRY_GET: ${{ github.workspace }}/jerry-get-bin
+          JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
         run: |
+          # Smoke-test the Go wrapper (still used for go test)
           ./jerry-bin --version
-          ./jerry-bin run examples/hello.jer
-          ./jerry-bin run examples/fibonacci.jer
-          ./jerry-bin run examples/arrays.jer
-          ./jerry-bin run examples/classes.jer
-          ./jerry-bin run examples/closures.jer
-          ./jerry-bin run examples/strings.jer
-          ./jerry-bin create hello-smoke-test
-          ./jerry-bin run hello-smoke-test/main.jer
-          (cd hello-smoke-test && ../jerry-bin sweep)
+          # Smoke-test the Jerry-compiled dispatcher
+          ./jerry-native --version
+          ./jerry-native run examples/hello.jer
+          ./jerry-native run examples/fibonacci.jer
+          ./jerry-native run examples/arrays.jer
+          ./jerry-native run examples/classes.jer
+          ./jerry-native run examples/closures.jer
+          ./jerry-native run examples/strings.jer
+          ./jerry-native create hello-smoke-test
+          ./jerry-native run hello-smoke-test/main.jer
+          (cd hello-smoke-test && JERRY_SWEEP=${{ github.workspace }}/jerry-sweep JERRY_COMPILER=${{ github.workspace }}/jerry-compiler ../jerry-native sweep)
           rm -rf hello-smoke-test
 
       - name: Jerry tests (via self-hosted compiler)
@@ -120,17 +136,19 @@ jobs:
           JERRY_TEST: ${{ github.workspace }}/jerry-test
           JERRY_CREATE: ${{ github.workspace }}/jerry-create
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
+          JERRY_GET: ${{ github.workspace }}/jerry-get-bin
+          JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
         run: |
-          ./jerry-bin test tests/arrays_test.jer
-          ./jerry-bin test tests/classes_test.jer
-          ./jerry-bin test tests/closures_test.jer
-          ./jerry-bin test tests/control_flow_test.jer
-          ./jerry-bin test tests/functions_test.jer
-          ./jerry-bin test tests/json_test.jer
-          ./jerry-bin test tests/map_test.jer
-          ./jerry-bin test tests/primitives_test.jer
-          ./jerry-bin test tests/stdlib_test.jer
-          ./jerry-bin test tests/strings_test.jer
+          ./jerry-native test tests/arrays_test.jer
+          ./jerry-native test tests/classes_test.jer
+          ./jerry-native test tests/closures_test.jer
+          ./jerry-native test tests/control_flow_test.jer
+          ./jerry-native test tests/functions_test.jer
+          ./jerry-native test tests/json_test.jer
+          ./jerry-native test tests/map_test.jer
+          ./jerry-native test tests/primitives_test.jer
+          ./jerry-native test tests/stdlib_test.jer
+          ./jerry-native test tests/strings_test.jer
 
       - name: Smoke-test self-hosted compiler directly
         env:
@@ -159,6 +177,7 @@ jobs:
           ./jerry-compiler-v2 cmd/jerry-test/ -o jerry-test-v2
           ./jerry-compiler-v2 cmd/jerry-create/ -o jerry-create-v2
           ./jerry-compiler-v2 cmd/jerry-sweep/ -o jerry-sweep-v2
+          ./jerry-compiler-v2 cmd/jerry-main/ -o jerry-native-v2
           ./jerry-compiler-v2 examples/hello.jer -o hello-v2
           ./hello-v2
           ./jerry-compiler-v2 examples/fibonacci.jer -o fib-v2
@@ -172,9 +191,11 @@ jobs:
           JERRY_TEST: ${{ github.workspace }}/jerry-test-v2
           JERRY_CREATE: ${{ github.workspace }}/jerry-create-v2
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep-v2
+          JERRY_GET: ${{ github.workspace }}/jerry-get-bin
+          JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
         run: |
-          ./jerry-bin test tests/strings_test.jer
-          ./jerry-bin test tests/arrays_test.jer
-          ./jerry-bin test tests/classes_test.jer
-          ./jerry-bin test tests/map_test.jer
-          ./jerry-bin test tests/json_test.jer
+          ./jerry-native-v2 test tests/strings_test.jer
+          ./jerry-native-v2 test tests/arrays_test.jer
+          ./jerry-native-v2 test tests/classes_test.jer
+          ./jerry-native-v2 test tests/map_test.jer
+          ./jerry-native-v2 test tests/json_test.jer

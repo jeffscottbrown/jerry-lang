@@ -1,0 +1,3 @@
+// version.jer — overwritten at build time by the release pipeline.
+// Default value "dev" is used for local builds.
+fn jerry_version(): string { return "dev"; }

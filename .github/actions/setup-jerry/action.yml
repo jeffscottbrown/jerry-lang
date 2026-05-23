@@ -70,6 +70,12 @@ runs:
         if [ -f jerry-sweep ]; then
           chmod +x jerry-sweep
         fi
+        if [ -f jerry-lsp ]; then
+          chmod +x jerry-lsp
+        fi
+        if [ -f jerry-get ]; then
+          chmod +x jerry-get
+        fi
 
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 

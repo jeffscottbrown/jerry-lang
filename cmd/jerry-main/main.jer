@@ -1,0 +1,232 @@
+// jerry: Jerry language compiler driver.
+//
+// Usage:
+//   jerry compile <file.jer|dir> [...]  [-o output]   compile to native binary
+//   jerry run     <file.jer|dir> [...]                compile and run immediately
+//   jerry ir      <file.jer|dir> [...]                dump LLVM IR to stdout
+//   jerry test    [dir|file_test.jer ...]             run unit tests
+//   jerry get     <module>@<version>                  fetch a remote module
+//   jerry sweep                                        sync jerry.remotes and jerry.sum
+//   jerry create  [--git] [--tap <owner>] <name>      scaffold a new project
+//   jerry lsp                                          start LSP server
+//   jerry -v | --version                              print version and exit
+
+// ── Tool discovery ────────────────────────────────────────────────────────────
+
+// dir_of returns the directory part of a path.
+fn dir_of(path: string): string {
+    let i: int = len(path) - 1;
+    while i >= 0 {
+        if char_at(path, i) == 47 { // '/'
+            return string_slice(path, 0, i);
+        }
+        i = i - 1;
+    }
+    return ".";
+}
+
+// to_env_key converts a tool name like "jerry-compiler" to "JERRY_COMPILER".
+fn to_env_key(name: string): string {
+    let result: string = "";
+    let i: int = 0;
+    let n: int = len(name);
+    while i < n {
+        let c: int = char_at(name, i);
+        if c == 45 { // '-'
+            result = result + "_";
+        } else if c >= 97 && c <= 122 { // a-z → A-Z
+            result = result + char_to_string(c - 32);
+        } else {
+            result = result + char_to_string(c);
+        }
+        i = i + 1;
+    }
+    return result;
+}
+
+// find_tool returns the path to a Jerry tool binary.
+// Search order: <NAME_UPPER> env var → beside this binary → PATH via which.
+fn find_tool(name: string): string {
+    let env_key: string = to_env_key(name);
+    let from_env: string = getenv(env_key);
+    if len(from_env) > 0 { return from_env; }
+
+    let self_dir: string = dir_of(args()[0]);
+    let candidate: string = self_dir + "/" + name;
+    if is_dir(candidate) == false {
+        // Check if the file exists — is_dir returns false for files too, but
+        // we test by reading a byte; rely on exec failing if not found.
+        // Use the candidate if self_dir is not ".".
+        if self_dir != "." {
+            return candidate;
+        }
+    }
+
+    // Fall back to PATH (exec will fail with 127 if not found).
+    return name;
+}
+
+// run_tool execs a tool, inheriting stdio.  Exits with the tool's exit code.
+fn run_tool(name: string, tool_args: string[]) {
+    let bin: string = find_tool(name);
+    let all_args: string[] = [bin];
+    let i: int = 0;
+    while i < len(tool_args) {
+        push(all_args, tool_args[i]);
+        i = i + 1;
+    }
+    let code: int = exec(all_args);
+    exit(code);
+}
+
+// ── Source argument splitting ─────────────────────────────────────────────────
+
+// split_srcs separates source files/dirs from trailing non-source args.
+// Returns sources in src_out and trailing args in rest_out.
+fn split_srcs(argv: string[], start: int, src_out: string[], rest_out: string[]) {
+    let i: int = start;
+    let n: int = len(argv);
+    while i < n {
+        let a: string = argv[i];
+        if string_ends_with(a, ".jer") || string_ends_with(a, ".jl") {
+            push(src_out, a);
+            i = i + 1;
+        } else if is_dir(a) {
+            // Expand directory to contained .jer files.
+            let names: string[] = list_dir(a);
+            let j: int = 0;
+            while j < len(names) {
+                if string_ends_with(names[j], ".jer") {
+                    push(src_out, a + "/" + names[j]);
+                }
+                j = j + 1;
+            }
+            i = i + 1;
+        } else {
+            // Not a source — start of trailing args.
+            while i < n {
+                push(rest_out, argv[i]);
+                i = i + 1;
+            }
+        }
+    }
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+fn main() {
+    let argv: string[] = args();
+    if len(argv) < 2 {
+        print_err("Usage: jerry <command> [args...]");
+        print_err("  compile  run  ir  test  get  sweep  create  lsp  --version");
+        exit(1);
+    }
+
+    let cmd: string = argv[1];
+
+    if cmd == "-v" || cmd == "--version" {
+        print("jerry " + jerry_version());
+        exit(0);
+    }
+
+    if cmd == "compile" {
+        if len(argv) < 3 {
+            print_err("jerry: compile: no source files given");
+            exit(1);
+        }
+        let compile_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(compile_args, argv[i]); i = i + 1; }
+        run_tool("jerry-compiler", compile_args);
+    }
+
+    if cmd == "ir" {
+        if len(argv) < 3 {
+            print_err("jerry: ir: no source files given");
+            exit(1);
+        }
+        let ir_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(ir_args, argv[i]); i = i + 1; }
+        push(ir_args, "--ir");
+        run_tool("jerry-compiler", ir_args);
+    }
+
+    if cmd == "run" {
+        let srcs: string[] = [];
+        let rest: string[] = [];
+        split_srcs(argv, 2, srcs, rest);
+        if len(srcs) == 0 {
+            print_err("jerry: run: no source files given");
+            exit(1);
+        }
+        let tmp_bin: string = "/tmp/jerry-run-" + int_to_string(now_millis());
+        let compile_args: string[] = [];
+        let ci: int = 0;
+        while ci < len(srcs) { push(compile_args, srcs[ci]); ci = ci + 1; }
+        push(compile_args, "-o");
+        push(compile_args, tmp_bin);
+        let compiler: string = find_tool("jerry-compiler");
+        let compiler_args: string[] = [compiler];
+        let ai: int = 0;
+        while ai < len(compile_args) { push(compiler_args, compile_args[ai]); ai = ai + 1; }
+        let compile_code: int = exec(compiler_args);
+        if compile_code != 0 {
+            delete_file(tmp_bin);
+            exit(compile_code);
+        }
+        let run_args: string[] = [tmp_bin];
+        let ri: int = 0;
+        while ri < len(rest) { push(run_args, rest[ri]); ri = ri + 1; }
+        let run_code: int = exec(run_args);
+        delete_file(tmp_bin);
+        exit(run_code);
+    }
+
+    if cmd == "test" {
+        let test_args: string[] = [];
+        if len(argv) < 3 {
+            push(test_args, ".");
+        } else {
+            let i: int = 2;
+            while i < len(argv) { push(test_args, argv[i]); i = i + 1; }
+        }
+        run_tool("jerry-test", test_args);
+    }
+
+    if cmd == "get" {
+        if len(argv) < 3 {
+            print_err("jerry: get: usage: jerry get <module>@<version>");
+            exit(1);
+        }
+        let get_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(get_args, argv[i]); i = i + 1; }
+        run_tool("jerry-get", get_args);
+    }
+
+    if cmd == "sweep" {
+        let sweep_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(sweep_args, argv[i]); i = i + 1; }
+        run_tool("jerry-sweep", sweep_args);
+    }
+
+    if cmd == "create" {
+        let create_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(create_args, argv[i]); i = i + 1; }
+        run_tool("jerry-create", create_args);
+    }
+
+    if cmd == "lsp" {
+        let lsp_args: string[] = [];
+        let i: int = 2;
+        while i < len(argv) { push(lsp_args, argv[i]); i = i + 1; }
+        run_tool("jerry-lsp", lsp_args);
+    }
+
+    print_err("jerry: unknown command: " + cmd);
+    print_err("  compile  run  ir  test  get  sweep  create  lsp  --version");
+    exit(1);
+}

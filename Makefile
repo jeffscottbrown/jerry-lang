@@ -1,4 +1,4 @@
-.PHONY: build build-compiler build-test-runner build-create build-sweep test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build build-compiler build-test-runner build-create build-sweep build-main build-lsp build-get test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -8,6 +8,13 @@ JERRY = go run ./cmd/jerry
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/jerry ./cmd/jerry
+
+# Build the jerry-lsp and jerry-get Go binaries (still Go until LSP/HTTP are ported).
+build-lsp:
+	go build -ldflags "$(LDFLAGS)" -o bin/jerry-lsp ./cmd/jerry-lsp
+
+build-get:
+	go build -ldflags "$(LDFLAGS)" -o bin/jerry-get ./cmd/jerry-get
 
 # Rebuild the self-hosted jerry-compiler binary from source using a seed binary.
 # The seed is the jerry-compiler currently on PATH (e.g. installed via Homebrew),
@@ -41,6 +48,16 @@ build-sweep: install-runtime install-stdlib
 	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
 		$(JERRY_COMPILER_SEED) cmd/jerry-sweep/ -o bin/jerry-sweep
 	@echo "Built: bin/jerry-sweep"
+
+# Build the jerry-main (jerry) binary from cmd/jerry-main/.
+# VERSION is embedded in version.jer before compilation, then restored.
+build-main: install-runtime install-stdlib
+	@echo "fn jerry_version(): string { return \"$(VERSION)\"; }" > cmd/jerry-main/version.jer
+	JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a \
+	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
+		$(JERRY_COMPILER_SEED) cmd/jerry-main/ -o bin/jerry-native
+	@echo 'fn jerry_version(): string { return "dev"; }' > cmd/jerry-main/version.jer
+	@echo "Built: bin/jerry-native"
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 
