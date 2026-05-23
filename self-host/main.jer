@@ -109,6 +109,7 @@ fn main() {
     let src_args: string[] = [];
     let out_path: string = "a.out";
     let ir_only: bool = false;
+    let target_triple: string = "";
 
     let i: int = 0;
     while i < len(argv) {
@@ -118,6 +119,9 @@ fn main() {
             if i < len(argv) { out_path = argv[i]; }
         } else if a == "--ir" {
             ir_only = true;
+        } else if a == "-target" {
+            i = i + 1;
+            if i < len(argv) { target_triple = argv[i]; }
         } else {
             push(src_args, a);
         }
@@ -213,7 +217,16 @@ fn main() {
         exit(1);
     }
 
-    let clang_args: string[] = ["clang", "-O1", tmp, runtime_lib, "-o", out_path, "-lm"];
+    let clang_args: string[] = ["clang", "-O1"];
+    if len(target_triple) > 0 {
+        push(clang_args, "-target");
+        push(clang_args, target_triple);
+    }
+    push(clang_args, tmp);
+    push(clang_args, runtime_lib);
+    push(clang_args, "-o");
+    push(clang_args, out_path);
+    push(clang_args, "-lm");
     let code: int = exec(clang_args);
     delete_file(tmp);
 
