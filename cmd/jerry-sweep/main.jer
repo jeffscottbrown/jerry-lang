@@ -64,14 +64,14 @@ fn main() {
 
     // Parse jerry.remotes (missing file treated as empty).
     let remotes_content: string = "";
-    if !is_dir("jerry.remotes") {
+    if exec(["test", "-f", "jerry.remotes"]) == 0 {
         remotes_content = read_file("jerry.remotes");
     }
     let mod_requires: map<string, string> = parse_remotes(remotes_content);
 
     // Parse jerry.sum (missing file treated as empty).
     let sum_content: string = "";
-    if !is_dir("jerry.sum") {
+    if exec(["test", "-f", "jerry.sum"]) == 0 {
         sum_content = read_file("jerry.sum");
     }
     let mod_sums: map<string, string> = parse_sum(sum_content);

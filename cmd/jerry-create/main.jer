@@ -146,6 +146,7 @@ fn main() {
     // Write project files.
     write_in(name, "main.jer", create_main_jer(name));
     write_in(name, "jerry.remotes", create_remotes());
+    write_in(name, "jerry.sum", "");
     write_in(name, "Makefile", create_makefile(name));
     write_in(name, "README.md", create_readme(name, tap_owner));
 
