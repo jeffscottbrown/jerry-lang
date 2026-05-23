@@ -10,7 +10,7 @@ on:
         description: "Release tag to create (e.g. v0.7.0)"
         required: true
       seed_version:
-        description: "jerry-compiler seed version to use (e.g. v0.7.0-bootstrap). Defaults to latest release."
+        description: "jerry-compiler seed version to use for macOS (e.g. v0.7.0-bootstrap). Defaults to latest release."
         required: false
         default: ""
 
@@ -56,6 +56,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Linux bootstrap needs full history for git checkout 741e43b
 
       - uses: actions/setup-go@v5
         with:
@@ -101,10 +103,26 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      - name: Download seed jerry-compiler
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      # ── Linux: bootstrap jerry-compiler from old Go codegen (no seed needed) ──
+      - name: Build jerry-compiler seed from Go codegen (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          git checkout 741e43b -- \
+            cmd/jerry internal/codegen internal/checker \
+            internal/parser internal/ast internal/build \
+            stdlib/stdlib.go go.mod go.sum
+          go build -o jerry-go-old ./cmd/jerry
+          git checkout HEAD -- cmd/jerry go.mod go.sum
+          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
+          rm -f stdlib/stdlib.go
+          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
+          ./jerry-go-old _ir $SRCS > self-host-bootstrap.ll
+          clang -O0 self-host-bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
+          chmod +x jerry-compiler
+
+      # ── macOS: download seed and emit IR, then compile with clang ──────────────
+      - name: Download seed jerry-compiler (macOS only)
+        if: runner.os == 'macOS'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -124,19 +142,19 @@ jobs:
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
-      - name: Build jerry-compiler (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-compiler (macOS — emit IR then compile)
+        if: runner.os == 'macOS'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
+          ./jerry-compiler-seed self-host/ --ir > self-host.ll
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
-            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
-          ./jerry-compiler-seed self-host/ -o jerry-compiler $TARGET_FLAG
+          clang $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
+          chmod +x jerry-compiler
 
       - name: Build jerry-test (native only)
         if: |
@@ -148,7 +166,7 @@ jobs:
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
-            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
           ./jerry-compiler cmd/jerry-test/ -o jerry-test $TARGET_FLAG
 
@@ -162,7 +180,7 @@ jobs:
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
-            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
           ./jerry-compiler cmd/jerry-create/ -o jerry-create $TARGET_FLAG
 
@@ -176,7 +194,7 @@ jobs:
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
-            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep $TARGET_FLAG
 
@@ -190,7 +208,7 @@ jobs:
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
-            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
           # Inject the release version into version.jer, compile, then restore dev default.
           echo "fn jerry_version(): string { return \"${{ env.RELEASE_TAG }}\"; }" > cmd/jerry-main/version.jer
