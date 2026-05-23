@@ -18,7 +18,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -104,10 +103,7 @@ func main() {
 		}
 
 	case "sweep":
-		if err := cmdSweep(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
+		runJerryTool("jerry-sweep", os.Args[2:])
 
 	case "test":
 		testArgs := os.Args[2:]
@@ -163,81 +159,6 @@ func cmdGet(arg string) error {
 	return nil
 }
 
-// ── jerry sweep ──────────────────────────────────────────────────────────────
-
-func cmdSweep() error {
-	// Find all .jer files in the current directory.
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		return err
-	}
-	var srcs []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".jer") {
-			srcs = append(srcs, e.Name())
-		}
-	}
-
-	// Collect remote imports referenced in project files.
-	referenced := map[string]bool{}
-	for _, src := range srcs {
-		remotes, err := scanRemoteIncludes(src)
-		if err != nil {
-			continue // ignore errors during sweep
-		}
-		for _, r := range remotes {
-			referenced[r] = true
-		}
-	}
-
-	mf, err := modfile.Parse(modfile.RemotesFileName)
-	if err != nil {
-		return fmt.Errorf("reading jerry.remotes: %w", err)
-	}
-
-	sums, err := modfile.ParseSum(modfile.SumFileName)
-	if err != nil {
-		return fmt.Errorf("reading jerry.sum: %w", err)
-	}
-
-	// Add missing requires and ensure hashes exist.
-	changed := false
-	for modPath := range referenced {
-		if _, has := mf.Requires[modPath]; !has {
-			return fmt.Errorf("jerry sweep: %q is included but not in jerry.remotes — run: jerry get %s@<version>", modPath, modPath)
-		}
-		version := mf.Requires[modPath]
-		key := sums.Key(modPath, version)
-		if _, has := sums[key]; !has {
-			_, hash, fetchErr := module.Fetch(modPath, version)
-			if fetchErr != nil {
-				return fetchErr
-			}
-			sums[key] = hash
-			changed = true
-		}
-	}
-
-	// Remove requires no longer referenced.
-	for modPath := range mf.Requires {
-		if !referenced[modPath] {
-			delete(mf.Requires, modPath)
-			delete(sums, sums.Key(modPath, mf.Requires[modPath]))
-			changed = true
-		}
-	}
-
-	if changed {
-		if err := modfile.Write(modfile.RemotesFileName, mf); err != nil {
-			return fmt.Errorf("writing jerry.remotes: %w", err)
-		}
-		if err := sums.Write(modfile.SumFileName); err != nil {
-			return fmt.Errorf("writing jerry.sum: %w", err)
-		}
-	}
-	fmt.Fprintln(os.Stderr, "jerry: sweep complete")
-	return nil
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -328,28 +249,6 @@ func findJerryTool(name string) (string, error) {
 	return "", fmt.Errorf("%s not found", name)
 }
 
-// scanRemoteIncludes scans a .jer file for `include "..."` remote declarations.
-func scanRemoteIncludes(path string) ([]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var remotes []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if !strings.HasPrefix(line, `include "`) {
-			continue
-		}
-		rest := line[len(`include "`):]
-		end := strings.Index(rest, `"`)
-		if end > 0 {
-			remotes = append(remotes, rest[:end])
-		}
-	}
-	return remotes, scanner.Err()
-}
 
 func fatalf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "jerry: "+format+"\n", args...)

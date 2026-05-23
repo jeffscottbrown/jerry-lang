@@ -148,6 +148,20 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-create/ -o jerry-create $TARGET_FLAG
 
+      - name: Build jerry-sweep (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+          fi
+          ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep $TARGET_FLAG
+
       - name: Smoke-test binary (native only)
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
@@ -167,6 +181,7 @@ jobs:
           [ -f jerry-compiler ] && EXTRAS="$EXTRAS jerry-compiler"
           [ -f jerry-test ]     && EXTRAS="$EXTRAS jerry-test"
           [ -f jerry-create ]   && EXTRAS="$EXTRAS jerry-create"
+          [ -f jerry-sweep ]    && EXTRAS="$EXTRAS jerry-sweep"
           tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS
 
       - name: Upload build artifact

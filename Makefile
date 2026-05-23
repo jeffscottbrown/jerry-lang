@@ -1,4 +1,4 @@
-.PHONY: build build-compiler build-test-runner build-create test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build build-compiler build-test-runner build-create build-sweep test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -34,6 +34,13 @@ build-create: install-runtime install-stdlib
 	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
 		$(JERRY_COMPILER_SEED) cmd/jerry-create/ -o bin/jerry-create
 	@echo "Built: bin/jerry-create"
+
+# Build the jerry-sweep binary from cmd/jerry-sweep/main.jer.
+build-sweep: install-runtime install-stdlib
+	JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a \
+	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
+		$(JERRY_COMPILER_SEED) cmd/jerry-sweep/ -o bin/jerry-sweep
+	@echo "Built: bin/jerry-sweep"
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 

@@ -85,12 +85,20 @@ jobs:
         run: |
           ./jerry-compiler cmd/jerry-create/ -o jerry-create
 
+      - name: Build jerry-sweep (self-hosted)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep
+
       - name: Smoke-test (jerry run via self-hosted compiler)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
           JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
           JERRY_CREATE: ${{ github.workspace }}/jerry-create
+          JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
         run: |
           ./jerry-bin --version
           ./jerry-bin run examples/hello.jer
@@ -101,6 +109,7 @@ jobs:
           ./jerry-bin run examples/strings.jer
           ./jerry-bin create hello-smoke-test
           ./jerry-bin run hello-smoke-test/main.jer
+          (cd hello-smoke-test && ../jerry-bin sweep)
           rm -rf hello-smoke-test
 
       - name: Jerry tests (via self-hosted compiler)
@@ -110,6 +119,7 @@ jobs:
           JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler
           JERRY_TEST: ${{ github.workspace }}/jerry-test
           JERRY_CREATE: ${{ github.workspace }}/jerry-create
+          JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
         run: |
           ./jerry-bin test tests/arrays_test.jer
           ./jerry-bin test tests/classes_test.jer
@@ -148,6 +158,7 @@ jobs:
           ./jerry-compiler self-host/ -o jerry-compiler-v2
           ./jerry-compiler-v2 cmd/jerry-test/ -o jerry-test-v2
           ./jerry-compiler-v2 cmd/jerry-create/ -o jerry-create-v2
+          ./jerry-compiler-v2 cmd/jerry-sweep/ -o jerry-sweep-v2
           ./jerry-compiler-v2 examples/hello.jer -o hello-v2
           ./hello-v2
           ./jerry-compiler-v2 examples/fibonacci.jer -o fib-v2
@@ -160,6 +171,7 @@ jobs:
           JERRY_COMPILER: ${{ github.workspace }}/jerry-compiler-v2
           JERRY_TEST: ${{ github.workspace }}/jerry-test-v2
           JERRY_CREATE: ${{ github.workspace }}/jerry-create-v2
+          JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep-v2
         run: |
           ./jerry-bin test tests/strings_test.jer
           ./jerry-bin test tests/arrays_test.jer

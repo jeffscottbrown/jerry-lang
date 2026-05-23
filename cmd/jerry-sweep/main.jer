@@ -1,0 +1,228 @@
+// jerry-sweep: reconcile jerry.remotes and jerry.sum with source imports.
+//
+// Usage:
+//   jerry-sweep
+//
+// Scans all .jer files in the current directory for `include "..."` remote
+// declarations. Verifies each referenced module is listed in jerry.remotes and
+// has a hash in jerry.sum. Removes entries for modules that are no longer
+// referenced. Writes updated files if anything changed.
+
+include @string
+
+// ── Sorting ───────────────────────────────────────────────────────────────────
+
+// sort_strings sorts an array of strings in ascending lexicographic order.
+fn sort_strings(arr: string[]) {
+    let n: int = len(arr);
+    let i: int = 0;
+    while i < n - 1 {
+        let j: int = i + 1;
+        while j < n {
+            if arr[j] < arr[i] {
+                let tmp: string = arr[i];
+                arr[i] = arr[j];
+                arr[j] = tmp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+// ── Line scanning ─────────────────────────────────────────────────────────────
+
+// last_index_of returns the index of the last occurrence of c in s, or -1.
+fn last_index_of_char(s: string, c: int): int {
+    let i: int = len(s) - 1;
+    while i >= 0 {
+        if char_at(s, i) == c { return i; }
+        i = i - 1;
+    }
+    return -1;
+}
+
+// ── Modfile parsing ───────────────────────────────────────────────────────────
+
+// parse_remotes parses the content of a jerry.remotes file into a map.
+// Format: one "modpath version" pair per line; // comments; blank lines ignored.
+fn parse_remotes(content: string): map<string, string> {
+    let m: map<string, string> = {};
+    let n: int = len(content);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(content, j) != 10 { j = j + 1; }
+        let line: string = trim(string_slice(content, i, j));
+        if len(line) > 0 && !starts_with(line, "//") {
+            let parts: string[] = split_whitespace(line);
+            if len(parts) >= 2 {
+                map_set(m, parts[0], parts[1]);
+            }
+        }
+        i = j + 1;
+    }
+    return m;
+}
+
+// parse_sum parses the content of a jerry.sum file into a map.
+// Format: one "modpath version hash" triple per line.
+// Keys are stored as "modpath@version" → hash.
+fn parse_sum(content: string): map<string, string> {
+    let m: map<string, string> = {};
+    let n: int = len(content);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(content, j) != 10 { j = j + 1; }
+        let line: string = trim(string_slice(content, i, j));
+        if len(line) > 0 {
+            let parts: string[] = split_whitespace(line);
+            if len(parts) == 3 {
+                map_set(m, parts[0] + "@" + parts[1], parts[2]);
+            }
+        }
+        i = j + 1;
+    }
+    return m;
+}
+
+// ── Modfile serialization ─────────────────────────────────────────────────────
+
+// write_remotes serializes a remotes map to jerry.remotes format.
+fn write_remotes(path: string, m: map<string, string>) {
+    let keys: string[] = map_keys(m);
+    sort_strings(keys);
+    let out: string = "";
+    let i: int = 0;
+    while i < len(keys) {
+        out = out + keys[i] + " " + map_get(m, keys[i]) + "\n";
+        i = i + 1;
+    }
+    write_file(path, out);
+}
+
+// write_sum serializes a sum map to jerry.sum format.
+// Keys are "modpath@version"; written as "modpath version hash".
+fn write_sum(path: string, m: map<string, string>) {
+    let keys: string[] = map_keys(m);
+    sort_strings(keys);
+    let out: string = "";
+    let i: int = 0;
+    while i < len(keys) {
+        let key: string = keys[i];
+        let at: int = last_index_of_char(key, 64); // '@'
+        let modpath: string = string_slice(key, 0, at);
+        let version: string = string_slice(key, at + 1, len(key));
+        out = out + modpath + " " + version + " " + map_get(m, key) + "\n";
+        i = i + 1;
+    }
+    write_file(path, out);
+}
+
+// ── Source scanning ───────────────────────────────────────────────────────────
+
+// scan_remote_includes returns the module paths from `include "..."` lines in path.
+fn scan_remote_includes(path: string): string[] {
+    let remotes: string[] = [];
+    let src: string = read_file(path);
+    let n: int = len(src);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(src, j) != 10 { j = j + 1; }
+        let line: string = trim(string_slice(src, i, j));
+        if starts_with(line, "include \"") {
+            let rest: string = string_slice(line, 9, len(line)); // after include "
+            let end: int = string_index_of(rest, "\"");
+            if end > 0 {
+                push(remotes, string_slice(rest, 0, end));
+            }
+        }
+        i = j + 1;
+    }
+    return remotes;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+fn main() {
+    // Find all .jer files in the current directory.
+    let names: string[] = list_dir(".");
+    let srcs: string[] = [];
+    let i: int = 0;
+    while i < len(names) {
+        if !is_dir(names[i]) && string_ends_with(names[i], ".jer") {
+            push(srcs, names[i]);
+        }
+        i = i + 1;
+    }
+
+    // Collect all referenced remote module paths (deduplicated via map).
+    let referenced: map<string, bool> = {};
+    let si: int = 0;
+    while si < len(srcs) {
+        let remotes: string[] = scan_remote_includes(srcs[si]);
+        let ri: int = 0;
+        while ri < len(remotes) {
+            map_set(referenced, remotes[ri], true);
+            ri = ri + 1;
+        }
+        si = si + 1;
+    }
+
+    // Parse jerry.remotes (missing file treated as empty).
+    let remotes_content: string = "";
+    if !is_dir("jerry.remotes") {
+        remotes_content = read_file("jerry.remotes");
+    }
+    let mod_requires: map<string, string> = parse_remotes(remotes_content);
+
+    // Parse jerry.sum (missing file treated as empty).
+    let sum_content: string = "";
+    if !is_dir("jerry.sum") {
+        sum_content = read_file("jerry.sum");
+    }
+    let mod_sums: map<string, string> = parse_sum(sum_content);
+
+    // Check that all referenced modules are listed and have hashes.
+    let ref_keys: string[] = map_keys(referenced);
+    let rki: int = 0;
+    while rki < len(ref_keys) {
+        let modpath: string = ref_keys[rki];
+        if !map_has(mod_requires, modpath) {
+            print_err("jerry sweep: \"" + modpath + "\" is included but not in jerry.remotes — run: jerry get " + modpath + "@<version>");
+            exit(1);
+        }
+        let version: string = map_get(mod_requires, modpath);
+        let sum_key: string = modpath + "@" + version;
+        if !map_has(mod_sums, sum_key) {
+            print_err("jerry sweep: hash missing for " + modpath + "@" + version + " — run: jerry get " + modpath + "@" + version);
+            exit(1);
+        }
+        rki = rki + 1;
+    }
+
+    // Remove requires and sums for modules no longer referenced.
+    let changed: bool = false;
+    let req_keys: string[] = map_keys(mod_requires);
+    let qi: int = 0;
+    while qi < len(req_keys) {
+        let modpath: string = req_keys[qi];
+        if !map_has(referenced, modpath) {
+            let version: string = map_get(mod_requires, modpath);
+            map_delete(mod_requires, modpath);
+            map_delete(mod_sums, modpath + "@" + version);
+            changed = true;
+        }
+        qi = qi + 1;
+    }
+
+    // Write updated files if anything changed.
+    if changed {
+        write_remotes("jerry.remotes", mod_requires);
+        write_sum("jerry.sum", mod_sums);
+    }
+
+    print_err("jerry: sweep complete");
+}

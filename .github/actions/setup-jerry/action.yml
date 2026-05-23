@@ -67,6 +67,9 @@ runs:
         if [ -f jerry-create ]; then
           chmod +x jerry-create
         fi
+        if [ -f jerry-sweep ]; then
+          chmod +x jerry-sweep
+        fi
 
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
