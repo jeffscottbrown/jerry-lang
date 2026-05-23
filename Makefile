@@ -131,9 +131,7 @@ install: build-main
 test:
 	$(call require,$(JERRY),$(JERRY_HINT))
 	$(JERRY) test tests/
-	$(JERRY) test cmd/jerry-lsp/diagnostics_test.jer
-	$(JERRY) test cmd/jerry-lsp/completion_test.jer
-	$(JERRY) test cmd/jerry-lsp/codelens_test.jer
+	$(JERRY) test cmd/jerry-lsp/
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 

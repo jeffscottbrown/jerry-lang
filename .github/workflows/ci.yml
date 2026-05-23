@@ -142,9 +142,7 @@ jobs:
           ./jerry-native test tests/primitives_test.jer
           ./jerry-native test tests/stdlib_test.jer
           ./jerry-native test tests/strings_test.jer
-          ./jerry-native test cmd/jerry-lsp/diagnostics_test.jer
-          ./jerry-native test cmd/jerry-lsp/completion_test.jer
-          ./jerry-native test cmd/jerry-lsp/codelens_test.jer
+          ./jerry-native test cmd/jerry-lsp/
 
       - name: Smoke-test self-hosted compiler directly
         env:
@@ -197,6 +195,4 @@ jobs:
           ./jerry-native-v2 test tests/classes_test.jer
           ./jerry-native-v2 test tests/map_test.jer
           ./jerry-native-v2 test tests/json_test.jer
-          ./jerry-native-v2 test cmd/jerry-lsp/diagnostics_test.jer
-          ./jerry-native-v2 test cmd/jerry-lsp/completion_test.jer
-          ./jerry-native-v2 test cmd/jerry-lsp/codelens_test.jer
+          ./jerry-native-v2 test cmd/jerry-lsp/
