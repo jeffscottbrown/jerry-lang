@@ -109,6 +109,7 @@ fn main() {
     let src_args: string[] = [];
     let out_path: string = "a.out";
     let ir_only: bool = false;
+    let check_only: bool = false;
     let target: string = "";
 
     let i: int = 0;
@@ -119,6 +120,8 @@ fn main() {
             if i < len(argv) { out_path = argv[i]; }
         } else if a == "--ir" {
             ir_only = true;
+        } else if a == "--check" {
+            check_only = true;
         } else if a == "--target" {
             i = i + 1;
             if i < len(argv) { target = argv[i]; }
@@ -195,8 +198,21 @@ fn main() {
     let prog: Program = parse(full_src);
     let result: CheckResult = type_check(prog);
     if result.has_errors() {
-        print_err(result.error_string());
+        // In check mode print to stdout so the LSP subprocess can capture it
+        // alongside parse errors (which also go to stdout). Otherwise use stderr.
+        if check_only {
+            let ei: int = 0;
+            while ei < len(result.errors) {
+                print(result.errors[ei]);
+                ei = ei + 1;
+            }
+        } else {
+            print_err(result.error_string());
+        }
         exit(1);
+    }
+    if check_only {
+        exit(0);
     }
     let ir: string = generate(prog, result.info);
 

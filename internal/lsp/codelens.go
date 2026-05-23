@@ -1,11 +1,11 @@
 package lsp
 
 import (
+	"bufio"
 	"fmt"
 	"os/exec"
 	"strings"
 
-	"github.com/jeffscottbrown/jerry-lang/internal/parser"
 	"github.com/tliron/glsp"
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
@@ -20,27 +20,45 @@ func codeLens(_ *glsp.Context, params *protocol.CodeLensParams) ([]protocol.Code
 		return nil, nil
 	}
 
-	prog, err := parser.Parse(filenameFromURI(uri), src)
-	if err != nil {
+	line, col, found := findMainPos(src)
+	if !found {
 		return nil, nil
 	}
 
-	for _, tl := range prog.Stmts {
-		if tl.FnDecl != nil && tl.FnDecl.Name == "main" && len(tl.FnDecl.Params) == 0 {
-			rng := lspRange(tl.FnDecl.Pos)
-			return []protocol.CodeLens{
-				{
-					Range: rng,
-					Command: &protocol.Command{
-						Title:     "▶ Run",
-						Command:   runCommandID,
-						Arguments: []any{uri},
-					},
-				},
-			}, nil
+	return []protocol.CodeLens{
+		{
+			Range: lspRangeAt(line, col),
+			Command: &protocol.Command{
+				Title:     "▶ Run",
+				Command:   runCommandID,
+				Arguments: []any{uri},
+			},
+		},
+	}, nil
+}
+
+// findMainPos scans src for a top-level `fn main()` with no parameters.
+// Returns 1-based line and column of the `fn` keyword, and whether it was found.
+func findMainPos(src string) (line, col int, found bool) {
+	scanner := bufio.NewScanner(strings.NewReader(src))
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		text := scanner.Text()
+		trimmed := strings.TrimSpace(text)
+		if !strings.HasPrefix(trimmed, "fn main(") {
+			continue
 		}
+		// Verify no parameters between the parens.
+		rest := trimmed[len("fn main("):]
+		close := strings.Index(rest, ")")
+		if close < 0 || strings.TrimSpace(rest[:close]) != "" {
+			continue
+		}
+		col := strings.Index(text, "fn main") + 1
+		return lineNum, col, true
 	}
-	return nil, nil
+	return 0, 0, false
 }
 
 // executeCommand handles workspace/executeCommand for the jerry.run command.

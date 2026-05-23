@@ -1,8 +1,9 @@
 package lsp
 
 import (
-	"github.com/jeffscottbrown/jerry-lang/internal/ast"
-	"github.com/jeffscottbrown/jerry-lang/internal/parser"
+	"bufio"
+	"strings"
+
 	protocol "github.com/tliron/glsp/protocol_3_16"
 )
 
@@ -68,44 +69,58 @@ func init() {
 	}
 }
 
-// completionsForSource returns the static items plus any user-defined function
-// and class names found by parsing src.
+// completionsForSource returns the static items plus user-defined function and
+// class names found by scanning src line-by-line.
 func completionsForSource(src string) []protocol.CompletionItem {
 	items := make([]protocol.CompletionItem, len(staticItems))
 	copy(items, staticItems)
-
-	prog, err := parser.Parse("", src)
-	if err != nil {
-		return items
-	}
-	items = append(items, userDefinedItems(prog)...)
+	items = append(items, userDefinedItems(src)...)
 	return items
 }
 
-func userDefinedItems(prog *ast.Program) []protocol.CompletionItem {
+// userDefinedItems scans src for top-level fn and class declarations.
+func userDefinedItems(src string) []protocol.CompletionItem {
 	fnKind := protocol.CompletionItemKindFunction
 	classKind := protocol.CompletionItemKindClass
 
 	var items []protocol.CompletionItem
-	for _, tl := range prog.Stmts {
-		switch {
-		case tl.FnDecl != nil:
-			name := tl.FnDecl.Name
-			items = append(items, protocol.CompletionItem{
-				Label:            name,
-				Kind:             &fnKind,
-				InsertText:       strPtr(name + "($0)"),
-				InsertTextFormat: insertTextFormatSnippet(),
-			})
-		case tl.Class != nil:
-			name := tl.Class.Name
-			items = append(items, protocol.CompletionItem{
-				Label: name,
-				Kind:  &classKind,
-			})
+	scanner := bufio.NewScanner(strings.NewReader(src))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "fn ") {
+			name := extractName(line[3:])
+			if name != "" {
+				items = append(items, protocol.CompletionItem{
+					Label:            name,
+					Kind:             &fnKind,
+					InsertText:       strPtr(name + "($0)"),
+					InsertTextFormat: insertTextFormatSnippet(),
+				})
+			}
+		} else if strings.HasPrefix(line, "class ") {
+			name := extractName(line[6:])
+			if name != "" {
+				items = append(items, protocol.CompletionItem{
+					Label: name,
+					Kind:  &classKind,
+				})
+			}
 		}
 	}
 	return items
+}
+
+// extractName returns the identifier before the first '(' or '{' on a line.
+func extractName(s string) string {
+	end := strings.IndexAny(s, "({")
+	if end <= 0 {
+		return ""
+	}
+	name := strings.TrimSpace(s[:end])
+	if strings.ContainsAny(name, " \t") {
+		return "" // not a simple identifier
+	}
+	return name
 }
 
 func insertTextFormatSnippet() *protocol.InsertTextFormat {

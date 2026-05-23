@@ -2,10 +2,7 @@ module github.com/jeffscottbrown/jerry-lang
 
 go 1.26
 
-require (
-	github.com/alecthomas/participle/v2 v2.1.4
-	github.com/tliron/glsp v0.2.2
-)
+require github.com/tliron/glsp v0.2.2
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
