@@ -117,18 +117,21 @@ jobs:
         run: |
           go build -o jerry-go ./cmd/jerry
 
-      - name: "Bootstrap: emit IR and compile to jerry-compiler (Linux only)"
+      - name: "Bootstrap: emit IR from OLD self-host and compile (Linux only)"
         if: inputs.platform == 'linux-x86_64'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          # Collect self-host/ sources in sorted order (excluding _test files)
+          # Use OLD self-host/ (at IR_BOOTSTRAP_COMMIT) with OLD Go codegen.
+          # They were designed together so the IR is guaranteed correct.
+          git checkout "${IR_BOOTSTRAP_COMMIT}" -- self-host/
           SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          # Emit LLVM IR, compile to object, then link with runtime
           ./jerry-go _ir $SRCS | clang -x ir -c - -o jerry-bootstrap.o
-          clang jerry-bootstrap.o jerry_runtime.a -o jerry-compiler -lm
-          chmod +x jerry-compiler
+          clang jerry-bootstrap.o jerry_runtime.a -o jerry-compiler-old -lm
+          chmod +x jerry-compiler-old
+          # Restore current self-host/ for the next step
+          git checkout HEAD -- self-host/
 
       - name: Clean up restored Go codegen (Linux only)
         if: inputs.platform == 'linux-x86_64'
@@ -152,29 +155,32 @@ jobs:
           chmod +x jerry-compiler
 
       # ── Both platforms: compile current self-host/ with the seed ─────────────
+      - name: Determine seed compiler path
+        run: |
+          if [ "${{ inputs.platform }}" = "linux-x86_64" ]; then
+            echo "SEED_BIN=./jerry-compiler-old" >> "$GITHUB_ENV"
+          else
+            echo "SEED_BIN=./jerry-compiler" >> "$GITHUB_ENV"
+          fi
+
       - name: Smoke-test seed compiler
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          ./jerry-compiler examples/hello.jer -o hello-seed-test
+          $SEED_BIN examples/hello.jer -o hello-seed-test
           ./hello-seed-test
 
-      - name: Emit IR for self-host/
+      - name: Build new jerry-compiler from current self-host/
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
-        run: |
-          ./jerry-compiler self-host/ --ir > self-host.ll
-          wc -l self-host.ll
-
-      - name: Compile IR to jerry-compiler-new
         run: |
           TARGET_FLAG=""
           if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
             TARGET_FLAG="--target x86_64-apple-darwin"
           fi
-          clang $TARGET_FLAG -O1 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
+          $SEED_BIN self-host/ -o jerry-compiler-new $TARGET_FLAG
           chmod +x jerry-compiler-new
 
       - name: Smoke-test new compiler
