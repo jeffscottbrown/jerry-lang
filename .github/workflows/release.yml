@@ -57,8 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Linux bootstrap needs full history for git checkout 741e43b
-
+    
       - name: Install clang (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -81,26 +80,11 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # ── Linux: bootstrap jerry-compiler from old Go codegen (no seed needed) ──
-      - name: Build jerry-compiler seed from Go codegen (Linux only)
-        if: runner.os == 'Linux'
-        run: |
-          git checkout 741e43b -- \
-            cmd/jerry internal/codegen internal/checker \
-            internal/parser internal/ast internal/build \
-            stdlib/stdlib.go go.mod go.sum
-          go build -o jerry-go-old ./cmd/jerry
-          git checkout HEAD -- cmd/jerry go.mod go.sum
-          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
-          rm -f stdlib/stdlib.go
-          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          ./jerry-go-old _ir $SRCS > self-host-bootstrap.ll
-          clang -O0 self-host-bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
-          chmod +x jerry-compiler
-
-      # ── macOS: download seed and emit IR, then compile with clang ──────────────
-      - name: Download seed jerry-compiler (macOS only)
-        if: runner.os == 'macOS'
+      # ── Download seed jerry-compiler from previous release (all platforms) ──────
+      - name: Download seed jerry-compiler
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
