@@ -68,7 +68,7 @@ jobs:
           fetch-depth: 0   # need full history to restore Go codegen from 741e43b
           token: ${{ github.token }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: inputs.platform == 'linux-x86_64'
         with:
           go-version-file: go.mod
