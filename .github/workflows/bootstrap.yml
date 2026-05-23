@@ -171,16 +171,25 @@ jobs:
           $SEED_BIN examples/hello.jer -o hello-seed-test
           ./hello-seed-test
 
-      - name: Build new jerry-compiler from current self-host/
+      - name: Emit IR for current self-host/
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
+          # Use --ir to get LLVM IR without invoking clang inside the seed compiler.
+          # This avoids the seed's hardcoded -O1 (slow on CI for large IR).
+          $SEED_BIN self-host/ --ir > self-host.ll
+          wc -l self-host.ll
+
+      - name: Compile IR to jerry-compiler-new
+        run: |
           TARGET_FLAG=""
+          OPAQUE=""
           if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
             TARGET_FLAG="--target x86_64-apple-darwin"
           fi
-          $SEED_BIN self-host/ -o jerry-compiler-new $TARGET_FLAG
+          # -opaque-pointers for clang <15 compat; -O0 for speed on CI
+          clang $OPAQUE $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
           chmod +x jerry-compiler-new
 
       - name: Smoke-test new compiler

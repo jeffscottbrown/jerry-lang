@@ -13,35 +13,6 @@
 //   -o <path>   output binary path (default: a.out)
 //   --ir        write LLVM IR to stdout instead of compiling to a binary
 
-// Pure-Jerry prefix/suffix helpers — used instead of the string_starts_with /
-// string_ends_with builtins so that main.jer can be compiled by an older seed
-// compiler that may have incomplete IR declarations for those builtins.
-fn _has_prefix(s: string, prefix: string): bool {
-    let slen: int = len(s);
-    let plen: int = len(prefix);
-    if plen == 0 { return true; }
-    if slen < plen { return false; }
-    let i: int = 0;
-    while i < plen {
-        if char_at(s, i) != char_at(prefix, i) { return false; }
-        i = i + 1;
-    }
-    return true;
-}
-
-fn _has_suffix(s: string, suffix: string): bool {
-    let slen: int = len(s);
-    let sflen: int = len(suffix);
-    if sflen == 0 { return true; }
-    if slen < sflen { return false; }
-    let i: int = 0;
-    while i < sflen {
-        if char_at(s, slen - sflen + i) != char_at(suffix, i) { return false; }
-        i = i + 1;
-    }
-    return true;
-}
-
 // Collect .jer source file paths from a single argument (file or directory).
 // Directories expand to all non-test .jer files in sorted order.
 fn expand_src(arg: string): string[] {
@@ -51,7 +22,7 @@ fn expand_src(arg: string): string[] {
         let i: int = 0;
         while i < len(names) {
             let name: string = names[i];
-            if _has_suffix(name, ".jer") && !_has_suffix(name, "_test.jer") {
+            if string_ends_with(name, ".jer") && !string_ends_with(name, "_test.jer") {
                 push(result, arg + "/" + name);
             }
             i = i + 1;
@@ -82,7 +53,7 @@ fn collect_stdlib_names(src: string): string[] {
             k = k + 1;
         }
         let trimmed: string = string_slice(line, k, ll);
-        if _has_prefix(trimmed, "include @") {
+        if string_starts_with(trimmed, "include @") {
             let name: string = string_slice(trimmed, 9, len(trimmed));
             // trim trailing whitespace
             let nl: int = len(name);
@@ -123,7 +94,7 @@ fn strip_includes(src: string): string {
             k = k + 1;
         }
         let trimmed: string = string_slice(line, k, ll);
-        if !_has_prefix(trimmed, "include @") && !_has_prefix(trimmed, "include \"") {
+        if !string_starts_with(trimmed, "include @") && !string_starts_with(trimmed, "include \"") {
             result = result + line + "\n";
         }
         i = j + 1;
@@ -138,8 +109,6 @@ fn main() {
     let src_args: string[] = [];
     let out_path: string = "a.out";
     let ir_only: bool = false;
-    let check_only: bool = false;
-    let target: string = "";
 
     let i: int = 0;
     while i < len(argv) {
@@ -149,11 +118,6 @@ fn main() {
             if i < len(argv) { out_path = argv[i]; }
         } else if a == "--ir" {
             ir_only = true;
-        } else if a == "--check" {
-            check_only = true;
-        } else if a == "--target" {
-            i = i + 1;
-            if i < len(argv) { target = argv[i]; }
         } else {
             push(src_args, a);
         }
@@ -227,21 +191,8 @@ fn main() {
     let prog: Program = parse(full_src);
     let result: CheckResult = type_check(prog);
     if result.has_errors() {
-        // In check mode print to stdout so the LSP subprocess can capture it
-        // alongside parse errors (which also go to stdout). Otherwise use stderr.
-        if check_only {
-            let ei: int = 0;
-            while ei < len(result.errors) {
-                print(result.errors[ei]);
-                ei = ei + 1;
-            }
-        } else {
-            print_err(result.error_string());
-        }
+        print_err(result.error_string());
         exit(1);
-    }
-    if check_only {
-        exit(0);
     }
     let ir: string = generate(prog, result.info);
 
@@ -263,10 +214,6 @@ fn main() {
     }
 
     let clang_args: string[] = ["clang", "-O1", tmp, runtime_lib, "-o", out_path, "-lm"];
-    if len(target) > 0 {
-        push(clang_args, "-target");
-        push(clang_args, target);
-    }
     let code: int = exec(clang_args);
     delete_file(tmp);
 
