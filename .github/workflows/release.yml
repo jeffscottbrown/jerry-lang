@@ -120,6 +120,20 @@ jobs:
           fi
           ./jerry-compiler-seed self-host/ -o jerry-compiler $TARGET_FLAG
 
+      - name: Build jerry-test (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="--target ${{ matrix.jerry_target }}"
+          fi
+          ./jerry-compiler cmd/jerry-test/ -o jerry-test $TARGET_FLAG
+
       - name: Smoke-test binary (native only)
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
@@ -135,11 +149,10 @@ jobs:
 
       - name: Create archive
         run: |
-          if [ -f jerry-compiler ]; then
-            tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} jerry-compiler
-          else
-            tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}
-          fi
+          EXTRAS=""
+          [ -f jerry-compiler ] && EXTRAS="$EXTRAS jerry-compiler"
+          [ -f jerry-test ]     && EXTRAS="$EXTRAS jerry-test"
+          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4

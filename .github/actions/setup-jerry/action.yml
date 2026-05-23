@@ -61,6 +61,9 @@ runs:
         if [ -f jerry-compiler ]; then
           chmod +x jerry-compiler
         fi
+        if [ -f jerry-test ]; then
+          chmod +x jerry-test
+        fi
 
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 

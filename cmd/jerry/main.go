@@ -110,10 +110,11 @@ func main() {
 		}
 
 	case "test":
-		if err := cmdTest(os.Args[2:]); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+		testArgs := os.Args[2:]
+		if len(testArgs) == 0 {
+			testArgs = []string{"."}
 		}
+		runJerryTool("jerry-test", testArgs)
 
 	case "create":
 		if err := cmdCreate(os.Args[2:]); err != nil {
@@ -280,192 +281,6 @@ func splitAtVersion(arg string) (modPath, version string, ok bool) {
 	return arg[:idx], arg[idx+1:], true
 }
 
-
-// ── jerry test ───────────────────────────────────────────────────────────────
-
-// cmdTest discovers *_test.jer files, finds all fn test_*() functions in them,
-// generates a temporary main file that calls each one, compiles everything
-// together, and runs the resulting binary.
-//
-// When a directory is given, all .jer files in that directory are included in
-// the build so that test files can reference the source under test. Source
-// files that define fn main() are excluded to avoid conflicting with the
-// generated test main.
-func cmdTest(args []string) error {
-	// Collect files: explicit .jer args, directory args, or cwd fallback.
-	// Directories contribute both source files and test files.
-	var testFiles []string   // *_test.jer
-	var sourceFiles []string // other .jer files (code under test)
-
-	scanDir := func(dir string) error {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return fmt.Errorf("jerry test: %w", err)
-		}
-		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".jer") {
-				continue
-			}
-			p := filepath.Join(dir, e.Name())
-			if strings.HasSuffix(e.Name(), "_test.jer") {
-				testFiles = append(testFiles, p)
-			} else {
-				sourceFiles = append(sourceFiles, p)
-			}
-		}
-		return nil
-	}
-
-	for _, a := range args {
-		if strings.HasSuffix(a, ".jer") {
-			testFiles = append(testFiles, a)
-		} else {
-			if err := scanDir(a); err != nil {
-				return err
-			}
-		}
-	}
-	if len(testFiles) == 0 && len(sourceFiles) == 0 {
-		if err := scanDir("."); err != nil {
-			return err
-		}
-	}
-	if len(testFiles) == 0 {
-		fmt.Fprintln(os.Stderr, "jerry test: no test files found")
-		return nil
-	}
-
-	// Scan each test file for fn test_*() functions using simple text parsing.
-	type fileTests struct {
-		path  string
-		names []string
-	}
-	var allTests []fileTests
-	for _, path := range testFiles {
-		names, err := scanTestFunctions(path)
-		if err != nil {
-			return err
-		}
-		if len(names) > 0 {
-			allTests = append(allTests, fileTests{path, names})
-		}
-	}
-	if len(allTests) == 0 {
-		fmt.Fprintln(os.Stderr, "jerry test: no test_* functions found")
-		return nil
-	}
-
-	// Exclude source files that define fn main() — the generated test main
-	// provides main(), so including another would cause a duplicate error.
-	var filteredSources []string
-	for _, path := range sourceFiles {
-		hasMain, err := fileDefinesMain(path)
-		if err != nil {
-			return err
-		}
-		if !hasMain {
-			filteredSources = append(filteredSources, path)
-		}
-	}
-
-	// Generate the test main file.
-	var sb strings.Builder
-	sb.WriteString("include @testing\n\nfn main(): void {\n")
-	for _, ft := range allTests {
-		fmt.Fprintf(&sb, "    print(\"--- %s ---\");\n", ft.path)
-		for _, name := range ft.names {
-			fmt.Fprintf(&sb, "    print(\"  %s\");\n", name)
-			fmt.Fprintf(&sb, "    %s();\n", name)
-		}
-	}
-	sb.WriteString("    test_summary();\n}\n")
-
-	// Write to a temp file.
-	tmp, err := os.CreateTemp("", "jerry-test-main-*.jer")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.WriteString(sb.String()); err != nil {
-		return err
-	}
-	tmp.Close()
-
-	// Compile: source files (sans main) + test files + generated main.
-	srcs := append(filteredSources, testFiles...)
-	srcs = append(srcs, tmp.Name())
-	tmpDir, err := os.MkdirTemp("", "jerry-test-bin-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-	bin := filepath.Join(tmpDir, "test")
-
-	runJerryCompiler(append(srcs, "-o", bin))
-
-	// Run.
-	runCmd := exec.Command(bin)
-	runCmd.Stdout = os.Stdout
-	runCmd.Stderr = os.Stderr
-	if err := runCmd.Run(); err != nil {
-		if exit, ok := err.(*exec.ExitError); ok {
-			os.Exit(exit.ExitCode())
-		}
-		return fmt.Errorf("test run failed: %w", err)
-	}
-	return nil
-}
-
-// scanTestFunctions scans a .jer file for top-level fn test_*() declarations
-// using simple line-by-line text parsing. Returns function names found.
-func scanTestFunctions(path string) ([]string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read %s: %w", path, err)
-	}
-	defer f.Close()
-	var names []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		// Match: fn test_NAME() or fn test_NAME(): void
-		if !strings.HasPrefix(line, "fn test_") {
-			continue
-		}
-		rest := line[3:] // strip "fn "
-		paren := strings.Index(rest, "(")
-		if paren < 0 {
-			continue
-		}
-		name := rest[:paren]
-		// Ensure no parameters (empty parens or just whitespace)
-		close := strings.Index(rest[paren:], ")")
-		if close < 0 {
-			continue
-		}
-		if strings.TrimSpace(rest[paren+1:paren+close]) == "" {
-			names = append(names, name)
-		}
-	}
-	return names, scanner.Err()
-}
-
-// fileDefinesMain reports whether a .jer file contains a top-level fn main declaration.
-func fileDefinesMain(path string) (bool, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return false, fmt.Errorf("cannot read %s: %w", path, err)
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "fn main(") || strings.HasPrefix(line, "fn main():") {
-			return true, nil
-		}
-	}
-	return false, scanner.Err()
-}
 
 // ── jerry create ─────────────────────────────────────────────────────────────
 
@@ -830,35 +645,22 @@ func toRubyClass(name string) string {
 	return sb.String()
 }
 
-// ── jerry-compiler discovery and invocation ───────────────────────────────────
-
-// findJerryCompiler returns the path to the jerry-compiler binary.
-// Search order:
-//  1. JERRY_COMPILER env var
-//  2. <directory of this binary>/jerry-compiler
-//  3. jerry-compiler on PATH
-func findJerryCompiler() (string, error) {
-	if p := os.Getenv("JERRY_COMPILER"); p != "" {
-		return p, nil
-	}
-	if exe, err := os.Executable(); err == nil {
-		candidate := filepath.Join(filepath.Dir(exe), "jerry-compiler")
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
-		}
-	}
-	if p, err := exec.LookPath("jerry-compiler"); err == nil {
-		return p, nil
-	}
-	return "", fmt.Errorf("jerry-compiler not found; run `make install` or set JERRY_COMPILER")
-}
+// ── Jerry tool discovery and invocation ──────────────────────────────────────
 
 // runJerryCompiler invokes jerry-compiler with args, inheriting stdio.
 // Exits the process if jerry-compiler is not found or exits non-zero.
 func runJerryCompiler(args []string) {
-	bin, err := findJerryCompiler()
+	runJerryTool("jerry-compiler", args)
+}
+
+// runJerryTool finds and runs a Jerry tool binary (e.g. jerry-compiler,
+// jerry-test), inheriting stdio. Exits if the binary is not found or
+// exits non-zero.
+func runJerryTool(name string, args []string) {
+	bin, err := findJerryTool(name)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "jerry: "+err.Error())
+		fmt.Fprintf(os.Stderr, "jerry: %s not found; run `make install` or set %s\n",
+			name, strings.ToUpper(strings.ReplaceAll(name, "-", "_")))
 		os.Exit(1)
 	}
 	cmd := exec.Command(bin, args...)
@@ -872,6 +674,25 @@ func runJerryCompiler(args []string) {
 		fmt.Fprintf(os.Stderr, "jerry: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// findJerryTool returns the path to a Jerry tool binary by name.
+// Search order: <NAME_UPPER> env var → beside this binary → PATH.
+func findJerryTool(name string) (string, error) {
+	envKey := strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+	if p := os.Getenv(envKey); p != "" {
+		return p, nil
+	}
+	if exe, err := os.Executable(); err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), name)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	if p, err := exec.LookPath(name); err == nil {
+		return p, nil
+	}
+	return "", fmt.Errorf("%s not found", name)
 }
 
 // scanRemoteIncludes scans a .jer file for `include "..."` remote declarations.

@@ -1,0 +1,231 @@
+// jerry-test: Jerry unit test runner.
+//
+// Usage:
+//   jerry-test [dir|file_test.jer ...]
+//
+// Discovers *_test.jer files, finds fn test_*() functions, generates a
+// temporary test harness, compiles everything via jerry-compiler, and runs
+// the resulting binary. Source files that define fn main() are excluded
+// automatically to avoid conflicts with the generated test entry point.
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// dir_of returns the directory component of a file path.
+fn dir_of(path: string): string {
+    let i: int = len(path) - 1;
+    while i >= 0 {
+        if char_at(path, i) == 47 { // '/'
+            return string_slice(path, 0, i);
+        }
+        i = i - 1;
+    }
+    return ".";
+}
+
+// find_compiler returns the path to jerry-compiler.
+// Order: JERRY_COMPILER env var → beside this binary → "jerry-compiler" on PATH.
+fn find_compiler(): string {
+    let env: string = getenv("JERRY_COMPILER");
+    if len(env) > 0 { return env; }
+    let dir: string = dir_of(args()[0]);
+    return dir + "/jerry-compiler";
+}
+
+// trim_line removes leading whitespace from a line.
+fn trim_line(line: string): string {
+    let i: int = 0;
+    let n: int = len(line);
+    while i < n {
+        let c: int = char_at(line, i);
+        if c != 32 && c != 9 { return string_slice(line, i, n); }
+        i = i + 1;
+    }
+    return "";
+}
+
+// is_empty_between returns true if s[start..end] contains only whitespace.
+fn is_empty_between(s: string, start: int, end: int): bool {
+    let i: int = start;
+    while i < end {
+        let c: int = char_at(s, i);
+        if c != 32 && c != 9 { return false; }
+        i = i + 1;
+    }
+    return true;
+}
+
+// ── File collection ───────────────────────────────────────────────────────────
+
+// collect_dir appends files from dir into test_files / source_files.
+fn collect_dir(dir: string, test_files: string[], source_files: string[]) {
+    let names: string[] = list_dir(dir);
+    let i: int = 0;
+    while i < len(names) {
+        let name: string = names[i];
+        if string_ends_with(name, "_test.jer") {
+            push(test_files, dir + "/" + name);
+        } else if string_ends_with(name, ".jer") {
+            push(source_files, dir + "/" + name);
+        }
+        i = i + 1;
+    }
+}
+
+// ── Source scanning ───────────────────────────────────────────────────────────
+
+// scan_test_fns returns the names of all no-arg fn test_*() in path.
+fn scan_test_fns(path: string): string[] {
+    let names: string[] = [];
+    let src: string = read_file(path);
+    let n: int = len(src);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(src, j) != 10 { j = j + 1; }
+        let trimmed: string = trim_line(string_slice(src, i, j));
+        if string_starts_with(trimmed, "fn test_") {
+            let rest: string = string_slice(trimmed, 3, len(trimmed)); // after "fn "
+            let paren: int = string_index_of(rest, "(");
+            if paren > 0 {
+                let name: string = string_slice(rest, 0, paren);
+                let close: int = string_index_of(rest, ")");
+                if close > paren && is_empty_between(rest, paren + 1, close) {
+                    push(names, name);
+                }
+            }
+        }
+        i = j + 1;
+    }
+    return names;
+}
+
+// file_has_main returns true if path contains a top-level fn main() declaration.
+fn file_has_main(path: string): bool {
+    let src: string = read_file(path);
+    let n: int = len(src);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(src, j) != 10 { j = j + 1; }
+        let trimmed: string = trim_line(string_slice(src, i, j));
+        if string_starts_with(trimmed, "fn main(") || string_starts_with(trimmed, "fn main():") {
+            return true;
+        }
+        i = j + 1;
+    }
+    return false;
+}
+
+// ── Test harness generation ───────────────────────────────────────────────────
+
+// generate_harness builds the Jerry source for the test entry point.
+fn generate_harness(test_paths: string[], test_fns: string[][]): string {
+    let out: string = "include @testing\n\nfn main(): void {\n";
+    let i: int = 0;
+    while i < len(test_paths) {
+        out = out + "    print(\"--- " + test_paths[i] + " ---\");\n";
+        let fns: string[] = test_fns[i];
+        let k: int = 0;
+        while k < len(fns) {
+            out = out + "    print(\"  " + fns[k] + "\");\n";
+            out = out + "    " + fns[k] + "();\n";
+            k = k + 1;
+        }
+        i = i + 1;
+    }
+    out = out + "    test_summary();\n}\n";
+    return out;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+
+fn main() {
+    let argv: string[] = args();
+
+    let test_files: string[] = [];
+    let source_files: string[] = [];
+
+    let i: int = 0;
+    while i < len(argv) {
+        let arg: string = argv[i];
+        if is_dir(arg) {
+            collect_dir(arg, test_files, source_files);
+        } else if string_ends_with(arg, "_test.jer") {
+            push(test_files, arg);
+        } else if string_ends_with(arg, ".jer") {
+            push(source_files, arg);
+        }
+        i = i + 1;
+    }
+
+    if len(test_files) == 0 {
+        print("jerry test: no test files found");
+        exit(0);
+    }
+
+    // Scan test files for fn test_*() functions.
+    let test_paths_with_fns: string[] = [];
+    let all_test_fns: string[][] = [];
+
+    let ti: int = 0;
+    while ti < len(test_files) {
+        let fns: string[] = scan_test_fns(test_files[ti]);
+        if len(fns) > 0 {
+            push(test_paths_with_fns, test_files[ti]);
+            push(all_test_fns, fns);
+        }
+        ti = ti + 1;
+    }
+
+    if len(test_paths_with_fns) == 0 {
+        print("jerry test: no test_* functions found");
+        exit(0);
+    }
+
+    // Exclude source files that define fn main().
+    let filtered_sources: string[] = [];
+    let si: int = 0;
+    while si < len(source_files) {
+        if !file_has_main(source_files[si]) {
+            push(filtered_sources, source_files[si]);
+        }
+        si = si + 1;
+    }
+
+    // Write the generated test harness to a temp file.
+    let harness: string = generate_harness(test_paths_with_fns, all_test_fns);
+    let tmp_jer: string = "/tmp/jerry-test-" + int_to_string(now_millis()) + ".jer";
+    write_file(tmp_jer, harness);
+
+    // Compile: source files + test files + generated harness.
+    let tmp_bin: string = "/tmp/jerry-test-bin-" + int_to_string(now_millis());
+    let compiler: string = find_compiler();
+
+    let compile_args: string[] = [compiler];
+    let fi: int = 0;
+    while fi < len(filtered_sources) {
+        push(compile_args, filtered_sources[fi]);
+        fi = fi + 1;
+    }
+    let tfi: int = 0;
+    while tfi < len(test_files) {
+        push(compile_args, test_files[tfi]);
+        tfi = tfi + 1;
+    }
+    push(compile_args, tmp_jer);
+    push(compile_args, "-o");
+    push(compile_args, tmp_bin);
+
+    let compile_code: int = exec(compile_args);
+    delete_file(tmp_jer);
+
+    if compile_code != 0 {
+        delete_file(tmp_bin);
+        exit(compile_code);
+    }
+
+    // Run the test binary.
+    let run_code: int = exec([tmp_bin]);
+    delete_file(tmp_bin);
+    exit(run_code);
+}
