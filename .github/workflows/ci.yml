@@ -79,9 +79,8 @@ jobs:
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
           ASSET="jerry-${OS}-${ARCH}.tar.gz"
           mkdir -p /tmp/seed
-          gh release download "$VERSION" \
-            --repo jeffscottbrown/jerry-lang \
-            --dir /tmp/seed
+          curl -fsSL "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/${ASSET}" \
+            -o "/tmp/seed/${ASSET}"
           tar xz -C . -f "/tmp/seed/$ASSET" jerry-compiler
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
