@@ -141,7 +141,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ inputs.seed_version }}"
-          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          case "$(uname -s)" in Darwin) OS="macos" ;; *) OS="linux" ;; esac
           ARCH=$(uname -m)
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
           ASSET="jerry-${OS}-${ARCH}.tar.gz"
