@@ -35,10 +35,9 @@ jobs:
       - name: go vet
         run: go vet ./...
 
-      - name: Build Go tool binaries (jerry-lsp, jerry-get)
+      - name: Build Go tool binaries (jerry-lsp)
         run: |
           go build -o jerry-lsp-bin ./cmd/jerry-lsp
-          go build -o jerry-get-bin ./cmd/jerry-get
 
       - name: Build runtime library
         run: |
