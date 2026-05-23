@@ -175,7 +175,7 @@ jobs:
         run: |
           TARGET_FLAG=""
           if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
-            TARGET_FLAG="--target x86_64-apple-darwin"
+            TARGET_FLAG="-target x86_64-apple-darwin"
           fi
           clang $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
           chmod +x jerry-compiler-new
