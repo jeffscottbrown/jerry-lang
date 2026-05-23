@@ -108,7 +108,7 @@ fn main() {
     let tap_owner: string = "";
     let name: string = "";
 
-    let i: int = 1; // skip argv[0] (binary path)
+    let i: int = 0;   // args() already excludes the binary path
     while i < len(argv) {
         let a: string = argv[i];
         if a == "--git" {
