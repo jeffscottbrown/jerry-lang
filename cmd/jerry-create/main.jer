@@ -1,0 +1,172 @@
+// jerry-create: scaffold a new Jerry project.
+//
+// Usage:
+//   jerry-create [--git] [--tap <github-owner>] <project-name>
+//
+// Creates a new directory <project-name>/ with main.jer, jerry.remotes,
+// Makefile, and README.md. With --git, adds a GitHub Actions release
+// workflow. With --tap, also scaffolds a Homebrew tap repository.
+
+include @string
+
+// ── Path helpers ──────────────────────────────────────────────────────────────
+
+fn dir_of(path: string): string {
+    let i: int = len(path) - 1;
+    while i >= 0 {
+        if char_at(path, i) == 47 { // '/'
+            return string_slice(path, 0, i);
+        }
+        i = i - 1;
+    }
+    return ".";
+}
+
+// mkdir_p creates a directory and all parent directories.
+fn mkdir_p(path: string) {
+    exec(["mkdir", "-p", path]);
+}
+
+// write_in writes content to root/rel, creating parent directories as needed.
+fn write_in(root: string, rel: string, content: string) {
+    let path: string = root + "/" + rel;
+    let parent: string = dir_of(path);
+    mkdir_p(parent);
+    write_file(path, content);
+}
+
+// ── Case conversion ───────────────────────────────────────────────────────────
+
+// to_ruby_class converts a kebab-case or snake_case name to CamelCase.
+// e.g. "my-project" → "MyProject", "my_lib" → "MyLib"
+fn to_ruby_class(name: string): string {
+    let result: string = "";
+    let n: int = len(name);
+    let cap_next: bool = true;
+    let i: int = 0;
+    while i < n {
+        let c: int = char_at(name, i);
+        if c == 45 || c == 95 { // '-' or '_'
+            cap_next = true;
+        } else if cap_next {
+            result = result + char_to_string(to_upper(c));
+            cap_next = false;
+        } else {
+            result = result + char_to_string(c);
+        }
+        i = i + 1;
+    }
+    return result;
+}
+
+// ── Template generators ───────────────────────────────────────────────────────
+
+fn create_main_jer(name: string): string {
+    return "include @string\n\nfn main() {\n    // Split a sentence into words and print each one.\n    let sentence: string = \"Welcome to " + name + "\";\n    let words: string[] = split_whitespace(sentence);\n\n    print(\"Project: " + name + "\");\n    print(\"Words in greeting: \" + int_to_string(len(words)));\n\n    let i: int = 0;\n    while i < len(words) {\n        print(\"  [\" + int_to_string(i) + \"] \" + words[i]);\n        i = i + 1;\n    }\n\n    // Join them back together with a separator.\n    print(\"Rejoined: \" + join(words, \"-\"));\n}\n";
+}
+
+fn create_remotes(): string {
+    return "";
+}
+
+fn create_makefile(name: string): string {
+    return ".PHONY: run build clean\n\nBINARY := " + name + "\n\nrun:\n\tjerry run main.jer\n\nbuild:\n\tjerry compile main.jer -o $(BINARY)\n\nclean:\n\trm -f $(BINARY)\n";
+}
+
+fn create_readme(name: string, tap_owner: string): string {
+    let install_section: string = "";
+    if len(tap_owner) > 0 {
+        install_section = "\n## Install via Homebrew\n\n```sh\nbrew tap " + tap_owner + "/" + name + "\nbrew install " + name + "\n```\n";
+    }
+    return "# " + name + "\n\nA Jerry language project.\n" + install_section + "\n## Build from source\n\nRequires the [Jerry compiler](https://github.com/jeffscottbrown/jerry-lang) and clang.\n\n- macOS: `xcode-select --install`\n- Linux: `apt install clang`\n\n```sh\njerry run main.jer    # compile and run immediately\njerry compile main.jer -o " + name + "   # compile to a binary\n```\n\n## Remote modules\n\nDependencies are listed in `jerry.remotes`. They are fetched automatically on first build.\nTo add a new module:\n\n```sh\njerry get github.com/owner/repo@v1.0.0\n```\n";
+}
+
+fn create_tap_step(name: string, tap_owner: string): string {
+    if len(tap_owner) == 0 { return ""; }
+    return "\n      - name: Update Homebrew tap formula\n        if: ${{ !contains(github.ref_name, '-') }}\n        env:\n          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}\n        run: |\n          TAG=\"${{ github.ref_name }}\"\n          SHA_LINUX=$(sha256sum dist/" + name + "-linux-x86_64.tar.gz   | awk '{print $1}')\n          SHA_MACOS_X86=$(sha256sum dist/" + name + "-macos-x86_64.tar.gz | awk '{print $1}')\n          SHA_MACOS_ARM=$(sha256sum dist/" + name + "-macos-arm64.tar.gz  | awk '{print $1}')\n          git clone \"https://github.com/" + tap_owner + "/homebrew-" + name + ".git\" tap\n          sed -i \"s|version \\\".*\\\"|version \\\"${TAG#v}\\\"|\"                  tap/Formula/" + name + ".rb\n          sed -i \"s|/releases/download/v[^/]*/|/releases/download/${TAG}/|g\" tap/Formula/" + name + ".rb\n          sed -i \"s|SHA256_MACOS_ARM64|${SHA_MACOS_ARM}|\"                  tap/Formula/" + name + ".rb\n          sed -i \"s|SHA256_MACOS_X86_64|${SHA_MACOS_X86}|\"                 tap/Formula/" + name + ".rb\n          sed -i \"s|SHA256_LINUX_X86_64|${SHA_LINUX}|\"                     tap/Formula/" + name + ".rb\n          cd tap\n          git config user.name  \"github-actions[bot]\"\n          git config user.email \"github-actions[bot]@users.noreply.github.com\"\n          git remote set-url origin \"https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/" + tap_owner + "/homebrew-" + name + ".git\"\n          git add Formula/" + name + ".rb\n          git commit -m \"chore: update " + name + " to ${TAG}\" || echo \"no changes\"\n          git push\n";
+}
+
+fn create_workflow(name: string, tap_owner: string): string {
+    return "name: Release\n\non:\n  push:\n    branches: [main]\n    tags:     [\"v*.*.*\"]\n  pull_request:\n    branches: [main]\n\npermissions:\n  contents: write\n\njobs:\n  build:\n    name: Build (${{ matrix.name }})\n    runs-on: ${{ matrix.os }}\n    strategy:\n      fail-fast: false\n      matrix:\n        include:\n          - name:       linux-x86_64\n            os:         ubuntu-latest\n            asset_name: " + name + "-linux-x86_64\n\n          - name:       macos-x86_64\n            os:         macos-latest\n            asset_name: " + name + "-macos-x86_64\n            jerry_target: x86_64-apple-darwin\n\n          - name:       macos-arm64\n            os:         macos-latest\n            asset_name: " + name + "-macos-arm64\n            jerry_target: \"\"\n\n    steps:\n      - uses: actions/checkout@v4\n\n      - name: Install clang (Linux)\n        if: runner.os == 'Linux'\n        run: |\n          sudo apt-get update -qq\n          sudo apt-get install -y clang\n\n      - uses: jeffscottbrown/jerry-lang/.github/actions/setup-jerry@main\n\n      - name: Build\n        run: |\n          TARGET_FLAG=\"\"\n          if [ -n \"${{ matrix.jerry_target }}\" ]; then\n            TARGET_FLAG=\"--target ${{ matrix.jerry_target }}\"\n          fi\n          jerry compile main.jer -o ${{ matrix.asset_name }} $TARGET_FLAG\n\n      - name: Run\n        if: matrix.jerry_target == ''\n        run: jerry run main.jer\n\n      - name: Archive\n        if: startsWith(github.ref, 'refs/tags/v')\n        run: tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }}\n\n      - name: Upload artifact\n        if: startsWith(github.ref, 'refs/tags/v')\n        uses: actions/upload-artifact@v4\n        with:\n          name: ${{ matrix.asset_name }}\n          path: ${{ matrix.asset_name }}.tar.gz\n          retention-days: 1\n\n  release:\n    name: Create GitHub Release\n    if: startsWith(github.ref, 'refs/tags/v')\n    needs: build\n    runs-on: ubuntu-latest\n\n    steps:\n      - uses: actions/checkout@v4\n\n      - name: Download all artifacts\n        uses: actions/download-artifact@v4\n        with:\n          path: dist/\n          merge-multiple: true\n\n      - name: Generate checksums\n        working-directory: dist\n        run: sha256sum *.tar.gz > checksums.txt\n\n      - name: Create release\n        uses: softprops/action-gh-release@v2\n        with:\n          name: \"${{ github.ref_name }}\"\n          draft: false\n          prerelease: ${{ contains(github.ref_name, '-') }}\n          generate_release_notes: true\n          files: |\n            dist/*\n" + create_tap_step(name, tap_owner);
+}
+
+fn create_formula(name: string, owner: string): string {
+    let class_name: string = to_ruby_class(name);
+    return "class " + class_name + " < Formula\n  desc \"" + name + "\"\n  homepage \"https://github.com/" + owner + "/" + name + "\"\n  version \"0.0.0\"\n  license \"Apache-2.0\"\n\n  on_macos do\n    on_arm do\n      url \"https://github.com/" + owner + "/" + name + "/releases/download/v0.0.0/" + name + "-macos-arm64.tar.gz\"\n      sha256 \"SHA256_MACOS_ARM64\"\n    end\n    on_intel do\n      url \"https://github.com/" + owner + "/" + name + "/releases/download/v0.0.0/" + name + "-macos-x86_64.tar.gz\"\n      sha256 \"SHA256_MACOS_X86_64\"\n    end\n  end\n  on_linux do\n    on_intel do\n      url \"https://github.com/" + owner + "/" + name + "/releases/download/v0.0.0/" + name + "-linux-x86_64.tar.gz\"\n      sha256 \"SHA256_LINUX_X86_64\"\n    end\n  end\n\n  def install\n    bin.install Dir[\"" + name + "-*\"].first => \"" + name + "\"\n  end\n\n  test do\n    assert_shell_output \"#{bin}/" + name + "\"\n  end\nend\n";
+}
+
+fn create_tap_readme(name: string, owner: string): string {
+    return "# homebrew-" + name + "\n\nHomebrew tap for [" + name + "](https://github.com/" + owner + "/" + name + ").\n\n## Install\n\n```sh\nbrew tap " + owner + "/" + name + "\nbrew install " + name + "\n```\n\nThe formula is updated automatically when a new release is published.\n";
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+fn main() {
+    let argv: string[] = args();
+
+    let with_git: bool = false;
+    let tap_owner: string = "";
+    let name: string = "";
+
+    let i: int = 1; // skip argv[0] (binary path)
+    while i < len(argv) {
+        let a: string = argv[i];
+        if a == "--git" {
+            with_git = true;
+        } else if a == "--tap" {
+            i = i + 1;
+            if i >= len(argv) {
+                print_err("jerry create: --tap requires a GitHub username");
+                exit(1);
+            }
+            tap_owner = argv[i];
+            with_git = true;
+        } else if len(name) == 0 {
+            name = a;
+        }
+        i = i + 1;
+    }
+
+    if len(name) == 0 {
+        print_err("usage: jerry create [--git] [--tap <github-owner>] <project-name>");
+        exit(1);
+    }
+
+    let tap_dir: string = "homebrew-" + name;
+
+    if is_dir(name) {
+        print_err("jerry create: directory \"" + name + "\" already exists");
+        exit(1);
+    }
+    if len(tap_owner) > 0 && is_dir(tap_dir) {
+        print_err("jerry create: directory \"" + tap_dir + "\" already exists");
+        exit(1);
+    }
+
+    // Write project files.
+    write_in(name, "main.jer", create_main_jer(name));
+    write_in(name, "jerry.remotes", create_remotes());
+    write_in(name, "Makefile", create_makefile(name));
+    write_in(name, "README.md", create_readme(name, tap_owner));
+
+    if with_git {
+        write_in(name, ".github/workflows/release.yml", create_workflow(name, tap_owner));
+    }
+
+    // Write Homebrew tap files.
+    if len(tap_owner) > 0 {
+        write_in(tap_dir, "Formula/" + name + ".rb", create_formula(name, tap_owner));
+        write_in(tap_dir, "README.md", create_tap_readme(name, tap_owner));
+    }
+
+    // Summary.
+    print_err("jerry: created project \"" + name + "\"");
+    if with_git {
+        print_err("jerry: GitHub Actions workflow written to " + name + "/.github/workflows/release.yml");
+    }
+    if len(tap_owner) > 0 {
+        print_err("jerry: Homebrew tap written to " + tap_dir + "/");
+        print_err("       Push it to github.com/" + tap_owner + "/" + tap_dir + " and add HOMEBREW_TAP_TOKEN to " + tap_owner + "/" + name + " secrets.");
+    }
+    print_err("\nGet started:\n  cd " + name + "\n  jerry run main.jer");
+}

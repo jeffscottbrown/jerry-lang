@@ -1,4 +1,4 @@
-.PHONY: build build-compiler build-test-runner test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
+.PHONY: build build-compiler build-test-runner build-create test install install-runtime install-stdlib run-hello run-fibonacci run-arrays run-classes run-closures run-strings clean
 
 # Inject version from the most recent git tag if available, else "dev".
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -27,6 +27,13 @@ build-test-runner: install-runtime install-stdlib
 	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
 		$(JERRY_COMPILER_SEED) cmd/jerry-test/ -o bin/jerry-test
 	@echo "Built: bin/jerry-test"
+
+# Build the jerry-create binary from cmd/jerry-create/main.jer.
+build-create: install-runtime install-stdlib
+	JERRY_RUNTIME=$(PREFIX)/lib/jerry_runtime.a \
+	JERRY_STDLIB=$(PREFIX)/share/jerry/stdlib \
+		$(JERRY_COMPILER_SEED) cmd/jerry-create/ -o bin/jerry-create
+	@echo "Built: bin/jerry-create"
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 
