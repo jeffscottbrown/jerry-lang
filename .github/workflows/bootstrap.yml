@@ -4,14 +4,26 @@ name: Bootstrap Release
 # and upload it to an existing (pre-)release. Used when the current "latest"
 # release is too old to compile the current self-host/.
 #
+# Linux uses the _ir bootstrap path: restores old Go codegen from git history
+# (commit 741e43b, last commit before internal/codegen was deleted) and uses
+# `jerry _ir` to emit LLVM IR for self-host/, then compiles it with clang.
+# No external jerry-compiler seed needed on Linux.
+#
+# macOS uses the download path: fetches jerry-compiler from seed_version release.
+#
 # Usage:
 #   1. Create a pre-release tag manually (e.g. v0.7.0-bootstrap) via gh CLI.
-#   2. Upload macOS binaries locally (see docs/bootstrap.md).
-#   3. Trigger this workflow to upload the Linux binary:
+#   2. Trigger this workflow for linux first (no seed needed):
+#        gh workflow run bootstrap.yml \
+#          -f release_tag=v0.7.0-bootstrap \
+#          -f seed_version=unused \
+#          -f platform=linux-x86_64
+#   3. Once linux is uploaded, trigger macOS builds with the bootstrap as seed:
 #        gh workflow run bootstrap.yml \
 #          -f release_tag=v0.7.0-bootstrap \
 #          -f seed_version=v0.7.0-bootstrap \
-#          -f platform=linux-x86_64
+#          -f platform=macos-arm64
+#      (or upload macOS arm64 locally, then use v0.7.0-bootstrap as seed for x86_64)
 #   4. Trigger release.yml via workflow_dispatch:
 #        gh workflow run release.yml \
 #          -f tag=v0.7.0 \
@@ -24,8 +36,9 @@ on:
         description: "Pre-release tag to upload to (e.g. v0.7.0-bootstrap)"
         required: true
       seed_version:
-        description: "Seed jerry-compiler version to download (e.g. v0.6.1 or v0.7.0-bootstrap)"
-        required: true
+        description: "Seed jerry-compiler version to download for macOS (e.g. v0.7.0-bootstrap). Ignored for linux-x86_64."
+        required: false
+        default: ""
       platform:
         description: "Platform to build for"
         required: true
@@ -39,6 +52,11 @@ on:
 permissions:
   contents: write
 
+# Commit that is the last one before internal/codegen was deleted.
+# Used by the _ir bootstrap path on Linux.
+env:
+  IR_BOOTSTRAP_COMMIT: "741e43b"
+
 jobs:
   build:
     name: Bootstrap ${{ inputs.platform }}
@@ -46,6 +64,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        if: inputs.platform == 'linux-x86_64'
+        with:
+          go-version-file: go.mod
+          cache: true
 
       - name: Install clang (Linux)
         if: inputs.platform == 'linux-x86_64'
@@ -69,7 +93,49 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      - name: Download seed jerry-compiler
+      # ── Linux: _ir bootstrap (no external jerry-compiler seed needed) ──────────
+      - name: Restore old Go codegen from git history (Linux only)
+        if: inputs.platform == 'linux-x86_64'
+        run: |
+          # Restore internal packages from the last commit that had Go codegen.
+          git checkout "${IR_BOOTSTRAP_COMMIT}" -- \
+            internal/codegen \
+            internal/checker \
+            internal/parser \
+            internal/ast \
+            internal/build \
+            stdlib/stdlib.go
+
+      - name: Build Go jerry binary with old codegen (Linux only)
+        if: inputs.platform == 'linux-x86_64'
+        run: |
+          go build -o jerry-go ./cmd/jerry
+
+      - name: Bootstrap: emit IR and compile to jerry-compiler (Linux only)
+        if: inputs.platform == 'linux-x86_64'
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          # Collect self-host/ sources in sorted order (excluding _test files)
+          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
+          # Emit LLVM IR and compile to a jerry-compiler binary
+          ./jerry-go _ir $SRCS \
+            | clang -x ir - \
+              jerry_runtime.a \
+              -o jerry-compiler \
+              -lm
+          chmod +x jerry-compiler
+
+      - name: Clean up restored Go codegen (Linux only)
+        if: inputs.platform == 'linux-x86_64'
+        run: |
+          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
+          rm -f stdlib/stdlib.go
+
+      # ── macOS: download seed jerry-compiler from a release ───────────────────
+      - name: Download seed jerry-compiler (macOS only)
+        if: inputs.platform != 'linux-x86_64'
         run: |
           VERSION="${{ inputs.seed_version }}"
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -81,6 +147,7 @@ jobs:
             | tar xz jerry-compiler
           chmod +x jerry-compiler
 
+      # ── Both platforms: compile current self-host/ with the seed ─────────────
       - name: Build new jerry-compiler from self-host/
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
@@ -103,7 +170,11 @@ jobs:
 
       - name: Package and upload
         run: |
-          ASSET_NAME="jerry-${{ inputs.platform == 'linux-x86_64' && 'linux-x86_64' || (inputs.platform == 'macos-arm64' && 'macos-arm64' || 'macos-x86_64') }}"
+          case "${{ inputs.platform }}" in
+            linux-x86_64)  ASSET_NAME="jerry-linux-x86_64" ;;
+            macos-arm64)   ASSET_NAME="jerry-macos-arm64" ;;
+            macos-x86_64)  ASSET_NAME="jerry-macos-x86_64" ;;
+          esac
           cp jerry-compiler-new jerry-compiler
           tar -czf "${ASSET_NAME}.tar.gz" jerry-compiler
           gh release upload "${{ inputs.release_tag }}" "${ASSET_NAME}.tar.gz" --clobber
