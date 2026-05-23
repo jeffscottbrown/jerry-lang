@@ -108,7 +108,9 @@ jobs:
             internal/parser \
             internal/ast \
             internal/build \
-            stdlib/stdlib.go
+            stdlib/stdlib.go \
+            go.mod \
+            go.sum
 
       - name: Build Go jerry binary with old codegen (Linux only)
         if: inputs.platform == 'linux-x86_64'
@@ -131,7 +133,7 @@ jobs:
       - name: Clean up restored Go codegen (Linux only)
         if: inputs.platform == 'linux-x86_64'
         run: |
-          git checkout HEAD -- cmd/jerry
+          git checkout HEAD -- cmd/jerry go.mod go.sum
           rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
           rm -f stdlib/stdlib.go
 
