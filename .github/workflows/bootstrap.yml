@@ -1,0 +1,111 @@
+name: Bootstrap Release
+
+# One-shot workflow: build a jerry-compiler seed binary for a given platform
+# and upload it to an existing (pre-)release. Used when the current "latest"
+# release is too old to compile the current self-host/.
+#
+# Usage:
+#   1. Create a pre-release tag manually (e.g. v0.7.0-bootstrap) via gh CLI.
+#   2. Upload macOS binaries locally (see docs/bootstrap.md).
+#   3. Trigger this workflow to upload the Linux binary:
+#        gh workflow run bootstrap.yml \
+#          -f release_tag=v0.7.0-bootstrap \
+#          -f seed_version=v0.7.0-bootstrap \
+#          -f platform=linux-x86_64
+#   4. Trigger release.yml via workflow_dispatch:
+#        gh workflow run release.yml \
+#          -f tag=v0.7.0 \
+#          -f seed_version=v0.7.0-bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Pre-release tag to upload to (e.g. v0.7.0-bootstrap)"
+        required: true
+      seed_version:
+        description: "Seed jerry-compiler version to download (e.g. v0.6.1 or v0.7.0-bootstrap)"
+        required: true
+      platform:
+        description: "Platform to build for"
+        required: true
+        default: linux-x86_64
+        type: choice
+        options:
+          - linux-x86_64
+          - macos-arm64
+          - macos-x86_64
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Bootstrap ${{ inputs.platform }}
+    runs-on: ${{ inputs.platform == 'linux-x86_64' && 'ubuntu-latest' || 'macos-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang (Linux)
+        if: inputs.platform == 'linux-x86_64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang
+
+      - name: Build runtime library
+        run: |
+          CC_ARCH=""
+          if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
+            CC_ARCH="-arch x86_64"
+          elif [ "${{ inputs.platform }}" = "macos-arm64" ]; then
+            CC_ARCH="-arch arm64"
+          fi
+          cc -O2 $CC_ARCH -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+          ar rcs jerry_runtime.a jerry_runtime.o
+
+      - name: Build stdlib
+        run: |
+          mkdir -p stdlib-dist
+          cp stdlib/*.jer stdlib-dist/
+
+      - name: Download seed jerry-compiler
+        run: |
+          VERSION="${{ inputs.seed_version }}"
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m)
+          case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
+          ASSET="jerry-${OS}-${ARCH}"
+          curl -fsSL \
+            "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/${ASSET}.tar.gz" \
+            | tar xz jerry-compiler
+          chmod +x jerry-compiler
+
+      - name: Build new jerry-compiler from self-host/
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
+            TARGET_FLAG="--target x86_64-apple-darwin"
+          fi
+          ./jerry-compiler self-host/ -o jerry-compiler-new $TARGET_FLAG
+          chmod +x jerry-compiler-new
+
+      - name: Smoke-test new compiler
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler-new examples/hello.jer -o hello-test
+          ./hello-test
+
+      - name: Package and upload
+        run: |
+          ASSET_NAME="jerry-${{ inputs.platform == 'linux-x86_64' && 'linux-x86_64' || (inputs.platform == 'macos-arm64' && 'macos-arm64' || 'macos-x86_64') }}"
+          cp jerry-compiler-new jerry-compiler
+          tar -czf "${ASSET_NAME}.tar.gz" jerry-compiler
+          gh release upload "${{ inputs.release_tag }}" "${ASSET_NAME}.tar.gz" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

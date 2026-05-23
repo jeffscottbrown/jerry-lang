@@ -13,6 +13,35 @@
 //   -o <path>   output binary path (default: a.out)
 //   --ir        write LLVM IR to stdout instead of compiling to a binary
 
+// Pure-Jerry prefix/suffix helpers — used instead of the string_starts_with /
+// string_ends_with builtins so that main.jer can be compiled by an older seed
+// compiler that may have incomplete IR declarations for those builtins.
+fn _has_prefix(s: string, prefix: string): bool {
+    let slen: int = len(s);
+    let plen: int = len(prefix);
+    if plen == 0 { return true; }
+    if slen < plen { return false; }
+    let i: int = 0;
+    while i < plen {
+        if char_at(s, i) != char_at(prefix, i) { return false; }
+        i = i + 1;
+    }
+    return true;
+}
+
+fn _has_suffix(s: string, suffix: string): bool {
+    let slen: int = len(s);
+    let sflen: int = len(suffix);
+    if sflen == 0 { return true; }
+    if slen < sflen { return false; }
+    let i: int = 0;
+    while i < sflen {
+        if char_at(s, slen - sflen + i) != char_at(suffix, i) { return false; }
+        i = i + 1;
+    }
+    return true;
+}
+
 // Collect .jer source file paths from a single argument (file or directory).
 // Directories expand to all non-test .jer files in sorted order.
 fn expand_src(arg: string): string[] {
@@ -22,7 +51,7 @@ fn expand_src(arg: string): string[] {
         let i: int = 0;
         while i < len(names) {
             let name: string = names[i];
-            if string_ends_with(name, ".jer") && !string_ends_with(name, "_test.jer") {
+            if _has_suffix(name, ".jer") && !_has_suffix(name, "_test.jer") {
                 push(result, arg + "/" + name);
             }
             i = i + 1;
@@ -53,7 +82,7 @@ fn collect_stdlib_names(src: string): string[] {
             k = k + 1;
         }
         let trimmed: string = string_slice(line, k, ll);
-        if string_starts_with(trimmed, "include @") {
+        if _has_prefix(trimmed, "include @") {
             let name: string = string_slice(trimmed, 9, len(trimmed));
             // trim trailing whitespace
             let nl: int = len(name);
@@ -94,7 +123,7 @@ fn strip_includes(src: string): string {
             k = k + 1;
         }
         let trimmed: string = string_slice(line, k, ll);
-        if !string_starts_with(trimmed, "include @") && !string_starts_with(trimmed, "include \"") {
+        if !_has_prefix(trimmed, "include @") && !_has_prefix(trimmed, "include \"") {
             result = result + line + "\n";
         }
         i = j + 1;

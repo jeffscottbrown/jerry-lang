@@ -4,9 +4,23 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create (e.g. v0.7.0)"
+        required: true
+      seed_version:
+        description: "jerry-compiler seed version to use (e.g. v0.7.0-bootstrap). Defaults to latest release."
+        required: false
+        default: ""
 
 permissions:
   contents: write   # needed to create GitHub Releases and upload assets
+
+# Resolve the tag and seed version once so all jobs can reference them.
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  SEED_VERSION_OVERRIDE: ${{ inputs.seed_version }}
 
 jobs:
   # ── Build one binary per platform ──────────────────────────────────────────
@@ -87,14 +101,18 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      - name: Download seed jerry-compiler (from latest release)
+      - name: Download seed jerry-compiler
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
         run: |
-          VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/jeffscottbrown/jerry-lang/releases/latest \
-            | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+          if [ -n "$SEED_VERSION_OVERRIDE" ]; then
+            VERSION="$SEED_VERSION_OVERRIDE"
+          else
+            VERSION=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/jeffscottbrown/jerry-lang/releases/latest \
+              | grep '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+          fi
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m)
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
@@ -174,7 +192,7 @@ jobs:
             TARGET_FLAG="--target ${{ matrix.jerry_target }}"
           fi
           # Inject the release version into version.jer, compile, then restore dev default.
-          echo "fn jerry_version(): string { return \"${{ github.ref_name }}\"; }" > cmd/jerry-main/version.jer
+          echo "fn jerry_version(): string { return \"${{ env.RELEASE_TAG }}\"; }" > cmd/jerry-main/version.jer
           ./jerry-compiler cmd/jerry-main/ -o ${{ matrix.asset_name }} $TARGET_FLAG
           echo 'fn jerry_version(): string { return "dev"; }' > cmd/jerry-main/version.jer
 
@@ -237,20 +255,21 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Jerry ${{ github.ref_name }}"
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Jerry ${{ env.RELEASE_TAG }}"
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           generate_release_notes: true
           files: |
             dist/*.tar.gz
             dist/checksums.txt
 
       - name: Update Homebrew tap formula
-        if: ${{ !contains(github.ref_name, '-') }}   # skip pre-releases
+        if: ${{ !contains(env.RELEASE_TAG, '-') }}   # skip pre-releases
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          TAG="${{ github.ref_name }}"
+          TAG="${{ env.RELEASE_TAG }}"
           TARBALL_URL="https://github.com/jeffscottbrown/jerry-lang/archive/refs/tags/${TAG}.tar.gz"
           SHA256=$(curl -fsSL "$TARBALL_URL" | sha256sum | awk '{print $1}')
           git clone "https://github.com/jeffscottbrown/homebrew-jerry.git" tap
