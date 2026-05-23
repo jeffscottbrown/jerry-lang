@@ -70,14 +70,13 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y clang
 
-      - name: Build jerry-lsp and jerry-get (Go, cross-compiled)
+      - name: Build jerry-lsp (Go, cross-compiled)
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
         run: |
           go build -o jerry-lsp ./cmd/jerry-lsp
-          go build -o jerry-get ./cmd/jerry-get
 
       - name: Build runtime library (native only)
         if: |
@@ -87,13 +86,12 @@ jobs:
           cc -O2 ${{ matrix.cc_arch_flag }} -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
 
-      - name: Verify Go binaries built
+      - name: Verify jerry-lsp built
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
         run: |
           [ -f jerry-lsp ] && echo "jerry-lsp: OK"
-          [ -f jerry-get ] && echo "jerry-get: OK"
 
       - name: Build stdlib (native only)
         if: |
@@ -197,6 +195,20 @@ jobs:
             TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep $TARGET_FLAG
+
+      - name: Build jerry-get (native only)
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
+          fi
+          ./jerry-compiler cmd/jerry-get/ -o jerry-get $TARGET_FLAG
 
       - name: Build jerry-main (native Jerry dispatcher)
         if: |

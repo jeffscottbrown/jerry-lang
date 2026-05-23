@@ -1,0 +1,121 @@
+// jerry-get: fetch a remote Jerry module and record it in jerry.remotes / jerry.sum.
+//
+// Usage:
+//   jerry-get <module>@<version>
+//
+// Downloads the module archive to ~/.jerry/cache/remotes/<modpath>@<version>/,
+// computes its SHA-256, then writes/updates jerry.remotes and jerry.sum in the
+// current directory.  Re-runs are idempotent: cached modules are not re-fetched.
+
+include @modfile
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+// file_in_dir returns true if a file named name exists in directory dir.
+fn file_in_dir(dir: string, name: string): bool {
+    if !is_dir(dir) { return false; }
+    let files: string[] = list_dir(dir);
+    let i: int = 0;
+    while i < len(files) {
+        if files[i] == name { return true; }
+        i = i + 1;
+    }
+    return false;
+}
+
+// download_url returns the tarball URL for a module version.
+fn download_url(mod_path: string, version: string): string {
+    if string_starts_with(mod_path, "github.com/") {
+        return "https://" + mod_path + "/archive/refs/tags/" + version + ".tar.gz";
+    }
+    return "https://" + mod_path + "/archive/" + version + ".tar.gz";
+}
+
+// sha256_file returns "h1:<hex>" for the SHA-256 of the file at path.
+// Works on both Linux (sha256sum) and macOS (shasum -a 256).
+fn sha256_file(path: string): string {
+    let out_tmp: string = "/tmp/jerry-sha-" + int_to_string(now_millis());
+    let sh_cmd: string = "(sha256sum \"" + path + "\" 2>/dev/null || shasum -a 256 \"" + path + "\") | awk '{print $1}' > \"" + out_tmp + "\"";
+    exec(["sh", "-c", sh_cmd]);
+    let hex: string = mf_trim(read_file(out_tmp));
+    delete_file(out_tmp);
+    return "h1:" + hex;
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+fn main() {
+    let argv: string[] = args();
+    if len(argv) < 1 {
+        print_err("usage: jerry-get <module>@<version>");
+        exit(1);
+    }
+
+    let arg: string = argv[0];
+    let at: int = last_index_of_char(arg, 64); // '@'
+    if at <= 0 {
+        print_err("jerry get: expected <module>@<version>, got \"" + arg + "\"");
+        exit(1);
+    }
+    let mod_path: string = string_slice(arg, 0, at);
+    let version: string = string_slice(arg, at + 1, len(arg));
+
+    // ── Cache lookup ──────────────────────────────────────────────────────────
+    let home: string = getenv("HOME");
+    if len(home) == 0 {
+        print_err("jerry get: HOME environment variable not set");
+        exit(1);
+    }
+    let cache_dir: string = home + "/.jerry/cache/remotes/" + mod_path + "@" + version;
+
+    let hash: string = "";
+    if file_in_dir(cache_dir, "jerry.hash") {
+        hash = mf_trim(read_file(cache_dir + "/jerry.hash"));
+    }
+
+    // ── Download if not cached ────────────────────────────────────────────────
+    if len(hash) == 0 {
+        print_err("jerry: downloading " + mod_path + "@" + version);
+        let ts: string = int_to_string(now_millis());
+        let archive: string = "/tmp/jerry-get-" + ts + ".tar.gz";
+
+        let url: string = download_url(mod_path, version);
+        let curl_code: int = exec(["curl", "-fsSL", url, "-o", archive]);
+        if curl_code != 0 {
+            print_err("jerry get: failed to download " + url);
+            exit(1);
+        }
+
+        hash = sha256_file(archive);
+
+        exec(["mkdir", "-p", cache_dir]);
+        let tar_code: int = exec(["tar", "xzf", archive, "--strip-components=1", "-C", cache_dir]);
+        delete_file(archive);
+        if tar_code != 0 {
+            print_err("jerry get: failed to extract archive for " + mod_path + "@" + version);
+            exit(1);
+        }
+
+        write_file(cache_dir + "/jerry.hash", hash + "\n");
+    }
+
+    // ── Update jerry.remotes ──────────────────────────────────────────────────
+    let remotes_content: string = "";
+    if file_in_dir(".", "jerry.remotes") {
+        remotes_content = read_file("jerry.remotes");
+    }
+    let mod_requires: map<string, string> = parse_remotes(remotes_content);
+    map_set(mod_requires, mod_path, version);
+    write_remotes("jerry.remotes", mod_requires);
+
+    // ── Update jerry.sum ──────────────────────────────────────────────────────
+    let sum_content: string = "";
+    if file_in_dir(".", "jerry.sum") {
+        sum_content = read_file("jerry.sum");
+    }
+    let mod_sums: map<string, string> = parse_sum(sum_content);
+    map_set(mod_sums, mod_path + "@" + version, hash);
+    write_sum("jerry.sum", mod_sums);
+
+    print_err("jerry: added " + mod_path + " " + version);
+}

@@ -1,0 +1,150 @@
+// stdlib/modfile.jer — parse and write jerry.remotes and jerry.sum files.
+// No external stdlib includes — only builtin functions used.
+
+// last_index_of_char returns the index of the last occurrence of char code c
+// in s, or -1 if not found.
+fn last_index_of_char(s: string, c: int): int {
+    let i: int = len(s) - 1;
+    while i >= 0 {
+        if char_at(s, i) == c { return i; }
+        i = i - 1;
+    }
+    return -1;
+}
+
+// sort_strings sorts arr in-place in ascending lexicographic order.
+fn sort_strings(arr: string[]) {
+    let n: int = len(arr);
+    let i: int = 0;
+    while i < n - 1 {
+        let j: int = i + 1;
+        while j < n {
+            if arr[j] < arr[i] {
+                let tmp: string = arr[i];
+                arr[i] = arr[j];
+                arr[j] = tmp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+// mf_trim strips leading and trailing ASCII whitespace from s.
+fn mf_trim(s: string): string {
+    let start: int = 0;
+    let n: int = len(s);
+    while start < n {
+        let c: int = char_at(s, start);
+        if c == 32 || c == 9 || c == 13 || c == 10 { start = start + 1; } else { start = n; }
+    }
+    // re-derive trimmed start
+    start = 0;
+    while start < n && (char_at(s, start) == 32 || char_at(s, start) == 9 || char_at(s, start) == 13 || char_at(s, start) == 10) {
+        start = start + 1;
+    }
+    let end: int = n;
+    while end > start && (char_at(s, end - 1) == 32 || char_at(s, end - 1) == 9 || char_at(s, end - 1) == 13 || char_at(s, end - 1) == 10) {
+        end = end - 1;
+    }
+    return string_slice(s, start, end);
+}
+
+// mf_split_fields splits line on ASCII whitespace and returns the fields.
+fn mf_split_fields(line: string): string[] {
+    let fields: string[] = [];
+    let n: int = len(line);
+    let i: int = 0;
+    while i < n {
+        while i < n && (char_at(line, i) == 32 || char_at(line, i) == 9 || char_at(line, i) == 13) {
+            i = i + 1;
+        }
+        if i >= n { return fields; }
+        let start: int = i;
+        while i < n && char_at(line, i) != 32 && char_at(line, i) != 9 && char_at(line, i) != 13 {
+            i = i + 1;
+        }
+        push(fields, string_slice(line, start, i));
+    }
+    return fields;
+}
+
+// ── Parsing ───────────────────────────────────────────────────────────────────
+
+// parse_remotes parses the content of a jerry.remotes file into a map.
+// Format: one "modpath version" pair per line; // comments and blank lines ignored.
+fn parse_remotes(content: string): map<string, string> {
+    let m: map<string, string> = {};
+    let n: int = len(content);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(content, j) != 10 { j = j + 1; }
+        let line: string = mf_trim(string_slice(content, i, j));
+        if len(line) > 0 && !string_starts_with(line, "//") {
+            let parts: string[] = mf_split_fields(line);
+            if len(parts) >= 2 {
+                map_set(m, parts[0], parts[1]);
+            }
+        }
+        i = j + 1;
+    }
+    return m;
+}
+
+// parse_sum parses the content of a jerry.sum file into a map.
+// Format: one "modpath version hash" triple per line.
+// Keys are stored as "modpath@version" → hash.
+fn parse_sum(content: string): map<string, string> {
+    let m: map<string, string> = {};
+    let n: int = len(content);
+    let i: int = 0;
+    while i < n {
+        let j: int = i;
+        while j < n && char_at(content, j) != 10 { j = j + 1; }
+        let line: string = mf_trim(string_slice(content, i, j));
+        if len(line) > 0 {
+            let parts: string[] = mf_split_fields(line);
+            if len(parts) == 3 {
+                map_set(m, parts[0] + "@" + parts[1], parts[2]);
+            }
+        }
+        i = j + 1;
+    }
+    return m;
+}
+
+// ── Serialization ─────────────────────────────────────────────────────────────
+
+// write_remotes serializes a remotes map to jerry.remotes format and writes it.
+fn write_remotes(path: string, m: map<string, string>) {
+    let keys: string[] = map_keys(m);
+    sort_strings(keys);
+    let out: string = "";
+    let i: int = 0;
+    while i < len(keys) {
+        out = out + keys[i] + " " + map_get(m, keys[i]) + "\n";
+        i = i + 1;
+    }
+    write_file(path, out);
+}
+
+// write_sum serializes a sum map to jerry.sum format and writes it.
+// Keys are "modpath@version"; written as "modpath version hash".
+fn write_sum(path: string, m: map<string, string>) {
+    let keys: string[] = map_keys(m);
+    sort_strings(keys);
+    let out: string = "";
+    let i: int = 0;
+    while i < len(keys) {
+        let key: string = keys[i];
+        let at: int = last_index_of_char(key, 64); // '@'
+        let modpath: string = string_slice(key, 0, at);
+        let version: string = string_slice(key, at + 1, len(key));
+        out = out + modpath + " " + version + " " + map_get(m, key) + "\n";
+        i = i + 1;
+    }
+    write_file(path, out);
+}
