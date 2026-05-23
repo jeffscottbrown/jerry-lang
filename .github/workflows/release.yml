@@ -113,9 +113,13 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
+          set -x
+          ls -la jerry-compiler-seed
           grep -v 'flush_stdout()' self-host/main.jer > /tmp/main_patched.jer
           SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort)
+          echo "SRCS=$SRCS"
           ./jerry-compiler-seed $SRCS /tmp/main_patched.jer --ir > self-host-stage1.ll
+          echo "Seed exit code: $?"
           wc -l self-host-stage1.ll
 
       - name: "Bootstrap stage 1: IR → binary"
