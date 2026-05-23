@@ -145,18 +145,17 @@ jobs:
           ARCH=$(uname -m)
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
           ASSET="jerry-${OS}-${ARCH}.tar.gz"
+          # Download all assets from the release, then extract jerry-compiler.
           # Try native arch first, fall back to arm64 (runs via Rosetta on x86_64 runner).
-          if gh release download "$VERSION" \
-              --repo jeffscottbrown/jerry-lang \
-              --pattern "$ASSET" --dir /tmp/seed 2>/dev/null; then
+          mkdir -p /tmp/seed
+          gh release download "$VERSION" \
+            --repo jeffscottbrown/jerry-lang \
+            --dir /tmp/seed
+          if [ -f "/tmp/seed/$ASSET" ]; then
             tar xz -C . -f "/tmp/seed/$ASSET" jerry-compiler
           else
             echo "Native asset not found, trying arm64 seed (Rosetta fallback)..."
-            FALLBACK="jerry-${OS}-arm64.tar.gz"
-            gh release download "$VERSION" \
-              --repo jeffscottbrown/jerry-lang \
-              --pattern "$FALLBACK" --dir /tmp/seed
-            tar xz -C . -f "/tmp/seed/$FALLBACK" jerry-compiler
+            tar xz -C . -f "/tmp/seed/jerry-${OS}-arm64.tar.gz" jerry-compiler
           fi
           chmod +x jerry-compiler
 
