@@ -52,20 +52,33 @@ jobs:
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
-      - name: Build jerry-compiler (two-stage bootstrap)
+      # Stage 1: seed doesn't know flush_stdout; strip the call so it can compile.
+      - name: "Bootstrap stage 1: seed → IR"
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          # Stage 1: the v0.7.0 seed doesn't know flush_stdout; compile self-host/
-          # with that call removed so the seed can type-check main.jer.
           grep -v 'flush_stdout()' self-host/main.jer > /tmp/main_patched.jer
-          SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort | tr '\n' ' ')
+          SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort)
           ./jerry-compiler-seed $SRCS /tmp/main_patched.jer --ir > self-host-stage1.ll
+          wc -l self-host-stage1.ll
+
+      - name: "Bootstrap stage 1: IR → binary"
+        run: |
           clang -O0 self-host-stage1.ll jerry_runtime.a -o jerry-compiler-stage1 -lm
           chmod +x jerry-compiler-stage1
-          # Stage 2: stage-1 compiler knows flush_stdout; compile the full source.
+
+      # Stage 2: stage-1 knows flush_stdout; compile the full source.
+      - name: "Bootstrap stage 2: stage-1 → IR"
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
           ./jerry-compiler-stage1 self-host/ --ir > self-host.ll
+          wc -l self-host.ll
+
+      - name: "Bootstrap stage 2: IR → jerry-compiler"
+        run: |
           clang -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
           chmod +x jerry-compiler
 
