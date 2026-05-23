@@ -127,7 +127,7 @@ jobs:
           # They were designed together so the IR is guaranteed correct.
           git checkout "${IR_BOOTSTRAP_COMMIT}" -- self-host/
           SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          ./jerry-go _ir $SRCS | clang -x ir -c - -o jerry-bootstrap.o
+          ./jerry-go _ir $SRCS | clang -opaque-pointers -x ir -c - -o jerry-bootstrap.o
           clang jerry-bootstrap.o jerry_runtime.a -o jerry-compiler-old -lm
           chmod +x jerry-compiler-old
           # Restore current self-host/ for the next step
