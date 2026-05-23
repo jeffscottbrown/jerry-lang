@@ -111,7 +111,7 @@ jobs:
         run: |
           go build -o jerry-go ./cmd/jerry
 
-      - name: Bootstrap: emit IR and compile to jerry-compiler (Linux only)
+      - name: "Bootstrap: emit IR and compile to jerry-compiler (Linux only)"
         if: inputs.platform == 'linux-x86_64'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
