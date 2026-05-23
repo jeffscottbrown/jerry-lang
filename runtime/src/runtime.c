@@ -110,6 +110,16 @@ int8_t jerry_string_ne(JerryStr* a, JerryStr* b) {
     return (int8_t)(!jerry_string_eq(a, b));
 }
 
+int64_t jerry_string_cmp(JerryStr* a, JerryStr* b) {
+    if (a == b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
+    int64_t min_len = a->len < b->len ? a->len : b->len;
+    int r = memcmp(a->data, b->data, (size_t)min_len);
+    if (r != 0) return (int64_t)r;
+    return a->len - b->len;
+}
+
 int64_t jerry_string_len(JerryStr* s) {
     return s->len;
 }

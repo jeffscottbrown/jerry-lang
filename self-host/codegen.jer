@@ -407,6 +407,7 @@ class Generator {
             "declare ptr  @jerry_string_concat(ptr, ptr)\n" +
             "declare i8   @jerry_string_eq(ptr, ptr)\n" +
             "declare i8   @jerry_string_ne(ptr, ptr)\n" +
+            "declare i64  @jerry_string_cmp(ptr, ptr)\n" +
             "declare i64  @jerry_string_len(ptr)\n" +
             "declare ptr  @jerry_int_to_string(i64)\n" +
             "declare ptr  @jerry_float_to_string(double)\n" +
@@ -1075,6 +1076,16 @@ class Generator {
                 if op == "<=" { fpreds = "ole"; }
                 if op == ">=" { fpreds = "oge"; }
                 this.eml("  " + res + " = fcmp " + fpreds + " double " + lv + ", " + rv);
+                return res;
+            }
+            if lty != null && lty.kind == TY_STRING {
+                let cmp: string = this.new_tmp();
+                this.eml("  " + cmp + " = call i64 @jerry_string_cmp(ptr " + lv + ", ptr " + rv + ")");
+                let ipreds: string = "slt";
+                if op == ">"  { ipreds = "sgt"; }
+                if op == "<=" { ipreds = "sle"; }
+                if op == ">=" { ipreds = "sge"; }
+                this.eml("  " + res + " = icmp " + ipreds + " i64 " + cmp + ", 0");
                 return res;
             }
             let ipreds: string = "slt";

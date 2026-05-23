@@ -103,3 +103,18 @@ fn test_string_equality() {
     assert_true("" == "", "empty strings equal");
     assert_false("" == "a", "empty vs non-empty");
 }
+
+fn test_string_ordering() {
+    assert_true("apple" < "banana", "apple < banana");
+    assert_false("banana" < "apple", "banana not < apple");
+    assert_true("banana" > "apple", "banana > apple");
+    assert_false("apple" > "banana", "apple not > banana");
+    assert_true("abc" <= "abc", "abc <= abc");
+    assert_true("abc" <= "abd", "abc <= abd");
+    assert_false("abd" <= "abc", "abd not <= abc");
+    assert_true("abc" >= "abc", "abc >= abc");
+    assert_true("abd" >= "abc", "abd >= abc");
+    assert_false("abc" >= "abd", "abc not >= abd");
+    assert_true("" < "a", "empty < a");
+    assert_true("a" > "", "a > empty");
+}

@@ -51,6 +51,7 @@ JerryStr* jerry_string_new(const char* data, int64_t len);
 JerryStr* jerry_string_concat(JerryStr* a, JerryStr* b);
 int8_t     jerry_string_eq(JerryStr* a, JerryStr* b);
 int8_t     jerry_string_ne(JerryStr* a, JerryStr* b);
+int64_t    jerry_string_cmp(JerryStr* a, JerryStr* b);
 int64_t    jerry_string_len(JerryStr* s);
 int64_t    jerry_char_at(JerryStr* s, int64_t i);        /* char code at index   */
 JerryStr*  jerry_string_slice(JerryStr* s, int64_t start, int64_t end); /* s[start:end] */
