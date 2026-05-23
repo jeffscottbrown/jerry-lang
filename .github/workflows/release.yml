@@ -116,10 +116,11 @@ jobs:
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m)
           case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
+          ASSET="jerry-${OS}-${ARCH}.tar.gz"
           gh release download "$VERSION" \
             --repo jeffscottbrown/jerry-lang \
-            --pattern "jerry-${OS}-${ARCH}.tar.gz" --output - \
-            | tar xz jerry-compiler
+            --pattern "$ASSET" --dir /tmp/seed
+          tar xz -C . -f "/tmp/seed/$ASSET" jerry-compiler
           chmod +x jerry-compiler
           mv jerry-compiler jerry-compiler-seed
 
