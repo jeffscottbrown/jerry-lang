@@ -4,6 +4,7 @@
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
 LDFLAGS = -X main.Version=$(VERSION)
 
+# For local development, fall back to go run ./cmd/jerry if bin/jerry-native doesn't exist.
 JERRY = go run ./cmd/jerry
 
 build:

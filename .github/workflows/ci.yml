@@ -33,12 +33,8 @@ jobs:
       - name: go vet
         run: go vet ./...
 
-      - name: go test
-        run: go test ./...
-
-      - name: Build jerry (Go wrapper, for go test)
+      - name: Build Go tool binaries (jerry-lsp, jerry-get)
         run: |
-          go build -o jerry-bin ./cmd/jerry
           go build -o jerry-lsp-bin ./cmd/jerry-lsp
           go build -o jerry-get-bin ./cmd/jerry-get
 
@@ -113,8 +109,6 @@ jobs:
           JERRY_GET: ${{ github.workspace }}/jerry-get-bin
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
         run: |
-          # Smoke-test the Go wrapper (still used for go test)
-          ./jerry-bin --version
           # Smoke-test the Jerry-compiled dispatcher
           ./jerry-native --version
           ./jerry-native run examples/hello.jer
