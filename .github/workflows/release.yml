@@ -113,15 +113,10 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          echo "=== Seed binary info ==="
-          ls -la jerry-compiler-seed
-          file jerry-compiler-seed || true
-          echo "=== Starting IR generation at $(date) ==="
           grep -v 'flush_stdout()' self-host/main.jer > /tmp/main_patched.jer
           SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort)
-          echo "=== Source files: $(echo $SRCS | tr '\n' ' ') ==="
           ./jerry-compiler-seed $SRCS /tmp/main_patched.jer --ir > self-host-stage1.ll
-          echo "=== IR generation complete at $(date): $(wc -l < self-host-stage1.ll) lines ==="
+          wc -l self-host-stage1.ll
 
       - name: "Bootstrap stage 1: IR → binary"
         if: |
