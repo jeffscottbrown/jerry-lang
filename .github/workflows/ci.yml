@@ -18,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Linux bootstrap needs full history for git checkout 741e43b
 
       - uses: actions/setup-go@v5
         with:
@@ -53,7 +55,6 @@ jobs:
       - name: Build jerry-compiler seed from Go codegen (Linux only)
         if: runner.os == 'Linux'
         run: |
-          git fetch --depth=1 origin 741e43b || git fetch --unshallow
           git checkout 741e43b -- \
             cmd/jerry internal/codegen internal/checker \
             internal/parser internal/ast internal/build \
