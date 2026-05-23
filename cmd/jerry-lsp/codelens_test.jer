@@ -1,0 +1,49 @@
+// cmd/jerry-lsp/codelens_test.jer — Tests for lsp_find_main_pos and lsp_codelens.
+include @testing
+include @json
+
+fn test_find_main_pos_found() {
+    let src: string = "fn foo() {}\nfn main() {\n    println();\n}\n";
+    let pos: int[] = lsp_find_main_pos(src);
+    assert_eq_int(pos[0], 2, "main is on line 2");
+    assert_true(pos[1] > 0, "col > 0");
+}
+
+fn test_find_main_pos_not_found() {
+    let src: string = "fn foo() {}\n";
+    let pos: int[] = lsp_find_main_pos(src);
+    assert_eq_int(pos[0], 0, "no main → line 0");
+    assert_eq_int(pos[1], 0, "no main → col 0");
+}
+
+fn test_find_main_pos_with_params_not_found() {
+    let src: string = "fn main(x: int) {}\n";
+    let pos: int[] = lsp_find_main_pos(src);
+    assert_eq_int(pos[0], 0, "fn main(x) is not a no-arg main");
+}
+
+fn test_find_main_pos_first_line() {
+    let src: string = "fn main() {\n}\n";
+    let pos: int[] = lsp_find_main_pos(src);
+    assert_eq_int(pos[0], 1, "main on first line");
+    assert_eq_int(pos[1], 1, "starts at col 1");
+}
+
+fn test_codelens_empty_when_no_main() {
+    let lenses: JsonValue = lsp_codelens("file:///a.jer", "fn foo() {}\n");
+    assert_eq_int(len(lenses.arr_val), 0, "no lenses when no main");
+}
+
+fn test_codelens_returns_run_lens() {
+    let src: string = "fn main() {\n    println();\n}\n";
+    let lenses: JsonValue = lsp_codelens("file:///hello.jer", src);
+    assert_eq_int(len(lenses.arr_val), 1, "one lens");
+    let lens: JsonValue = lenses.arr_val[0];
+    let cmd: JsonValue = json_get_object(lens, "command");
+    assert_eq_string(json_get_string(cmd, "command"), "jerry.run", "command id");
+}
+
+fn test_strip_file_uri() {
+    assert_eq_string(lsp_strip_file_uri("file:///home/user/a.jer"), "/home/user/a.jer", "strips prefix");
+    assert_eq_string(lsp_strip_file_uri("/already/a/path.jer"), "/already/a/path.jer", "no prefix → unchanged");
+}

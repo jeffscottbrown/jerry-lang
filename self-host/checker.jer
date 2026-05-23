@@ -792,9 +792,10 @@ fn make_builtin_scope(): Scope {
     install_fn(s, "panic",      p1s, v_ty);
     // println: void
     let p0: JType[] = [];
-    install_fn(s, "println",    p0, v_ty);
-    install_fn(s, "read_stdin", p0, s_ty);
-    install_fn(s, "args",       p0, s_arr);
+    install_fn(s, "println",      p0, v_ty);
+    install_fn(s, "flush_stdout", p0, v_ty);
+    install_fn(s, "read_stdin",   p0, s_ty);
+    install_fn(s, "args",         p0, s_arr);
     install_fn(s, "now_millis",  p0, i_ty);
     install_fn(s, "now_seconds", p0, i_ty);
     install_fn(s, "now_string",  p0, s_ty);

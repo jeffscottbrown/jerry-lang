@@ -1,0 +1,40 @@
+// tests/char_literal_test.jer — Tests for char literal syntax 'x' → int.
+include @testing
+
+fn test_char_literal_basic() {
+    assert_eq_int('A', 65, "uppercase A");
+    assert_eq_int('a', 97, "lowercase a");
+    assert_eq_int('0', 48, "digit zero");
+    assert_eq_int(' ', 32, "space");
+    assert_eq_int('!', 33, "exclamation");
+    assert_eq_int('z', 122, "lowercase z");
+}
+
+fn test_char_literal_escapes() {
+    assert_eq_int('\n', 10, "newline escape");
+    assert_eq_int('\t', 9,  "tab escape");
+    assert_eq_int('\r', 13, "carriage return escape");
+    assert_eq_int('\\', 92, "backslash escape");
+    assert_eq_int('\'', 39, "single quote escape");
+    assert_eq_int('\0', 0,  "null byte escape");
+}
+
+fn test_char_literal_in_comparison() {
+    let s: string = "hello";
+    assert_true(char_at(s, 0) == 'h', "char_at comparison with literal");
+    assert_true(char_at(s, 4) == 'o', "last char comparison");
+    assert_true(char_at(s, 1) != 'z', "inequality comparison");
+}
+
+fn test_char_literal_round_trip() {
+    let c: int = 'J';
+    let s: string = char_to_string(c);
+    assert_eq_string(s, "J", "char_to_string of literal");
+}
+
+fn test_char_literal_as_index() {
+    let codes: int[] = ['a', 'b', 'c'];
+    assert_eq_int(codes[0], 97, "first element");
+    assert_eq_int(codes[1], 98, "second element");
+    assert_eq_int(codes[2], 99, "third element");
+}

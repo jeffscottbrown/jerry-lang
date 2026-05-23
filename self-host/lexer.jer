@@ -250,6 +250,37 @@ class Lexer {
         return new Token(TOK_ERROR, "unterminated string literal", l, c);
     }
 
+    // Scans a char literal after the opening '\'' has been consumed.
+    // Returns a TOK_INT token whose value is the character's code point.
+    fn scan_char_literal(l: int, c: int): Token {
+        if this.at_end() {
+            return new Token(TOK_ERROR, "unterminated char literal", l, c);
+        }
+        let ch: int = this.advance();
+        let code: int = 0;
+        if ch == 92 {   // '\'
+            if this.at_end() {
+                return new Token(TOK_ERROR, "unterminated char escape", l, c);
+            }
+            let esc: int = this.advance();
+            if esc == 110      { code = 10; }   // \n
+            else if esc == 116 { code = 9;  }   // \t
+            else if esc == 114 { code = 13; }   // \r
+            else if esc == 39  { code = 39; }   // \'
+            else if esc == 92  { code = 92; }   // \\
+            else if esc == 48  { code = 0;  }   // \0
+            else {
+                return new Token(TOK_ERROR, "unknown char escape", l, c);
+            }
+        } else {
+            code = ch;
+        }
+        if this.at_end() || this.advance() != 39 {   // expect closing '\''
+            return new Token(TOK_ERROR, "unterminated char literal", l, c);
+        }
+        return new Token(TOK_INT, int_to_string(code), l, c);
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     // Returns the next token, discarding whitespace and comments.
@@ -274,6 +305,9 @@ class Lexer {
 
         // String literals
         if ch == 34 { return this.scan_string(l, c); }   // '"'
+
+        // Char literals  'x' → TOK_INT with char's code point
+        if ch == 39 { return this.scan_char_literal(l, c); }   // '\''
 
         // Two-character operators (longest-match first)
         if ch == 38  {   // '&'

@@ -1,0 +1,117 @@
+// cmd/jerry-lsp/diagnostics.jer — Runs jerry-compiler --check and converts
+// its output into LSP Diagnostic objects (JSON array).
+include @json
+
+// lsp_find_compiler returns the path to jerry-compiler.
+// Prefers JERRY_COMPILER env var; falls back to "jerry-compiler" (PATH lookup).
+fn lsp_find_compiler(): string {
+    let from_env: string = getenv("JERRY_COMPILER");
+    if len(from_env) > 0 { return from_env; }
+    return "jerry-compiler";
+}
+
+// lsp_range_at builds an LSP Range covering the single character at the given
+// 1-based line and column.
+fn lsp_range_at(line: int, col: int): JsonValue {
+    let l: int = line - 1;
+    let c: int = col - 1;
+    if l < 0 { l = 0; }
+    if c < 0 { c = 0; }
+    let start_pos: JsonValue = json_new_object();
+    json_set_int(start_pos, "line", l);
+    json_set_int(start_pos, "character", c);
+    let end_pos: JsonValue = json_new_object();
+    json_set_int(end_pos, "line", l);
+    json_set_int(end_pos, "character", c + 1);
+    let range: JsonValue = json_new_object();
+    json_set_object(range, "start", start_pos);
+    json_set_object(range, "end", end_pos);
+    return range;
+}
+
+// parse_check_line parses one line of jerry-compiler --check output.
+// Accepts both "parse error at LINE:COL: MSG" and "LINE:COL: MSG".
+// Returns a Diagnostic JsonValue, or null if the line does not match.
+fn parse_check_line(line: string): JsonValue {
+    let s: string = line;
+    let prefix: string = "parse error at ";
+    if string_starts_with(s, prefix) {
+        s = string_slice(s, len(prefix), len(s));
+    }
+
+    // Expect "LINE:COL: message"
+    let colon1: int = string_index_of(s, ":");
+    if colon1 <= 0 { return null; }
+    let line_num: int = string_to_int(string_slice(s, 0, colon1));
+    if line_num <= 0 { return null; }
+
+    let after_line: string = string_slice(s, colon1 + 1, len(s));
+    let colon2: int = string_index_of(after_line, ":");
+    if colon2 <= 0 { return null; }
+    let col_num: int = string_to_int(string_slice(after_line, 0, colon2));
+    if col_num <= 0 { return null; }
+
+    let msg_raw: string = string_slice(after_line, colon2 + 1, len(after_line));
+    // Trim leading space
+    let ms: int = 0;
+    while ms < len(msg_raw) && char_at(msg_raw, ms) == 32 {
+        ms = ms + 1;
+    }
+    let msg: string = string_slice(msg_raw, ms, len(msg_raw));
+    if len(msg) == 0 { return null; }
+
+    let diag: JsonValue = json_new_object();
+    json_set_object(diag, "range", lsp_range_at(line_num, col_num));
+    json_set_int(diag, "severity", 1);   // Error
+    json_set_string(diag, "source", "jerry");
+    json_set_string(diag, "message", msg);
+    return diag;
+}
+
+// parse_check_output converts the full stdout of jerry-compiler --check into a
+// JSON array of LSP Diagnostic objects.
+fn parse_check_output(output: string): JsonValue {
+    let arr: JsonValue = json_new_array();
+    let n: int = len(output);
+    let start: int = 0;
+    let i: int = 0;
+    while i <= n {
+        let at_end: bool = i == n;
+        let is_nl: bool = false;
+        if !at_end { is_nl = char_at(output, i) == 10; }
+        if at_end || is_nl {
+            let line_str: string = string_slice(output, start, i);
+            // Strip trailing \r (CRLF line endings)
+            if len(line_str) > 0 && char_at(line_str, len(line_str) - 1) == 13 {
+                line_str = string_slice(line_str, 0, len(line_str) - 1);
+            }
+            if len(line_str) > 0 {
+                let diag: JsonValue = parse_check_line(line_str);
+                if diag != null { json_array_push_object(arr, diag); }
+            }
+            start = i + 1;
+        }
+        i = i + 1;
+    }
+    return arr;
+}
+
+// lsp_diagnose writes src to a temp file, invokes jerry-compiler --check,
+// and returns a JSON array of LSP Diagnostic objects.
+fn lsp_diagnose(src: string): JsonValue {
+    let compiler: string = lsp_find_compiler();
+    let ts: string = int_to_string(now_millis());
+    let tmp_src: string = "/tmp/jerry-lsp-" + ts + ".jer";
+    let tmp_out: string = "/tmp/jerry-lsp-out-" + ts + ".txt";
+
+    write_file(tmp_src, src);
+    write_file(tmp_out, "");   // ensure output file exists even if exec fails
+
+    let sh: string = compiler + " --check " + tmp_src + " >" + tmp_out + " 2>/dev/null";
+    exec(["sh", "-c", sh]);
+
+    let output: string = read_file(tmp_out);
+    delete_file(tmp_src);
+    delete_file(tmp_out);
+    return parse_check_output(output);
+}

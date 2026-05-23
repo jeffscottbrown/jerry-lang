@@ -109,6 +109,7 @@ fn main() {
     let src_args: string[] = [];
     let out_path: string = "a.out";
     let ir_only: bool = false;
+    let check_only: bool = false;
     let target_triple: string = "";
 
     let i: int = 0;
@@ -119,6 +120,8 @@ fn main() {
             if i < len(argv) { out_path = argv[i]; }
         } else if a == "--ir" {
             ir_only = true;
+        } else if a == "--check" {
+            check_only = true;
         } else if a == "-target" {
             i = i + 1;
             if i < len(argv) { target_triple = argv[i]; }
@@ -129,7 +132,7 @@ fn main() {
     }
 
     if len(src_args) == 0 {
-        print_err("usage: jerry-compiler <source.jer|dir/> [more...] [-o output] [--ir]");
+        print_err("usage: jerry-compiler <source.jer|dir/> [more...] [-o output] [--ir] [--check]");
         exit(1);
     }
 
@@ -194,6 +197,14 @@ fn main() {
     // ── Compile ──────────────────────────────────────────────────────────────
     let prog: Program = parse(full_src);
     let result: CheckResult = type_check(prog);
+    if check_only {
+        if result.has_errors() {
+            write(result.error_string());
+            flush_stdout();
+            exit(1);
+        }
+        exit(0);
+    }
     if result.has_errors() {
         print_err(result.error_string());
         exit(1);

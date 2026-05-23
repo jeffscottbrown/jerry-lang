@@ -1,0 +1,38 @@
+// cmd/jerry-lsp/transport.jer — JSON-RPC 2.0 Content-Length stdio transport.
+//
+// lsp_read_message  reads one complete message body from stdin.
+// lsp_write_message writes a message body with the correct header.
+
+// lsp_read_message reads headers until the blank line, extracts Content-Length,
+// then reads exactly that many bytes of body.  Returns "" on EOF.
+fn lsp_read_message(): string {
+    // Accumulate headers one byte at a time until \r\n\r\n.
+    let buf: string = "";
+    while true {
+        let ch: string = read_bytes(1);
+        if len(ch) == 0 { return ""; }   // EOF — client disconnected
+        buf = buf + ch;
+        let n: int = len(buf);
+        if n >= 4 && string_slice(buf, n - 4, n) == "\r\n\r\n" { break; }
+    }
+
+    // Parse the Content-Length value.
+    let cl_key: string = "Content-Length: ";
+    let idx: int = string_index_of(buf, cl_key);
+    if idx < 0 { return ""; }
+    let val_start: int = idx + len(cl_key);
+    let rest: string = string_slice(buf, val_start, len(buf));
+    let cr_idx: int = string_index_of(rest, "\r");
+    if cr_idx < 0 { return ""; }
+    let content_len: int = string_to_int(string_slice(rest, 0, cr_idx));
+    if content_len <= 0 { return ""; }
+
+    return read_bytes(content_len);
+}
+
+// lsp_write_message writes body to stdout with a Content-Length header.
+fn lsp_write_message(body: string) {
+    write("Content-Length: " + int_to_string(len(body)) + "\r\n\r\n");
+    write(body);
+    flush_stdout();
+}

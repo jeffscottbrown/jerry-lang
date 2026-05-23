@@ -514,6 +514,10 @@ JerryStr* jerry_stdlib_dir_path(void) {
     return jerry_string_new("", 0);
 }
 
+void jerry_flush_stdout(void) {
+    fflush(stdout);
+}
+
 /* ── I/O extras ─────────────────────────────────────────────────────────────── */
 
 void jerry_print_err(JerryStr* s) {

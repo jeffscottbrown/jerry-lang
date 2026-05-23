@@ -21,23 +21,11 @@ jobs:
         with:
           fetch-depth: 0   # Linux bootstrap needs full history for git checkout 741e43b
 
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Install clang (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y clang
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: Build Go tool binaries (jerry-lsp)
-        run: |
-          go build -o jerry-lsp-bin ./cmd/jerry-lsp
 
       - name: Build runtime library
         run: |
@@ -122,6 +110,13 @@ jobs:
         run: |
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep
 
+      - name: Build jerry-lsp (self-hosted)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler cmd/jerry-lsp/ -o jerry-lsp-bin
+
       - name: Build jerry-main (self-hosted Jerry dispatcher)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
@@ -165,6 +160,7 @@ jobs:
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
         run: |
           ./jerry-native test tests/arrays_test.jer
+          ./jerry-native test tests/char_literal_test.jer
           ./jerry-native test tests/classes_test.jer
           ./jerry-native test tests/closures_test.jer
           ./jerry-native test tests/control_flow_test.jer
@@ -174,6 +170,9 @@ jobs:
           ./jerry-native test tests/primitives_test.jer
           ./jerry-native test tests/stdlib_test.jer
           ./jerry-native test tests/strings_test.jer
+          ./jerry-native test cmd/jerry-lsp/diagnostics_test.jer
+          ./jerry-native test cmd/jerry-lsp/completion_test.jer
+          ./jerry-native test cmd/jerry-lsp/codelens_test.jer
 
       - name: Smoke-test self-hosted compiler directly
         env:
@@ -202,6 +201,7 @@ jobs:
           ./jerry-compiler-v2 cmd/jerry-test/ -o jerry-test-v2
           ./jerry-compiler-v2 cmd/jerry-create/ -o jerry-create-v2
           ./jerry-compiler-v2 cmd/jerry-sweep/ -o jerry-sweep-v2
+          ./jerry-compiler-v2 cmd/jerry-lsp/ -o jerry-lsp-v2
           ./jerry-compiler-v2 cmd/jerry-main/ -o jerry-native-v2
           ./jerry-compiler-v2 examples/hello.jer -o hello-v2
           ./hello-v2
@@ -217,10 +217,14 @@ jobs:
           JERRY_CREATE: ${{ github.workspace }}/jerry-create-v2
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep-v2
           JERRY_GET: ${{ github.workspace }}/jerry-get-bin
-          JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
+          JERRY_LSP: ${{ github.workspace }}/jerry-lsp-v2
         run: |
           ./jerry-native-v2 test tests/strings_test.jer
           ./jerry-native-v2 test tests/arrays_test.jer
+          ./jerry-native-v2 test tests/char_literal_test.jer
           ./jerry-native-v2 test tests/classes_test.jer
           ./jerry-native-v2 test tests/map_test.jer
           ./jerry-native-v2 test tests/json_test.jer
+          ./jerry-native-v2 test cmd/jerry-lsp/diagnostics_test.jer
+          ./jerry-native-v2 test cmd/jerry-lsp/completion_test.jer
+          ./jerry-native-v2 test cmd/jerry-lsp/codelens_test.jer

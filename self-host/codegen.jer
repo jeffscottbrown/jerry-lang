@@ -444,6 +444,7 @@ class Generator {
             "declare void @jerry_capture_args(i64, ptr)\n" +
             "declare ptr  @jerry_args()\n" +
             "declare void @jerry_print_err(ptr)\n" +
+            "declare void @jerry_flush_stdout()\n" +
             "declare ptr  @jerry_read_stdin()\n" +
             "declare i64  @jerry_now_millis()\n" +
             "declare i64  @jerry_now_seconds()\n" +
@@ -1682,6 +1683,11 @@ class Generator {
             if e.args[0].kind == EXPR_STRING {
                 this.eml("  call void @jerry_release(ptr " + av + ")");
             }
+            return "0";
+        }
+
+        if name == "flush_stdout" {
+            this.eml("  call void @jerry_flush_stdout()");
             return "0";
         }
 

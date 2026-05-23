@@ -1,0 +1,22 @@
+// cmd/jerry-lsp/main.jer — Jerry Language Server entry point.
+//
+// Reads JSON-RPC 2.0 messages from stdin (Content-Length framing),
+// dispatches them, and writes responses back to stdout.
+include @json
+
+fn main() {
+    let docs: LspDocs = new LspDocs();
+
+    while true {
+        let body: string = lsp_read_message();
+        if len(body) == 0 { return; }   // EOF — client disconnected
+
+        let msg: JsonValue = json_parse(body);
+        if msg == null { continue; }
+
+        let response: JsonValue = lsp_dispatch(msg, docs);
+        if response != null {
+            lsp_write_message(json_stringify(response));
+        }
+    }
+}

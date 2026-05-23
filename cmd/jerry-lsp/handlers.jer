@@ -1,0 +1,195 @@
+// cmd/jerry-lsp/handlers.jer — LSP message dispatch.
+//
+// dispatch(msg, docs) processes one JSON-RPC message:
+//   - For requests (has "id"): returns a response JsonValue.
+//   - For notifications (no "id"): sends any resulting notifications directly,
+//     returns null (no response needed).
+include @json
+
+// lsp_response builds a JSON-RPC 2.0 response object.
+fn lsp_response(id: JsonValue, result: JsonValue): JsonValue {
+    let resp: JsonValue = json_new_object();
+    json_set_string(resp, "jsonrpc", "2.0");
+    json_set_val(resp, "id", id);
+    json_set_val(resp, "result", result);
+    return resp;
+}
+
+// lsp_error_response builds a JSON-RPC 2.0 error response.
+fn lsp_error_response(id: JsonValue, code: int, message: string): JsonValue {
+    let err: JsonValue = json_new_object();
+    json_set_int(err, "code", code);
+    json_set_string(err, "message", message);
+    let resp: JsonValue = json_new_object();
+    json_set_string(resp, "jsonrpc", "2.0");
+    json_set_val(resp, "id", id);
+    json_set_object(resp, "error", err);
+    return resp;
+}
+
+// lsp_send_diagnostics publishes a textDocument/publishDiagnostics notification.
+fn lsp_send_diagnostics(uri: string, diags: JsonValue) {
+    let params: JsonValue = json_new_object();
+    json_set_string(params, "uri", uri);
+    json_set_val(params, "diagnostics", diags);
+    let notif: JsonValue = json_new_object();
+    json_set_string(notif, "jsonrpc", "2.0");
+    json_set_string(notif, "method", "textDocument/publishDiagnostics");
+    json_set_object(notif, "params", params);
+    lsp_write_message(json_stringify(notif));
+}
+
+// lsp_initialize_result builds the initialize response result.
+fn lsp_initialize_result(): JsonValue {
+    // Completion provider with '.' trigger
+    let triggers: JsonValue = json_new_array();
+    json_array_push_string(triggers, ".");
+    let comp_provider: JsonValue = json_new_object();
+    json_set_val(comp_provider, "triggerCharacters", triggers);
+
+    // ExecuteCommand provider
+    let cmds: JsonValue = json_new_array();
+    json_array_push_string(cmds, "jerry.run");
+    let exec_provider: JsonValue = json_new_object();
+    json_set_val(exec_provider, "commands", cmds);
+
+    // Capabilities
+    let caps: JsonValue = json_new_object();
+    json_set_int(caps, "textDocumentSync", 1);            // Full
+    json_set_object(caps, "completionProvider", comp_provider);
+    json_set_object(caps, "codeLensProvider", json_new_object());
+    json_set_object(caps, "executeCommandProvider", exec_provider);
+
+    // ServerInfo
+    let server_info: JsonValue = json_new_object();
+    json_set_string(server_info, "name", "jerry-lsp");
+    json_set_string(server_info, "version", "0.1.0");
+
+    let result: JsonValue = json_new_object();
+    json_set_object(result, "capabilities", caps);
+    json_set_object(result, "serverInfo", server_info);
+    return result;
+}
+
+// dispatch processes one JSON-RPC message and returns a response (or null for
+// notifications).  Side-effects: may call lsp_write_message for server-initiated
+// notifications (publishDiagnostics, showMessage).
+fn lsp_dispatch(msg: JsonValue, docs: LspDocs): JsonValue {
+    if msg == null { return null; }
+
+    let method: string = json_get_string(msg, "method");
+    let has_id: bool = json_has_key(msg, "id");
+    let id: JsonValue = null;
+    if has_id { id = json_get_val(msg, "id"); }
+    let params: JsonValue = json_get_val(msg, "params");
+
+    // ── Lifecycle ───────────────────────────────────────────────────────────
+    if method == "initialize" {
+        return lsp_response(id, lsp_initialize_result());
+    }
+
+    if method == "initialized" {
+        return null;   // notification — no response
+    }
+
+    if method == "shutdown" {
+        return lsp_response(id, json_null_val());
+    }
+
+    if method == "exit" {
+        exit(0);
+    }
+
+    // ── Document lifecycle ──────────────────────────────────────────────────
+    if method == "textDocument/didOpen" {
+        if params != null {
+            let td: JsonValue = json_get_object(params, "textDocument");
+            if td != null {
+                let uri: string = json_get_string(td, "uri");
+                let text: string = json_get_string(td, "text");
+                docs.store(uri, text);
+                lsp_send_diagnostics(uri, lsp_diagnose(text));
+            }
+        }
+        return null;
+    }
+
+    if method == "textDocument/didChange" {
+        if params != null {
+            let td: JsonValue = json_get_object(params, "textDocument");
+            if td != null {
+                let uri: string = json_get_string(td, "uri");
+                let changes: JsonValue = json_get_array(params, "contentChanges");
+                if changes != null && len(changes.arr_val) > 0 {
+                    let text: string = json_get_string(changes.arr_val[0], "text");
+                    docs.store(uri, text);
+                    lsp_send_diagnostics(uri, lsp_diagnose(text));
+                }
+            }
+        }
+        return null;
+    }
+
+    if method == "textDocument/didClose" {
+        if params != null {
+            let td: JsonValue = json_get_object(params, "textDocument");
+            if td != null {
+                let uri: string = json_get_string(td, "uri");
+                docs.remove(uri);
+                // Clear diagnostics so stale squiggles don't persist.
+                lsp_send_diagnostics(uri, json_new_array());
+            }
+        }
+        return null;
+    }
+
+    // ── Completion ──────────────────────────────────────────────────────────
+    if method == "textDocument/completion" {
+        let src: string = "";
+        if params != null {
+            let td: JsonValue = json_get_object(params, "textDocument");
+            if td != null {
+                let uri: string = json_get_string(td, "uri");
+                if docs.has(uri) { src = docs.load(uri); }
+            }
+        }
+        return lsp_response(id, lsp_completions(src));
+    }
+
+    // ── Code lens ───────────────────────────────────────────────────────────
+    if method == "textDocument/codeLens" {
+        let lenses: JsonValue = json_new_array();
+        if params != null {
+            let td: JsonValue = json_get_object(params, "textDocument");
+            if td != null {
+                let uri: string = json_get_string(td, "uri");
+                let src: string = docs.load(uri);
+                if len(src) > 0 {
+                    lenses = lsp_codelens(uri, src);
+                }
+            }
+        }
+        return lsp_response(id, lenses);
+    }
+
+    // ── Execute command ─────────────────────────────────────────────────────
+    if method == "workspace/executeCommand" {
+        if params != null {
+            let cmd: string = json_get_string(params, "command");
+            if cmd == "jerry.run" {
+                let cmd_args: JsonValue = json_get_array(params, "arguments");
+                if cmd_args != null && len(cmd_args.arr_val) > 0 {
+                    let uri: string = cmd_args.arr_val[0].str_val;
+                    lsp_execute_run(uri);
+                }
+            }
+        }
+        return lsp_response(id, json_null_val());
+    }
+
+    // ── Unknown request → method not found ─────────────────────────────────
+    if has_id {
+        return lsp_error_response(id, -32601, "method not found: " + method);
+    }
+    return null;   // Unknown notification: ignore
+}

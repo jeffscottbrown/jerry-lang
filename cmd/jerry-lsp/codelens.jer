@@ -1,0 +1,114 @@
+// cmd/jerry-lsp/codelens.jer — Code lens ("▶ Run") and executeCommand handler.
+include @json
+
+// lsp_find_main_pos scans src for a top-level `fn main()` with no parameters
+// and returns [line, col] (1-based).  Returns [0, 0] if not found.
+fn lsp_find_main_pos(src: string): int[] {
+    let not_found: int[] = [0, 0];
+    let n: int = len(src);
+    let line_num: int = 1;
+    let line_start: int = 0;
+    let i: int = 0;
+    while i < n {
+        let ch: int = char_at(src, i);
+        if ch == 10 {   // '\n'
+            line_num = line_num + 1;
+            line_start = i + 1;
+        } else if i + 8 <= n {
+            // Quick test: does "fn main(" start here?
+            let candidate: string = string_slice(src, i, i + 8);
+            if candidate == "fn main(" {
+                // Find closing ')'
+                let j: int = i + 8;
+                while j < n && char_at(src, j) != 41 && char_at(src, j) != 10 {
+                    j = j + 1;
+                }
+                if j < n && char_at(src, j) == 41 {
+                    // Verify no parameters (only whitespace between the parens)
+                    let params: string = string_slice(src, i + 8, j);
+                    let all_ws: bool = true;
+                    let k: int = 0;
+                    while k < len(params) {
+                        let pc: int = char_at(params, k);
+                        if pc != 32 && pc != 9 { all_ws = false; }
+                        k = k + 1;
+                    }
+                    if all_ws {
+                        let result: int[] = [line_num, i - line_start + 1];
+                        return result;
+                    }
+                }
+            }
+        }
+        i = i + 1;
+    }
+    return not_found;
+}
+
+// lsp_codelens returns a JSON array with a single "▶ Run" lens at fn main(),
+// or an empty array if main is not found.
+fn lsp_codelens(uri: string, src: string): JsonValue {
+    let arr: JsonValue = json_new_array();
+    let pos: int[] = lsp_find_main_pos(src);
+    if pos[0] == 0 { return arr; }
+
+    let range: JsonValue = lsp_range_at(pos[0], pos[1]);
+
+    let cmd_args: JsonValue = json_new_array();
+    json_array_push_string(cmd_args, uri);
+
+    let command: JsonValue = json_new_object();
+    json_set_string(command, "title", "\u25b6 Run");
+    json_set_string(command, "command", "jerry.run");
+    json_set_object(command, "arguments", cmd_args);
+
+    let lens: JsonValue = json_new_object();
+    json_set_object(lens, "range", range);
+    json_set_object(lens, "command", command);
+
+    json_array_push_object(arr, lens);
+    return arr;
+}
+
+// lsp_strip_file_uri removes the "file://" prefix from a URI, returning a path.
+fn lsp_strip_file_uri(uri: string): string {
+    let prefix: string = "file://";
+    if string_starts_with(uri, prefix) {
+        return string_slice(uri, len(prefix), len(uri));
+    }
+    return uri;
+}
+
+// lsp_execute_run runs `jerry run <file>`, captures output, and sends a
+// window/showMessage notification back to the client.
+fn lsp_execute_run(uri: string) {
+    let file_path: string = lsp_strip_file_uri(uri);
+    let ts: string = int_to_string(now_millis());
+    let tmp_out: string = "/tmp/jerry-lsp-run-" + ts + ".txt";
+    write_file(tmp_out, "");
+    let sh: string = "jerry run \"" + file_path + "\" >" + tmp_out + " 2>&1";
+    let code: int = exec(["sh", "-c", sh]);
+    let output: string = read_file(tmp_out);
+    delete_file(tmp_out);
+
+    // Trim trailing newlines
+    while len(output) > 0 && char_at(output, len(output) - 1) == 10 {
+        output = string_slice(output, 0, len(output) - 1);
+    }
+    if len(output) == 0 { output = "(no output)"; }
+
+    // MessageType: Error=1, Info=3
+    let msg_type: int = 3;
+    if code != 0 { msg_type = 1; }
+
+    let show_params: JsonValue = json_new_object();
+    json_set_int(show_params, "type", msg_type);
+    json_set_string(show_params, "message", "jerry run:\n" + output);
+
+    let notif: JsonValue = json_new_object();
+    json_set_string(notif, "jsonrpc", "2.0");
+    json_set_string(notif, "method", "window/showMessage");
+    json_set_object(notif, "params", show_params);
+
+    lsp_write_message(json_stringify(notif));
+}

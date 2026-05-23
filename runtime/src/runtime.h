@@ -125,6 +125,7 @@ void        jerry_capture_args(int64_t argc, char** argv);
 JerryArray* jerry_args(void);
 
 /* ── I/O extras ─────────────────────────────────────────────────────────────── */
+void      jerry_flush_stdout(void);
 void      jerry_print_err(JerryStr* s);
 JerryStr* jerry_read_stdin(void);
 

@@ -1,0 +1,27 @@
+// cmd/jerry-lsp/docs.jer — Open-document store: URI → source text.
+
+class LspDocs {
+    docs: map<string, string>;
+
+    fn new() {
+        let m: map<string, string> = {};
+        this.docs = m;
+    }
+
+    fn store(uri: string, text: string) {
+        map_set(this.docs, uri, text);
+    }
+
+    fn load(uri: string): string {
+        if !map_has(this.docs, uri) { return ""; }
+        return map_get(this.docs, uri);
+    }
+
+    fn has(uri: string): bool {
+        return map_has(this.docs, uri);
+    }
+
+    fn remove(uri: string) {
+        if map_has(this.docs, uri) { map_delete(this.docs, uri); }
+    }
+}

@@ -1,0 +1,61 @@
+// cmd/jerry-lsp/diagnostics_test.jer — Tests for parse_check_output and lsp_range_at.
+include @testing
+include @json
+
+fn test_parse_check_line_type_error() {
+    let diag: JsonValue = parse_check_line("3:7: undefined variable 'x'");
+    assert_true(diag != null, "should parse type-error line");
+    assert_eq_string(json_get_string(diag, "message"), "undefined variable 'x'", "message");
+    assert_eq_int(json_get_int(diag, "severity"), 1, "severity is Error");
+    assert_eq_string(json_get_string(diag, "source"), "jerry", "source");
+    let range: JsonValue = json_get_object(diag, "range");
+    let start_pos: JsonValue = json_get_object(range, "start");
+    assert_eq_int(json_get_int(start_pos, "line"), 2, "line is 0-based");
+    assert_eq_int(json_get_int(start_pos, "character"), 6, "col is 0-based");
+}
+
+fn test_parse_check_line_parse_error() {
+    let diag: JsonValue = parse_check_line("parse error at 10:1: expected ';'");
+    assert_true(diag != null, "should parse parse-error line");
+    assert_eq_string(json_get_string(diag, "message"), "expected ';'", "message");
+    let range: JsonValue = json_get_object(diag, "range");
+    let start_pos: JsonValue = json_get_object(range, "start");
+    assert_eq_int(json_get_int(start_pos, "line"), 9, "line 10 → 0-based 9");
+    assert_eq_int(json_get_int(start_pos, "character"), 0, "col 1 → 0-based 0");
+}
+
+fn test_parse_check_line_invalid() {
+    assert_true(parse_check_line("") == null, "empty line → null");
+    assert_true(parse_check_line("just a message") == null, "no line:col → null");
+    assert_true(parse_check_line("0:5: bad") == null, "line 0 → null");
+    assert_true(parse_check_line("5:0: bad") == null, "col 0 → null");
+}
+
+fn test_parse_check_output_empty() {
+    let result: JsonValue = parse_check_output("");
+    assert_eq_int(len(result.arr_val), 0, "empty output → no diagnostics");
+}
+
+fn test_parse_check_output_multiple() {
+    let out: string = "1:1: undefined variable 'a'\nparse error at 5:3: expected '}'\n";
+    let result: JsonValue = parse_check_output(out);
+    assert_eq_int(len(result.arr_val), 2, "two diagnostics");
+    assert_eq_string(json_get_string(result.arr_val[0], "message"), "undefined variable 'a'", "first message");
+    assert_eq_string(json_get_string(result.arr_val[1], "message"), "expected '}'", "second message");
+}
+
+fn test_parse_check_output_crlf() {
+    let out: string = "2:4: type mismatch\r\n";
+    let result: JsonValue = parse_check_output(out);
+    assert_eq_int(len(result.arr_val), 1, "CRLF line is parsed");
+    assert_eq_string(json_get_string(result.arr_val[0], "message"), "type mismatch", "message");
+}
+
+fn test_lsp_range_at() {
+    let r: JsonValue = lsp_range_at(1, 1);
+    let s: JsonValue = json_get_object(r, "start");
+    let e: JsonValue = json_get_object(r, "end");
+    assert_eq_int(json_get_int(s, "line"), 0, "start.line");
+    assert_eq_int(json_get_int(s, "character"), 0, "start.character");
+    assert_eq_int(json_get_int(e, "character"), 1, "end.character is start+1");
+}

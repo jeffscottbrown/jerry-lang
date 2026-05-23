@@ -1,0 +1,68 @@
+// cmd/jerry-lsp/completion_test.jer — Tests for LSP completion items.
+include @testing
+include @json
+
+fn find_label(items: JsonValue, label: string): bool {
+    let i: int = 0;
+    while i < len(items.arr_val) {
+        let item: JsonValue = items.arr_val[i];
+        if json_get_string(item, "label") == label { return true; }
+        i = i + 1;
+    }
+    return false;
+}
+
+fn test_static_items_has_keywords() {
+    let items: JsonValue = lsp_static_items();
+    assert_true(find_label(items, "fn"), "has keyword 'fn'");
+    assert_true(find_label(items, "let"), "has keyword 'let'");
+    assert_true(find_label(items, "class"), "has keyword 'class'");
+    assert_true(find_label(items, "return"), "has keyword 'return'");
+}
+
+fn test_static_items_has_types() {
+    let items: JsonValue = lsp_static_items();
+    assert_true(find_label(items, "int"), "has type 'int'");
+    assert_true(find_label(items, "string"), "has type 'string'");
+    assert_true(find_label(items, "bool"), "has type 'bool'");
+}
+
+fn test_static_items_has_builtins() {
+    let items: JsonValue = lsp_static_items();
+    assert_true(find_label(items, "println"), "has builtin 'println'");
+    assert_true(find_label(items, "flush_stdout"), "has flush_stdout");
+    assert_true(find_label(items, "read_file"), "has read_file");
+    assert_true(find_label(items, "now_millis"), "has now_millis");
+}
+
+fn test_user_items_finds_fn() {
+    let src: string = "fn my_helper(x: int): int {\n    return x;\n}\n";
+    let items: JsonValue = lsp_user_items(src);
+    assert_true(find_label(items, "my_helper"), "finds fn my_helper");
+}
+
+fn test_user_items_finds_class() {
+    let src: string = "class Foo {\n    x: int;\n}\n";
+    let items: JsonValue = lsp_user_items(src);
+    assert_true(find_label(items, "Foo"), "finds class Foo");
+}
+
+fn test_user_items_skips_main() {
+    let src: string = "fn main() {\n    println();\n}\n";
+    let items: JsonValue = lsp_user_items(src);
+    assert_true(!find_label(items, "main"), "skips fn main");
+}
+
+fn test_lsp_extract_ident_basic() {
+    assert_eq_string(lsp_extract_ident("foo(x: int)"), "foo", "name before (");
+    assert_eq_string(lsp_extract_ident("Bar {"), "Bar", "name before {");
+    assert_eq_string(lsp_extract_ident("(bad"), "", "starts with ( → empty");
+    assert_eq_string(lsp_extract_ident(""), "", "empty string → empty");
+}
+
+fn test_completions_merges_user_and_static() {
+    let src: string = "fn my_fn(x: int): int { return x; }\n";
+    let items: JsonValue = lsp_completions(src);
+    assert_true(find_label(items, "fn"), "static keyword present");
+    assert_true(find_label(items, "my_fn"), "user fn present");
+}

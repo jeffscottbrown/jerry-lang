@@ -1,0 +1,166 @@
+// cmd/jerry-lsp/completion.jer — LSP completion items.
+//
+// CompletionItemKind constants (LSP spec §3.18.1):
+//   Text=1, Function=3, Class=7, Keyword=14, Constant=21
+// InsertTextFormat: PlainText=1, Snippet=2
+include @json
+
+// lsp_extract_ident returns the identifier token before the first '(' or '{'
+// in s, or "" if none is found.
+fn lsp_extract_ident(s: string): string {
+    let end: int = 0;
+    while end < len(s) {
+        let ch: int = char_at(s, end);
+        if ch == 40 || ch == 123 { break; }   // '(' or '{'
+        end = end + 1;
+    }
+    if end == 0 { return ""; }
+    // Trim trailing whitespace
+    let e: int = end;
+    while e > 0 && (char_at(s, e - 1) == 32 || char_at(s, e - 1) == 9) {
+        e = e - 1;
+    }
+    if e == 0 { return ""; }
+    let name: string = string_slice(s, 0, e);
+    // Must not contain spaces (not a simple identifier otherwise)
+    let k: int = 0;
+    while k < len(name) {
+        let ch: int = char_at(name, k);
+        if ch == 32 || ch == 9 { return ""; }
+        k = k + 1;
+    }
+    return name;
+}
+
+fn lsp_keyword_item(label: string): JsonValue {
+    let item: JsonValue = json_new_object();
+    json_set_string(item, "label", label);
+    json_set_int(item, "kind", 14);
+    return item;
+}
+
+fn lsp_type_item(label: string): JsonValue {
+    let item: JsonValue = json_new_object();
+    json_set_string(item, "label", label);
+    json_set_int(item, "kind", 7);
+    return item;
+}
+
+fn lsp_const_item(label: string): JsonValue {
+    let item: JsonValue = json_new_object();
+    json_set_string(item, "label", label);
+    json_set_int(item, "kind", 21);
+    return item;
+}
+
+fn lsp_fn_snippet_item(label: string): JsonValue {
+    let item: JsonValue = json_new_object();
+    json_set_string(item, "label", label);
+    json_set_int(item, "kind", 3);
+    json_set_string(item, "insertText", label + "($0)");
+    json_set_int(item, "insertTextFormat", 2);
+    return item;
+}
+
+// lsp_static_items returns the fixed set of keyword, type, constant, and
+// built-in function completion items.
+fn lsp_static_items(): JsonValue {
+    let arr: JsonValue = json_new_array();
+
+    // Keywords
+    let kws: string[] = ["let", "fn", "class", "extends", "if", "else",
+                         "while", "for", "return", "new", "this", "null",
+                         "break", "continue", "include"];
+    let i: int = 0;
+    while i < len(kws) {
+        json_array_push_object(arr, lsp_keyword_item(kws[i]));
+        i = i + 1;
+    }
+
+    // Primitive types
+    let types: string[] = ["int", "float", "bool", "string", "void"];
+    i = 0;
+    while i < len(types) {
+        json_array_push_object(arr, lsp_type_item(types[i]));
+        i = i + 1;
+    }
+
+    // Boolean literals
+    json_array_push_object(arr, lsp_const_item("true"));
+    json_array_push_object(arr, lsp_const_item("false"));
+
+    // Built-in functions (snippet completions)
+    let builtins: string[] = [
+        "print", "println", "write", "flush_stdout",
+        "len", "push", "exit", "panic",
+        "args", "read_stdin", "read_bytes", "print_err",
+        "read_file", "write_file", "delete_file",
+        "is_dir", "list_dir", "exec",
+        "getenv", "runtime_lib_path", "stdlib_dir_path",
+        "char_at", "string_slice", "char_to_string",
+        "string_contains", "string_starts_with", "string_ends_with",
+        "string_index_of", "string_to_int",
+        "int_to_string", "float_to_string",
+        "now_millis", "now_seconds", "now_string",
+        "map_set", "map_get", "map_has", "map_delete", "map_len", "map_keys",
+        // core stdlib
+        "int_abs", "int_max", "int_min",
+        "float_abs", "float_max", "float_min",
+        "bool_to_string"
+    ];
+    i = 0;
+    while i < len(builtins) {
+        json_array_push_object(arr, lsp_fn_snippet_item(builtins[i]));
+        i = i + 1;
+    }
+
+    return arr;
+}
+
+// lsp_user_items scans src for top-level fn and class declarations and returns
+// them as completion items.
+fn lsp_user_items(src: string): JsonValue {
+    let arr: JsonValue = json_new_array();
+    let n: int = len(src);
+    let i: int = 0;
+    while i <= n {
+        let line_start: int = i;
+        while i < n && char_at(src, i) != 10 {
+            i = i + 1;
+        }
+        let line: string = string_slice(src, line_start, i);
+        // Trim leading whitespace
+        let j: int = 0;
+        while j < len(line) && (char_at(line, j) == 32 || char_at(line, j) == 9) {
+            j = j + 1;
+        }
+        let trimmed: string = string_slice(line, j, len(line));
+
+        if string_starts_with(trimmed, "fn ") {
+            let name: string = lsp_extract_ident(string_slice(trimmed, 3, len(trimmed)));
+            if len(name) > 0 && name != "main" {
+                json_array_push_object(arr, lsp_fn_snippet_item(name));
+            }
+        } else if string_starts_with(trimmed, "class ") {
+            let name: string = lsp_extract_ident(string_slice(trimmed, 6, len(trimmed)));
+            if len(name) > 0 {
+                json_array_push_object(arr, lsp_type_item(name));
+            }
+        }
+
+        i = i + 1;   // move past the newline
+    }
+    return arr;
+}
+
+// lsp_completions returns static items combined with user-defined fn/class names.
+fn lsp_completions(src: string): JsonValue {
+    let arr: JsonValue = lsp_static_items();
+    let user: JsonValue = lsp_user_items(src);
+    let k: int = 0;
+    while k < len(user.arr_val) {
+        json_array_push_object(arr, user.arr_val[k]);
+        k = k + 1;
+    }
+    return arr;
+}
