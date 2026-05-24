@@ -4,89 +4,68 @@ name: Bootstrap Release
 # and upload it to an existing (pre-)release. Used when the current "latest"
 # release is too old to compile the current self-host/.
 #
-# Linux uses the _ir bootstrap path: restores old Go codegen from git history
-# (commit 741e43b, last commit before internal/codegen was deleted) and uses
-# `jerry _ir` to emit LLVM IR for self-host/, then compiles it with clang.
-# No external jerry-compiler seed needed on Linux.
-#
-# macOS uses the download path: fetches jerry-compiler from seed_version release.
+# All platforms use the same path: download a seed jerry-compiler from
+# seed_version, emit LLVM IR for self-host/ on macOS, then compile the IR with
+# clang (using cross-compilation for non-arm64 targets).
 #
 # Usage:
-#   1. Create a pre-release tag manually (e.g. v0.7.0-bootstrap) via gh CLI.
-#   2. Trigger this workflow for linux first (no seed needed):
+#   1. Create a pre-release tag manually (e.g. v0.9.0-bootstrap) via gh CLI:
+#        gh release create v0.9.0-bootstrap --prerelease --title "v0.9.0-bootstrap" --notes ""
+#   2. Trigger once per platform:
 #        gh workflow run bootstrap.yml \
-#          -f release_tag=v0.7.0-bootstrap \
-#          -f seed_version=unused \
-#          -f platform=linux-x86_64
-#   3. Once linux is uploaded, trigger macOS builds with the bootstrap as seed:
-#        gh workflow run bootstrap.yml \
-#          -f release_tag=v0.7.0-bootstrap \
-#          -f seed_version=v0.7.0-bootstrap \
+#          -f release_tag=v0.9.0-bootstrap \
+#          -f seed_version=<last-known-good-release> \
 #          -f platform=macos-arm64
-#      (or upload macOS arm64 locally, then use v0.7.0-bootstrap as seed for x86_64)
-#   4. Trigger release.yml via workflow_dispatch:
-#        gh workflow run release.yml \
-#          -f tag=v0.7.0 \
-#          -f seed_version=v0.7.0-bootstrap
+#        gh workflow run bootstrap.yml \
+#          -f release_tag=v0.9.0-bootstrap \
+#          -f seed_version=v0.9.0-bootstrap \
+#          -f platform=macos-x86_64
+#        gh workflow run bootstrap.yml \
+#          -f release_tag=v0.9.0-bootstrap \
+#          -f seed_version=v0.9.0-bootstrap \
+#          -f platform=linux-x86_64
+#   3. Trigger release.yml via workflow_dispatch with the bootstrap as seed:
+#        gh workflow run release.yml -f tag=v0.9.0
 
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Pre-release tag to upload to (e.g. v0.7.0-bootstrap)"
+        description: "Pre-release tag to upload to (e.g. v0.9.0-bootstrap)"
         required: true
       seed_version:
-        description: "Seed jerry-compiler version to download for macOS (e.g. v0.7.0-bootstrap). Ignored for linux-x86_64."
-        required: false
-        default: ""
+        description: "Seed jerry-compiler release to download (e.g. v0.8.6)"
+        required: true
       platform:
         description: "Platform to build for"
         required: true
-        default: linux-x86_64
+        default: macos-arm64
         type: choice
         options:
-          - linux-x86_64
           - macos-arm64
           - macos-x86_64
+          - linux-x86_64
 
 permissions:
   contents: write
 
-# Commit that is the last one before internal/codegen was deleted.
-# Used by the _ir bootstrap path on Linux.
-env:
-  IR_BOOTSTRAP_COMMIT: "741e43b"
-
 jobs:
   build:
     name: Bootstrap ${{ inputs.platform }}
-    runs-on: ${{ inputs.platform == 'linux-x86_64' && 'ubuntu-latest' || 'macos-latest' }}
+    runs-on: macos-latest   # always macOS; IR cross-compilation handles other targets
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # need full history to restore Go codegen from 741e43b
-          token: ${{ github.token }}
 
-      - uses: actions/setup-go@v5
+      - name: Install cross-compilation toolchain (Linux target)
         if: inputs.platform == 'linux-x86_64'
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install clang (Linux)
-        if: inputs.platform == 'linux-x86_64'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y clang
+        run: brew install llvm
 
       - name: Build runtime library
         run: |
           CC_ARCH=""
           if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
             CC_ARCH="-arch x86_64"
-          elif [ "${{ inputs.platform }}" = "macos-arm64" ]; then
-            CC_ARCH="-arch arm64"
           fi
           cc -O2 $CC_ARCH -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
@@ -96,72 +75,17 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # ── Linux: _ir bootstrap (no external jerry-compiler seed needed) ──────────
-      # Use old Go codegen (741e43b) to emit IR for the CURRENT self-host/,
-      # then compile with clang -O0. This is fast (Go strings, no O(n²) issue)
-      # and avoids the OOM problem of using a Jerry-compiled old compiler to
-      # process the large current self-host/ codebase.
-      - name: Restore old Go codegen from git history (Linux only)
-        if: inputs.platform == 'linux-x86_64'
-        run: |
-          git checkout "${IR_BOOTSTRAP_COMMIT}" -- \
-            cmd/jerry \
-            internal/codegen \
-            internal/checker \
-            internal/parser \
-            internal/ast \
-            internal/build \
-            stdlib/stdlib.go \
-            go.mod \
-            go.sum
-
-      - name: Build Go jerry binary with old codegen (Linux only)
-        if: inputs.platform == 'linux-x86_64'
-        run: |
-          go build -o jerry-go ./cmd/jerry
-
-      - name: "Bootstrap: emit IR for CURRENT self-host/ via Go codegen (Linux only)"
-        if: inputs.platform == 'linux-x86_64'
-        run: |
-          # Restore current cmd/jerry and go.mod now that jerry-go is built.
-          git checkout HEAD -- cmd/jerry go.mod go.sum
-          rm -rf internal/codegen internal/checker internal/parser internal/ast internal/build
-          rm -f stdlib/stdlib.go
-          # Emit IR for the current self-host/ using the old Go codegen binary.
-          SRCS=$(ls self-host/*.jer | grep -v '_test\.jer' | sort | tr '\n' ' ')
-          ./jerry-go _ir $SRCS > self-host-bootstrap.ll
-          wc -l self-host-bootstrap.ll
-          clang -O0 self-host-bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
-          chmod +x jerry-compiler
-
-      # ── macOS: download seed jerry-compiler from a release ───────────────────
-      - name: Download seed jerry-compiler (macOS only)
-        if: inputs.platform != 'linux-x86_64'
+      - name: Download seed jerry-compiler
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ inputs.seed_version }}"
-          case "$(uname -s)" in Darwin) OS="macos" ;; *) OS="linux" ;; esac
-          ARCH=$(uname -m)
-          case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
-          ASSET="jerry-${OS}-${ARCH}.tar.gz"
-          # Download all assets from the release, then extract jerry-compiler.
-          # Try native arch first, fall back to arm64 (runs via Rosetta on x86_64 runner).
-          mkdir -p /tmp/seed
-          gh release download "$VERSION" \
+          gh release download "${{ inputs.seed_version }}" \
             --repo jeffscottbrown/jerry-lang \
-            --dir /tmp/seed
-          if [ -f "/tmp/seed/$ASSET" ]; then
-            tar xz -C . -f "/tmp/seed/$ASSET" jerry-compiler
-          else
-            echo "Native asset not found, trying arm64 seed (Rosetta fallback)..."
-            tar xz -C . -f "/tmp/seed/jerry-${OS}-arm64.tar.gz" jerry-compiler
-          fi
+            --pattern "jerry-macos-arm64.tar.gz"
+          tar xf jerry-macos-arm64.tar.gz jerry-compiler
           chmod +x jerry-compiler
 
-      # ── macOS: compile current self-host/ with the downloaded seed ──────────────
-      - name: Emit IR for current self-host/ (macOS only)
-        if: inputs.platform != 'linux-x86_64'
+      - name: Emit IR for current self-host/
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -169,42 +93,41 @@ jobs:
           ./jerry-compiler self-host/ --ir > self-host.ll
           wc -l self-host.ll
 
-      - name: Compile IR to jerry-compiler-new (macOS only)
-        if: inputs.platform != 'linux-x86_64'
+      - name: Compile IR to jerry-compiler-new
         run: |
-          TARGET_FLAG=""
-          if [ "${{ inputs.platform }}" = "macos-x86_64" ]; then
-            TARGET_FLAG="-target x86_64-apple-darwin"
-          fi
-          clang $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
+          case "${{ inputs.platform }}" in
+            macos-arm64)
+              clang -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
+              ;;
+            macos-x86_64)
+              clang -target x86_64-apple-darwin -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
+              ;;
+            linux-x86_64)
+              # Use the LLVM cross-compiler installed via brew.
+              LLVM_BIN=$(brew --prefix llvm)/bin
+              "$LLVM_BIN/clang" -target x86_64-linux-gnu -O0 self-host.ll jerry_runtime.a -o jerry-compiler-new -lm
+              ;;
+          esac
           chmod +x jerry-compiler-new
 
-      # ── Both platforms: smoke-test and upload ────────────────────────────────
-      - name: Smoke-test new compiler
+      - name: Smoke-test new compiler (arm64 only)
+        if: inputs.platform == 'macos-arm64'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          # Linux produced jerry-compiler directly; macOS produced jerry-compiler-new
-          BIN=$( [ "${{ inputs.platform }}" = "linux-x86_64" ] && echo ./jerry-compiler || echo ./jerry-compiler-new )
-          $BIN examples/hello.jer -o hello-test
+          ./jerry-compiler-new examples/hello.jer -o hello-test
           ./hello-test
 
       - name: Package and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "${{ inputs.platform }}" in
             linux-x86_64)  ASSET_NAME="jerry-linux-x86_64" ;;
             macos-arm64)   ASSET_NAME="jerry-macos-arm64" ;;
             macos-x86_64)  ASSET_NAME="jerry-macos-x86_64" ;;
           esac
-          # Use the right binary name per platform
-          if [ "${{ inputs.platform }}" = "linux-x86_64" ]; then
-            cp jerry-compiler "${ASSET_NAME}.tar.gz.bin"
-          else
-            cp jerry-compiler-new "${ASSET_NAME}.tar.gz.bin"
-          fi
-          cp "${ASSET_NAME}.tar.gz.bin" jerry-compiler
+          cp jerry-compiler-new jerry-compiler
           tar -czf "${ASSET_NAME}.tar.gz" jerry-compiler
           gh release upload "${{ inputs.release_tag }}" "${ASSET_NAME}.tar.gz" --clobber
-        env:
-          GH_TOKEN: ${{ github.token }}
