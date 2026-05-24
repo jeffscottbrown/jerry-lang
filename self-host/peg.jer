@@ -389,20 +389,20 @@ fn peg_match_r(g: PegGrammar, name: string, s: string, pos: int, memo: map<strin
     // Packrat: check memo before doing work.
     let key: string = name + "@" + int_to_string(pos);
     if map_has(memo, key) {
-        return map_get(memo, key);
+        return memo[key];
     }
 
     let e: PegExpr = peg_find_rule(g, name);
     if e == null {
         print_err("peg: unknown rule '" + name + "'");
-        map_set(memo, key, PEG_FAIL);
+        memo[key] = PEG_FAIL;
         return PEG_FAIL;
     }
 
     // Lexer rules are atomic; parser rules allow WS skipping.
     let ws: bool = !peg_is_lexer(name);
     let result: int = peg_match_e(g, e, s, pos, ws, memo);
-    map_set(memo, key, result);
+    memo[key] = result;
     return result;
 }
 

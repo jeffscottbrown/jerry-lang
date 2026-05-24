@@ -9,12 +9,12 @@ class LspDocs {
     }
 
     fn store(uri: string, text: string) {
-        map_set(this.docs, uri, text);
+        this.docs[uri] = text;
     }
 
     fn load(uri: string): string {
         if !map_has(this.docs, uri) { return ""; }
-        return map_get(this.docs, uri);
+        return this.docs[uri];
     }
 
     fn has(uri: string): bool {

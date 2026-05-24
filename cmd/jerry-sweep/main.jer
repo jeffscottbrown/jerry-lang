@@ -56,7 +56,7 @@ fn main() {
         let remotes: string[] = scan_remote_includes(srcs[si]);
         let ri: int = 0;
         while ri < len(remotes) {
-            map_set(referenced, remotes[ri], true);
+            referenced[remotes[ri]] = true;
             ri = ri + 1;
         }
         si = si + 1;
@@ -85,7 +85,7 @@ fn main() {
             print_err("jerry sweep: \"" + modpath + "\" is included but not in jerry.remotes — run: jerry get " + modpath + "@<version>");
             exit(1);
         }
-        let version: string = map_get(mod_requires, modpath);
+        let version: string = mod_requires[modpath];
         let sum_key: string = modpath + "@" + version;
         if !map_has(mod_sums, sum_key) {
             print_err("jerry sweep: hash missing for " + modpath + "@" + version + " — run: jerry get " + modpath + "@" + version);
@@ -101,7 +101,7 @@ fn main() {
     while qi < len(req_keys) {
         let modpath: string = req_keys[qi];
         if !map_has(referenced, modpath) {
-            let version: string = map_get(mod_requires, modpath);
+            let version: string = mod_requires[modpath];
             map_delete(mod_requires, modpath);
             map_delete(mod_sums, modpath + "@" + version);
             changed = true;

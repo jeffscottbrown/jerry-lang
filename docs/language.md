@@ -295,17 +295,17 @@ Useful built-ins for arrays:
 Maps are hash tables keyed by `string` or `int`, declared as
 `map<KeyType, ValueType>`. An empty map literal is `{}`.
 
+Use the `[]` operator to read and write entries:
+
 ```jerry
 fn main() {
-    // string keys
     let scores: map<string, int> = {};
-    map_set(scores, "alice", 95);
-    map_set(scores, "bob",   87);
-    print(int_to_string(map_get(scores, "alice")));  // 95
+    scores["alice"] = 95;
+    scores["bob"]   = 87;
+    print(int_to_string(scores["alice"]));  // 95
 
-    // index operator works for both get and set
     scores["carol"] = 91;
-    print(int_to_string(scores["carol"]));           // 91
+    print(int_to_string(scores["carol"]));  // 91
 }
 ```
 
@@ -330,24 +330,23 @@ Maps with `int` keys work identically — just declare the type:
 ```jerry
 fn main() {
     let m: map<int, string> = {};
-    map_set(m, 42, "answer");
-    print(map_get(m, 42));  // answer
+    m[42] = "answer";
+    print(m[42]);  // answer
 }
 ```
 
 ### Map builtins
 
-| Builtin                              | Description                                   |
-|--------------------------------------|-----------------------------------------------|
-| `map_set(m, key, value): void`       | Insert or overwrite `key → value`             |
-| `map_get(m, key): V`                 | Retrieve value for `key`                      |
-| `map_has(m, key): bool`              | True if `key` is present                      |
-| `map_delete(m, key): void`           | Remove `key` (no-op if absent)                |
-| `map_len(m): int`                    | Number of entries                             |
-| `map_keys(m): K[]`                   | Array of all keys (unordered)                 |
+| Builtin                    | Description                                   |
+|----------------------------|-----------------------------------------------|
+| `map_has(m, key): bool`    | True if `key` is present                      |
+| `map_delete(m, key): void` | Remove `key` (no-op if absent)                |
+| `map_len(m): int`          | Number of entries                             |
+| `map_keys(m): K[]`         | Array of all keys (unordered)                 |
 
-The index operator `m[key]` is sugar for `map_get` on the right-hand side and
-`map_set` on the left-hand side.
+Read and write entries with the `[]` operator — `m[key]` to get, `m[key] = v`
+to insert or overwrite.  The function forms `map_get` and `map_set` also work
+but `[]` is preferred.
 
 ### Iterating over a map
 
@@ -359,7 +358,7 @@ fn main() {
     let keys: string[] = map_keys(word_count);
     for (let i: int = 0; i < len(keys); i++) {
         let k: string = keys[i];
-        print(k + ": " + int_to_string(map_get(word_count, k)));
+        print(k + ": " + int_to_string(word_count[k]));
     }
 }
 ```
@@ -708,14 +707,14 @@ These are always available — no `include` required.
 
 ### Maps
 
-| Builtin                        | Description                                   |
-|--------------------------------|-----------------------------------------------|
-| `map_set(m, key, val): void`   | Insert or overwrite `key → val`               |
-| `map_get(m, key): V`           | Retrieve value for `key`                      |
-| `map_has(m, key): bool`        | True if `key` is present                      |
-| `map_delete(m, key): void`     | Remove `key` (no-op if absent)                |
-| `map_len(m): int`              | Number of entries                             |
-| `map_keys(m): K[]`             | Array of all keys (unordered)                 |
+Use `m[key]` to read and `m[key] = v` to write.  Additional builtins:
+
+| Builtin                    | Description                                   |
+|----------------------------|-----------------------------------------------|
+| `map_has(m, key): bool`    | True if `key` is present                      |
+| `map_delete(m, key): void` | Remove `key` (no-op if absent)                |
+| `map_len(m): int`          | Number of entries                             |
+| `map_keys(m): K[]`         | Array of all keys (unordered)                 |
 
 ### Process & environment
 

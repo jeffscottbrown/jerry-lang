@@ -4,25 +4,25 @@ include @testing
 
 fn test_set_and_get_string_key() {
     let m: map<string, int> = {};
-    map_set(m, "a", 1);
-    assert_eq_int(map_get(m, "a"), 1, "get after set");
+    m["a"] = 1;
+    assert_eq_int(m["a"], 1, "get after set");
 }
 
 fn test_overwrite_existing_key() {
     let m: map<string, int> = {};
-    map_set(m, "x", 10);
-    map_set(m, "x", 99);
-    assert_eq_int(map_get(m, "x"), 99, "overwrite returns new value");
+    m["x"] = 10;
+    m["x"] = 99;
+    assert_eq_int(m["x"], 99, "overwrite returns new value");
 }
 
 fn test_multiple_keys() {
     let m: map<string, int> = {};
-    map_set(m, "alice", 30);
-    map_set(m, "bob", 25);
-    map_set(m, "carol", 35);
-    assert_eq_int(map_get(m, "alice"), 30, "alice");
-    assert_eq_int(map_get(m, "bob"),   25, "bob");
-    assert_eq_int(map_get(m, "carol"), 35, "carol");
+    m["alice"] = 30;
+    m["bob"]   = 25;
+    m["carol"] = 35;
+    assert_eq_int(m["alice"], 30, "alice");
+    assert_eq_int(m["bob"],   25, "bob");
+    assert_eq_int(m["carol"], 35, "carol");
 }
 
 fn test_map_len_empty() {
@@ -32,22 +32,22 @@ fn test_map_len_empty() {
 
 fn test_map_len_after_inserts() {
     let m: map<string, int> = {};
-    map_set(m, "a", 1);
-    map_set(m, "b", 2);
-    map_set(m, "c", 3);
+    m["a"] = 1;
+    m["b"] = 2;
+    m["c"] = 3;
     assert_eq_int(map_len(m), 3, "len after 3 inserts");
 }
 
 fn test_map_len_overwrite_does_not_grow() {
     let m: map<string, int> = {};
-    map_set(m, "k", 1);
-    map_set(m, "k", 2);
+    m["k"] = 1;
+    m["k"] = 2;
     assert_eq_int(map_len(m), 1, "overwrite does not increase len");
 }
 
 fn test_map_has_present_key() {
     let m: map<string, int> = {};
-    map_set(m, "hi", 7);
+    m["hi"] = 7;
     assert_eq_bool(map_has(m, "hi"), true, "has present key");
 }
 
@@ -58,22 +58,22 @@ fn test_map_has_absent_key() {
 
 fn test_map_delete_removes_key() {
     let m: map<string, int> = {};
-    map_set(m, "del", 42);
+    m["del"] = 42;
     map_delete(m, "del");
     assert_eq_bool(map_has(m, "del"), false, "deleted key not present");
 }
 
 fn test_map_delete_reduces_len() {
     let m: map<string, int> = {};
-    map_set(m, "a", 1);
-    map_set(m, "b", 2);
+    m["a"] = 1;
+    m["b"] = 2;
     map_delete(m, "a");
     assert_eq_int(map_len(m), 1, "len reduced after delete");
 }
 
 fn test_map_delete_nonexistent_is_safe() {
     let m: map<string, int> = {};
-    map_set(m, "a", 1);
+    m["a"] = 1;
     map_delete(m, "z");
     assert_eq_int(map_len(m), 1, "delete of absent key leaves len unchanged");
 }
@@ -82,23 +82,23 @@ fn test_map_delete_nonexistent_is_safe() {
 
 fn test_int_key_set_and_get() {
     let m: map<int, string> = {};
-    map_set(m, 1, "one");
-    map_set(m, 2, "two");
-    map_set(m, 3, "three");
-    assert_eq_string(map_get(m, 2), "two", "int key get");
+    m[1] = "one";
+    m[2] = "two";
+    m[3] = "three";
+    assert_eq_string(m[2], "two", "int key get");
 }
 
 fn test_int_key_has() {
     let m: map<int, string> = {};
-    map_set(m, 42, "answer");
+    m[42] = "answer";
     assert_eq_bool(map_has(m, 42), true,  "has 42");
     assert_eq_bool(map_has(m, 99), false, "no 99");
 }
 
 fn test_int_key_delete() {
     let m: map<int, string> = {};
-    map_set(m, 1, "a");
-    map_set(m, 2, "b");
+    m[1] = "a";
+    m[2] = "b";
     map_delete(m, 1);
     assert_eq_bool(map_has(m, 1), false, "1 deleted");
     assert_eq_bool(map_has(m, 2), true,  "2 still present");
@@ -108,15 +108,15 @@ fn test_int_key_delete() {
 
 fn test_index_get() {
     let m: map<string, int> = {};
-    map_set(m, "n", 77);
+    m["n"] = 77;
     assert_eq_int(m["n"], 77, "index get");
 }
 
 fn test_index_set() {
     let m: map<string, int> = {};
-    map_set(m, "k", 1);
+    m["k"] = 1;
     m["k"] = 100;
-    assert_eq_int(map_get(m, "k"), 100, "index set overwrites");
+    assert_eq_int(m["k"], 100, "index set overwrites");
 }
 
 fn test_index_insert_via_operator() {
@@ -161,28 +161,28 @@ fn test_map_keys_empty_map() {
 fn test_many_inserts_and_gets() {
     let m: map<string, int> = {};
     // Insert enough to trigger multiple rehashes (default bucket_count=16, rehash at 12)
-    map_set(m, "k0",  0);
-    map_set(m, "k1",  1);
-    map_set(m, "k2",  2);
-    map_set(m, "k3",  3);
-    map_set(m, "k4",  4);
-    map_set(m, "k5",  5);
-    map_set(m, "k6",  6);
-    map_set(m, "k7",  7);
-    map_set(m, "k8",  8);
-    map_set(m, "k9",  9);
-    map_set(m, "k10", 10);
-    map_set(m, "k11", 11);
-    map_set(m, "k12", 12);
-    map_set(m, "k13", 13);
-    map_set(m, "k14", 14);
-    map_set(m, "k15", 15);
-    map_set(m, "k16", 16);
-    map_set(m, "k17", 17);
-    map_set(m, "k18", 18);
-    map_set(m, "k19", 19);
+    m["k0"]  = 0;
+    m["k1"]  = 1;
+    m["k2"]  = 2;
+    m["k3"]  = 3;
+    m["k4"]  = 4;
+    m["k5"]  = 5;
+    m["k6"]  = 6;
+    m["k7"]  = 7;
+    m["k8"]  = 8;
+    m["k9"]  = 9;
+    m["k10"] = 10;
+    m["k11"] = 11;
+    m["k12"] = 12;
+    m["k13"] = 13;
+    m["k14"] = 14;
+    m["k15"] = 15;
+    m["k16"] = 16;
+    m["k17"] = 17;
+    m["k18"] = 18;
+    m["k19"] = 19;
     assert_eq_int(map_len(m), 20, "20 inserts");
-    assert_eq_int(map_get(m, "k0"),   0,  "k0 after rehash");
-    assert_eq_int(map_get(m, "k10"), 10, "k10 after rehash");
-    assert_eq_int(map_get(m, "k19"), 19, "k19 after rehash");
+    assert_eq_int(m["k0"],  0,  "k0 after rehash");
+    assert_eq_int(m["k10"], 10, "k10 after rehash");
+    assert_eq_int(m["k19"], 19, "k19 after rehash");
 }

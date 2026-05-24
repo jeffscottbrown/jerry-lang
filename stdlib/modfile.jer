@@ -86,7 +86,7 @@ fn parse_remotes(content: string): map<string, string> {
         if len(line) > 0 && !string_starts_with(line, "//") {
             let parts: string[] = mf_split_fields(line);
             if len(parts) >= 2 {
-                map_set(m, parts[0], parts[1]);
+                m[parts[0]] = parts[1];
             }
         }
         i = j + 1;
@@ -108,7 +108,7 @@ fn parse_sum(content: string): map<string, string> {
         if len(line) > 0 {
             let parts: string[] = mf_split_fields(line);
             if len(parts) == 3 {
-                map_set(m, parts[0] + "@" + parts[1], parts[2]);
+                m[parts[0] + "@" + parts[1]] = parts[2];
             }
         }
         i = j + 1;
@@ -125,7 +125,7 @@ fn write_remotes(path: string, m: map<string, string>) {
     let out: string = "";
     let i: int = 0;
     while i < len(keys) {
-        out = out + keys[i] + " " + map_get(m, keys[i]) + "\n";
+        out = out + keys[i] + " " + m[keys[i]] + "\n";
         i = i + 1;
     }
     write_file(path, out);
@@ -143,7 +143,7 @@ fn write_sum(path: string, m: map<string, string>) {
         let at: int = last_index_of_char(key, 64); // '@'
         let modpath: string = string_slice(key, 0, at);
         let version: string = string_slice(key, at + 1, len(key));
-        out = out + modpath + " " + version + " " + map_get(m, key) + "\n";
+        out = out + modpath + " " + version + " " + m[key] + "\n";
         i = i + 1;
     }
     write_file(path, out);
