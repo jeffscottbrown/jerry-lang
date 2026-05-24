@@ -130,7 +130,10 @@ install: build-main
 
 test:
 	$(call require,$(JERRY),$(JERRY_HINT))
-	$(JERRY) test tests/
+	cc -O2 -c tests/extern_test.c -o /tmp/jerry_extern_test.o
+	ar rcs /tmp/libextern_test.a /tmp/jerry_extern_test.o
+	$(JERRY) test tests/ -lextern_test -L/tmp
+	rm -f /tmp/jerry_extern_test.o /tmp/libextern_test.a
 	$(JERRY) test cmd/jerry-lsp/
 
 # ── Run examples ──────────────────────────────────────────────────────────────
