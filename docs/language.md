@@ -39,12 +39,14 @@ jerry run foo.jer
 15. [The always-available core library](#the-always-available-core-library)
 16. [Time and the `Timer` class](#time-and-the-timer-class)
 17. [JSON with `@json`](#json-with-json)
-18. [Modules and remote packages](#modules-and-remote-packages)
-19. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-20. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-21. [Working program: end-to-end example](#working-program-end-to-end-example)
-22. [Showcase: gdgrep](#showcase-gdgrep)
-23. [CLI reference](#cli-reference)
+18. [The `@string` stdlib module](#the-string-stdlib-module)
+19. [Calling native code with `extern fn`](#calling-native-code-with-extern-fn)
+20. [Modules and remote packages](#modules-and-remote-packages)
+21. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+22. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+23. [Working program: end-to-end example](#working-program-end-to-end-example)
+24. [Showcase: gdgrep](#showcase-gdgrep)
+25. [CLI reference](#cli-reference)
 
 ---
 
@@ -383,8 +385,36 @@ fn main() {
 }
 ```
 
-For higher-level operations (split, join, trim, case-folding, …) reach for the
-remote [`jerry-string`](#the-jerry-string-remote-module) module.
+### Char literals
+
+Single-character integer constants can be written with single quotes. The value
+is the ASCII/Unicode code point of the character.
+
+```jerry
+fn count_newlines(s: string): int {
+    let n: int = 0;
+    for (let i: int = 0; i < len(s); i++) {
+        if char_at(s, i) == '\n' { n++; }
+    }
+    return n;
+}
+```
+
+Escape sequences `'\n'`, `'\t'`, `'\r'`, `'\\'`, `'\''`, and `'\0'` are
+supported. A plain character like `'A'` evaluates to `65`.
+
+### String transformation builtins
+
+Case-folding and whitespace trimming are available as built-in functions (no
+`include` required). For splitting, joining, and richer string operations see
+the [`@string` stdlib module](#the-string-stdlib-module).
+
+| Builtin | Description |
+|---|---|
+| `string_to_lower(s): string` | ASCII lowercase copy of `s` |
+| `string_to_upper(s): string` | ASCII uppercase copy of `s` |
+| `string_trim(s): string`     | Strip leading and trailing whitespace |
+| `string_replace(s, from, to): string` | Replace all occurrences of `from` with `to` |
 
 ---
 
@@ -524,13 +554,13 @@ library. No external tools or frameworks are required.
 
 - Test files are named `*_test.jer`.
 - Test functions are named `fn test_*()` — no parameters, no return value.
-- Every test file that uses assertions must `include "github.com/jeffscottbrown/jerry-testing"`.
+- Every test file that uses assertions must `include @testing`.
 
 ### Writing tests
 
 ```jerry
 // math_test.jer
-include "github.com/jeffscottbrown/jerry-testing"
+include @testing
 
 fn test_addition() {
     assert_eq_int(2 + 2, 4, "addition");
@@ -642,7 +672,10 @@ These are always available — no `include` required.
 | `read_stdin(): string`       | Read all of stdin                                  |
 | `read_file(path): string`    | Read a file into a string                          |
 | `write_file(path, content)`  | Write `content` to `path` (overwrites)             |
+| `delete_file(path): void`    | Delete a file                                      |
 | `each_line(path, f)`         | Call `f(line)` for each line in a file             |
+| `is_dir(path): bool`         | True if `path` is a directory                      |
+| `list_dir(path): string[]`   | Return sorted filenames in a directory             |
 | `args(): string[]`           | Process argument vector (`args()[0]` is program 0) |
 
 ### Conversions
@@ -666,6 +699,10 @@ These are always available — no `include` required.
 | `string_ends_with(s, suffix): bool`              | True if `s` ends with `suffix`       |
 | `string_index_of(s, sub): int`                   | First index of `sub` in `s`, or `-1` |
 | `string_to_int(s: string): int`                  | Parse a decimal integer string       |
+| `string_to_lower(s: string): string`             | ASCII lowercase copy of `s`          |
+| `string_to_upper(s: string): string`             | ASCII uppercase copy of `s`          |
+| `string_trim(s: string): string`                 | Strip leading/trailing whitespace    |
+| `string_replace(s, from, to): string`            | Replace all occurrences of `from`    |
 | `read_bytes(n: int): string`                     | Read exactly `n` bytes from stdin    |
 | `push(arr, x): void`                             | Append to array                      |
 
@@ -801,6 +838,179 @@ fn main() {
 | `json_array_push_string/int/object(arr, val)` | Append to array |
 
 The full source is in [`stdlib/json.jer`](../stdlib/json.jer).
+
+---
+
+## The `@string` stdlib module
+
+`@string` is bundled with the compiler and provides character classification,
+string inspection, splitting, joining, and trimming. No `jerry get` needed.
+
+```jerry
+include @string
+
+fn main() {
+    // Character classification (operate on code points from char_at)
+    print(bool_to_string(is_digit(char_at("9", 0))));    // true
+    print(bool_to_string(is_alpha(char_at("A", 0))));    // true
+    print(bool_to_string(is_whitespace(char_at(" ", 0)))); // true
+
+    // Splitting and joining
+    let parts: string[] = split("one,two,three", ",");
+    print(parts[1]);                          // two
+    print(join(parts, " | "));               // one | two | three
+
+    // Splitting on whitespace
+    let words: string[] = split_whitespace("  the  quick  fox  ");
+    print(int_to_string(len(words)));         // 3
+
+    // Trimming and inspection
+    print("[" + trim("  hello  ") + "]");    // [hello]
+    print(bool_to_string(contains("hello", "ell")));  // true
+    print(int_to_string(index_of("hello", "ll")));    // 2
+}
+```
+
+### `@string` API reference
+
+**Character classification** — take a code point (`int`), return `bool` or `int`.
+
+| Function | Description |
+|---|---|
+| `is_digit(c)` | `c` is `'0'`–`'9'` |
+| `is_alpha(c)` | `c` is `'A'`–`'Z'` or `'a'`–`'z'` |
+| `is_alnum(c)` | `is_digit(c) \|\| is_alpha(c)` |
+| `is_whitespace(c)` | space / tab / `\n` / `\r` |
+| `is_upper(c)` / `is_lower(c)` | ASCII case test |
+| `to_lower(c): int` / `to_upper(c): int` | Case-fold a single code point |
+
+**Inspection**
+
+| Function | Returns |
+|---|---|
+| `starts_with(s, prefix): bool` | `s` begins with `prefix` |
+| `ends_with(s, suffix): bool` | `s` ends with `suffix` |
+| `index_of(s, needle): int` | Index of first match, or `-1` |
+| `contains(s, needle): bool` | `index_of(s, needle) >= 0` |
+
+**Transformation**
+
+| Function | Returns |
+|---|---|
+| `trim_left(s)` / `trim_right(s)` | Strip leading / trailing whitespace |
+| `trim(s)` | `trim_left(trim_right(s))` |
+| `repeat(s, n)` | `s` concatenated `n` times |
+| `lower_str(s)` | Every ASCII letter lowercased |
+
+**Splitting and joining**
+
+| Function | Returns |
+|---|---|
+| `split(s, sep): string[]` | All parts; `sep == ""` splits into characters |
+| `split_whitespace(s): string[]` | Non-empty whitespace-separated tokens |
+| `join(parts, sep): string` | Concatenate with separator |
+
+> **Note:** the [`jerry-string` remote module](#the-jerry-string-remote-module)
+> provides the same API. Prefer `include @string` for new projects — it requires
+> no `jerry get` and is always in sync with the compiler.
+
+---
+
+## Calling native code with `extern fn`
+
+Jerry can call functions written in C, NASM, or any language that follows the
+C ABI. Declare the function with `extern fn` (no body, ends with `;`), then
+link the compiled object file or archive when building.
+
+### Declaring extern functions
+
+```jerry
+// Declare external functions — types must match the C signature.
+extern fn add(a: int, b: int): int;
+extern fn greet(): void;
+
+fn main() {
+    print(int_to_string(add(3, 4)));   // 7
+    greet();
+}
+```
+
+Jerry `int` maps to C `int64_t`; `float` maps to `double`; `void` is `void`.
+The function name is used verbatim — no `_jerry` suffix is added.
+
+### Linking a C library
+
+```c
+// hello.c
+#include <stdio.h>
+#include <stdint.h>
+
+int64_t add(int64_t a, int64_t b) { return a + b; }
+void greet(void) { puts("Hello From C"); }
+```
+
+```sh
+# Compile the C file into an archive
+cc -O2 -c hello.c -o hello.o
+ar rcs libhello.a hello.o
+
+# Compile the Jerry program, linking against the archive
+jerry-compiler main.jer -o myapp -lhello -L.
+```
+
+Pass `-lname` to link `libname.a` (or the dynamic equivalent), and `-L/path`
+to add a directory to the linker search path. Both the combined form (`-lhello`)
+and the separate form (`-l hello`) are accepted.
+
+### Linking a NASM assembly function (macOS / Linux)
+
+```asm
+; hello.asm
+%ifdef MACHO          ; macOS: symbols carry a _ prefix
+    %define FN_NAME _hello_from_nasm
+    %define PUTS    _puts
+%else                 ; Linux ELF64
+    %define FN_NAME hello_from_nasm
+    %define PUTS    puts
+%endif
+
+section .data
+    msg db "Hello From NASM", 0
+
+section .text
+    global FN_NAME
+    extern PUTS
+
+FN_NAME:
+    push rbp
+    mov  rbp, rsp
+    and  rsp, -16
+    lea  rdi, [rel msg]
+    call PUTS
+    pop  rbp
+    ret
+```
+
+```sh
+# macOS
+nasm -f macho64 -DMACHO hello.asm -o hello.o
+
+# Linux
+nasm -f elf64 hello.asm -o hello.o
+```
+
+See [`examples/linking/`](../examples/linking/) for a complete working project
+that calls both C and NASM functions from Jerry, with a `Makefile` that handles
+platform detection automatically.
+
+### Passing linker flags through `jerry test`
+
+`jerry test` forwards `-l` and `-L` flags to the compiler, so extern functions
+work in test files too:
+
+```sh
+jerry test extern_test.jer -lextern_test -L.
+```
 
 ---
 

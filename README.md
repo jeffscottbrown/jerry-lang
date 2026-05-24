@@ -97,13 +97,24 @@ sudo mv jerry jerry-compiler /usr/local/bin/
 
 ### Build from source
 
-Requires Go 1.26+ and clang (Go is used for the bootstrap shim; `jerry-compiler` is built from Jerry source).
+Requires **clang**. The compiler is fully self-hosted — `jerry-compiler` is bootstrapped directly from the checked-in LLVM IR (`self-host/bootstrap.ll`). No Go or seed binary required.
 
 ```sh
 git clone https://github.com/jeffscottbrown/jerry-lang.git
 cd jerry-lang
-make build-compiler   # builds jerry + jerry-compiler
-sudo cp bin/jerry bin/jerry-compiler /usr/local/bin/
+
+# 1. Build the C runtime library
+cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+ar rcs jerry_runtime.a jerry_runtime.o
+
+# 2. Bootstrap jerry-compiler from the checked-in LLVM IR
+clang -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
+
+# 3. Build the jerry CLI using the bootstrapped compiler
+make install-stdlib
+./jerry-compiler cmd/jerry-main/ -o jerry
+
+sudo cp jerry jerry-compiler /usr/local/bin/
 ```
 
 ## Usage
@@ -184,6 +195,8 @@ The action automatically detects the runner OS and architecture (Linux x86_64, m
 | Maps | `let m: map<string, int> = {"a": 1}; m["b"] = 2;` |
 | Closures | `let double = fn(x: int): int { return x * 2; };` |
 | For / while | `for (let i: int = 0; i < 10; i++) { ... }` |
+| Char literals | `if char_at(s, i) == '\n' { ... }` |
+| Extern / linking | `extern fn my_c_fn(x: int): int;` then compile with `-lmylib` |
 
 For a complete, runnable walkthrough of types, control flow, classes, the
 standard library, and the [`jerry-string`](https://github.com/jeffscottbrown/jerry-string)
