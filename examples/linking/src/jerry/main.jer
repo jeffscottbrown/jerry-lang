@@ -1,0 +1,20 @@
+// main.jer — demonstrates calling C and NASM functions from Jerry.
+//
+// Compile with:
+//   make        (from examples/linking/)
+//
+// Or manually:
+//   cc -O2 -c src/c/hello.c -o src/c/hello.o
+//   nasm -f macho64 -DMACHO src/asm/hello.asm -o src/asm/hello.o   # macOS
+//   nasm -f elf64            src/asm/hello.asm -o src/asm/hello.o   # Linux
+//   ar rcs libhello.a src/c/hello.o src/asm/hello.o
+//   jerry-compiler src/jerry/main.jer -o hello -lhello -L.
+
+extern fn hello_from_nasm(): void;
+extern fn hello_from_c(): void;
+
+fn main() {
+    hello_from_nasm();
+    hello_from_c();
+    print("Hello From Jerry");
+}
