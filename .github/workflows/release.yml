@@ -7,20 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create (e.g. v0.7.0)"
+        description: "Release tag to create (e.g. v0.8.0)"
         required: true
-      seed_version:
-        description: "jerry-compiler seed version to use for macOS (e.g. v0.7.0-bootstrap). Defaults to latest release."
-        required: false
-        default: ""
 
 permissions:
   contents: write   # needed to create GitHub Releases and upload assets
 
-# Resolve the tag and seed version once so all jobs can reference them.
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-  SEED_VERSION_OVERRIDE: ${{ inputs.seed_version }}
 
 jobs:
   # ── Build one binary per platform ──────────────────────────────────────────
@@ -80,49 +74,10 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # ── Download seed jerry-compiler from previous release (all platforms) ──────
-      - name: Download seed jerry-compiler
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -n "$SEED_VERSION_OVERRIDE" ]; then
-            VERSION="$SEED_VERSION_OVERRIDE"
-          else
-            VERSION=$(gh release view --repo jeffscottbrown/jerry-lang --json tagName --jq .tagName)
-          fi
-          case "$(uname -s)" in Darwin) OS="macos" ;; *) OS="linux" ;; esac
-          ARCH=$(uname -m)
-          case "$ARCH" in arm64|aarch64) ARCH="arm64" ;; *) ARCH="x86_64" ;; esac
-          ASSET="jerry-${OS}-${ARCH}.tar.gz"
-          mkdir -p /tmp/seed
-          curl -fsSL "https://github.com/jeffscottbrown/jerry-lang/releases/download/${VERSION}/${ASSET}" \
-            -o "/tmp/seed/${ASSET}"
-          tar xz -C . -f "/tmp/seed/$ASSET" jerry-compiler
-          chmod +x jerry-compiler
-          mv jerry-compiler jerry-compiler-seed
-
-      # Stage 1: seed doesn't know flush_stdout; strip the call so it can compile.
-      - name: "Bootstrap stage 1: seed → IR"
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
-        env:
-          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
-          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
-        run: |
-          set -x
-          ls -la jerry-compiler-seed
-          grep -v 'flush_stdout()' self-host/main.jer > /tmp/main_patched.jer
-          SRCS=$(ls self-host/*.jer | grep -v 'self-host/main.jer' | grep -v '_test.jer' | sort)
-          echo "SRCS=$SRCS"
-          ./jerry-compiler-seed $SRCS /tmp/main_patched.jer --ir > self-host-stage1.ll
-          echo "Seed exit code: $?"
-          wc -l self-host-stage1.ll
-
-      - name: "Bootstrap stage 1: IR → binary"
+      # Stage 1: compile the checked-in bootstrap IR into a jerry-compiler binary.
+      # self-host/bootstrap.ll is generated from self-host/ and checked in so CI
+      # never needs to run a seed binary — removing the slow/unreliable seed step.
+      - name: "Bootstrap stage 1: checked-in IR → binary"
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
@@ -131,11 +86,11 @@ jobs:
           if [ -n "${{ matrix.jerry_target }}" ]; then
             TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
-          clang $TARGET_FLAG -O0 self-host-stage1.ll jerry_runtime.a -o jerry-compiler-stage1 -lm
+          clang $TARGET_FLAG -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler-stage1 -lm
           chmod +x jerry-compiler-stage1
 
-      # Stage 2: stage-1 knows flush_stdout; compile the full source.
-      - name: "Bootstrap stage 2: stage-1 → IR"
+      # Stage 2: stage-1 knows the full language; compile the complete self-host source.
+      - name: "Bootstrap stage 2: stage-1 → jerry-compiler"
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
@@ -143,18 +98,11 @@ jobs:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
-          ./jerry-compiler-stage1 self-host/ --ir > self-host.ll
-          wc -l self-host.ll
-
-      - name: "Bootstrap stage 2: IR → jerry-compiler"
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
-        run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
             TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
+          ./jerry-compiler-stage1 self-host/ --ir > self-host.ll
           clang $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
           chmod +x jerry-compiler
 
