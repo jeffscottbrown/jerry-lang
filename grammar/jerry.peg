@@ -1,0 +1,176 @@
+// Jerry Language Grammar
+//
+// Format: PEG (Parsing Expression Grammar)
+//
+// Conventions:
+//   lowercase  = parser rule; whitespace and comments are skipped implicitly
+//                between every element
+//   UPPERCASE  = lexer rule; atomic — no implicit skipping inside
+//   "..."      = literal string terminal (case-sensitive)
+//   [a-z]      = character class
+//   .          = any single character
+//   x?         = optional (zero or one)
+//   x*         = zero or more
+//   x+         = one or more
+//   x | y      = ordered choice — x is tried first; y only attempted if x fails
+//   ( ... )    = grouping
+//   !x         = negative lookahead — succeeds if x does not match; consumes nothing
+//   &x         = positive lookahead — succeeds if x matches; consumes nothing
+
+// ── Program ───────────────────────────────────────────────────────────────────
+
+program = top_level* EOF
+
+// ── Top-level declarations ────────────────────────────────────────────────────
+
+top_level = include_decl
+          | class_decl
+          | extern_fn_decl
+          | fn_decl
+          | var_decl
+
+// ── Includes ──────────────────────────────────────────────────────────────────
+//
+// Stdlib module:   include @string
+// Remote module:   include "github.com/user/repo/path"
+
+include_decl = "include" ( "@" IDENT | STRING )
+
+// ── Variable declarations ─────────────────────────────────────────────────────
+
+var_decl = "let" IDENT ( ":" type_expr )? "=" expr ";"
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+//
+// Ordered so the longest/most-specific prefix is tried first:
+//   map<K,V>           map type (starts with keyword-like ident "map")
+//   fn(T,...): T       function type
+//   T[][]              named type with optional array suffixes
+
+type_expr  = map_type | fn_type | array_type
+map_type   = "map" "<" type_expr "," type_expr ">"
+fn_type    = "fn" "(" ( type_expr ( "," type_expr )* )? ")" ( ":" type_expr )?
+array_type = IDENT ( "[" "]" )*
+
+// ── Classes ───────────────────────────────────────────────────────────────────
+
+class_decl   = "class" IDENT ( "extends" IDENT )? "{" class_member* "}"
+class_member = fn_decl | field_decl
+field_decl   = IDENT ":" type_expr ";"
+
+// ── Functions ─────────────────────────────────────────────────────────────────
+//
+// fn_name allows "new" and "null" as method names in addition to plain identifiers.
+
+fn_decl        = "fn" fn_name "(" param_list? ")" ( ":" type_expr )? block
+extern_fn_decl = "extern" "fn" IDENT "(" param_list? ")" ( ":" type_expr )? ";"
+fn_name        = IDENT | "new" | "null"
+
+param_list = param ( "," param )*
+param      = IDENT ":" type_expr
+
+// ── Statements ────────────────────────────────────────────────────────────────
+
+block = "{" stmt* "}"
+
+stmt = var_decl
+     | return_stmt
+     | if_stmt
+     | while_stmt
+     | for_stmt
+     | "break" ";"
+     | "continue" ";"
+     | expr_stmt
+
+return_stmt = "return" expr? ";"
+expr_stmt   = expr ";"
+
+if_stmt    = "if" expr block ( "else" ( if_stmt | block ) )?
+while_stmt = "while" expr block
+
+// for ( init? ; cond? ; post? ) body
+// init is either a variable declaration (without trailing ";") or an expression.
+for_stmt = "for" "(" for_init? ";" expr? ";" expr? ")" block
+for_init = ( "let" IDENT ( ":" type_expr )? "=" expr ) | expr
+
+// ── Expressions ───────────────────────────────────────────────────────────────
+//
+// Precedence, lowest to highest:
+//   assign       right-associative    a = b = c
+//   or           left                 a || b || c
+//   and          left                 a && b && c
+//   equality     left                 a == b,  a != b
+//   comparison   left                 a < b,  a <= b,  a > b,  a >= b
+//   addition     left                 a + b,  a - b
+//   multiply     left                 a * b,  a / b,  a % b
+//   unary        right (prefix)       !a,  -a
+//   postfix      left                 a.field,  a(args),  a[i],  a++,  a--
+//   primary                           literals, identifiers, grouped expressions
+
+expr        = assign_expr
+assign_expr = or_expr ( "=" assign_expr )?
+or_expr     = and_expr  ( "||" and_expr  )*
+and_expr    = eq_expr   ( "&&" eq_expr   )*
+eq_expr     = cmp_expr  ( ( "==" | "!=" ) cmp_expr )*
+cmp_expr    = add_expr  ( ( "<=" | ">=" | "<" | ">" ) add_expr )*
+add_expr    = mul_expr  ( ( "+" | "-" ) mul_expr )*
+mul_expr    = unary_expr ( ( "*" | "/" | "%" ) unary_expr )*
+unary_expr  = ( "!" | "-" ) unary_expr | postfix_expr
+
+postfix_expr = primary_expr postfix*
+postfix      = "." IDENT           // field access:    a.name
+             | "(" arg_list? ")"   // function call:   f(x, y)
+             | "[" expr "]"        // index:           a[i]
+             | "++"                // post-increment:  x++
+             | "--"                // post-decrement:  x--
+
+// FLOAT is listed before INT so that "3.14" is one token, not "3" then ".14".
+primary_expr = FLOAT
+             | INT
+             | STRING
+             | BOOL
+             | "null"
+             | "this"
+             | new_expr
+             | fn_expr
+             | array_lit
+             | map_lit
+             | "(" expr ")"
+             | IDENT
+
+new_expr  = "new" IDENT "(" arg_list? ")"
+fn_expr   = "fn" "(" param_list? ")" ( ":" type_expr )? block
+array_lit = "[" ( expr ( "," expr )* )? "]"
+map_lit   = "{" ( expr ":" expr ( "," expr ":" expr )* )? "}"
+arg_list  = expr ( "," expr )*
+
+// ── Terminals (lexer rules) ───────────────────────────────────────────────────
+//
+// Type names (int, float, bool, string, void) are not keywords — they lex as IDENT.
+
+IDENT = ( ALPHA | "_" ) ( ALNUM | "_" )*
+
+// Numeric literals — FLOAT must be tried before INT in primary_expr.
+FLOAT = DIGIT+ "." DIGIT+
+INT   = DIGIT+
+
+// String literal — escape sequences are expanded during lexing, quotes stripped.
+STRING = "\"" ( "\\" ESC_CHAR | !"\"" . )* "\""
+
+// Char literal — desugars to INT containing the Unicode code point.
+// e.g. 'A' → 65,  '\n' → 10
+CHAR_LIT = "'" ( "\\" ESC_CHAR | !"'" . ) "'"
+
+ESC_CHAR = "n" | "t" | "r" | "\"" | "'" | "\\" | "0"
+
+BOOL = "true" | "false"
+
+// Character primitives
+ALPHA = [a-zA-Z]
+DIGIT = [0-9]
+ALNUM = [a-zA-Z0-9]
+
+// Skipped silently between tokens (not part of the parse tree)
+WHITESPACE    = [ \t\r\n]+
+LINE_COMMENT  = "//" ( !"\n" . )*
+BLOCK_COMMENT = "/*" ( !"*/" . )* "*/"
