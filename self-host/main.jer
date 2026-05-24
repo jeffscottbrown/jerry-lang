@@ -111,6 +111,7 @@ fn main() {
     let ir_only: bool = false;
     let check_only: bool = false;
     let target_triple: string = "";
+    let link_flags: string[] = [];  // -lname and -L/path flags forwarded to clang
 
     let i: int = 0;
     while i < len(argv) {
@@ -125,6 +126,13 @@ fn main() {
         } else if a == "-target" {
             i = i + 1;
             if i < len(argv) { target_triple = argv[i]; }
+        } else if a == "-l" || a == "-L" {
+            // separate form: -l libname or -L /path
+            i = i + 1;
+            if i < len(argv) { push(link_flags, a + argv[i]); }
+        } else if string_starts_with(a, "-l") || string_starts_with(a, "-L") {
+            // combined form: -lname or -L/path
+            push(link_flags, a);
         } else {
             push(src_args, a);
         }
@@ -238,6 +246,11 @@ fn main() {
     push(clang_args, "-o");
     push(clang_args, out_path);
     push(clang_args, "-lm");
+    let li: int = 0;
+    while li < len(link_flags) {
+        push(clang_args, link_flags[li]);
+        li = li + 1;
+    }
     let code: int = exec(clang_args);
     delete_file(tmp);
 

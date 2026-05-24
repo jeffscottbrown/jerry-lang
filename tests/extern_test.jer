@@ -1,0 +1,24 @@
+include @testing
+
+extern fn extern_add(a: int, b: int): int;
+extern fn extern_multiply(a: int, b: int): int;
+extern fn extern_negate(n: int): int;
+
+fn test_extern_add() {
+    assert_eq_int(extern_add(3, 4),   7,  "3 + 4 = 7");
+    assert_eq_int(extern_add(0, 0),   0,  "0 + 0 = 0");
+    assert_eq_int(extern_add(-1, 1),  0,  "-1 + 1 = 0");
+    assert_eq_int(extern_add(100, 200), 300, "100 + 200 = 300");
+}
+
+fn test_extern_multiply() {
+    assert_eq_int(extern_multiply(6, 7),  42, "6 * 7 = 42");
+    assert_eq_int(extern_multiply(0, 99), 0,  "0 * 99 = 0");
+    assert_eq_int(extern_multiply(-3, 4), -12, "-3 * 4 = -12");
+}
+
+fn test_extern_negate() {
+    assert_eq_int(extern_negate(5),  -5, "negate 5");
+    assert_eq_int(extern_negate(-5), 5,  "negate -5");
+    assert_eq_int(extern_negate(0),  0,  "negate 0");
+}

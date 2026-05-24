@@ -94,6 +94,13 @@ class Parser {
             tl.fn_decl = fd;
             return tl;
         }
+        if this.check(TOK_KEYWORD, "extern") {
+            this.advance();  // consume "extern"
+            let fd: FnDecl = this.parse_extern_fn_decl();
+            let tl: TopLevel = new TopLevel(TL_FN, fd.line, fd.col);
+            tl.fn_decl = fd;
+            return tl;
+        }
         if this.check(TOK_KEYWORD, "let") {
             return this.parse_top_var(l, c);
         }
@@ -260,6 +267,41 @@ class Parser {
         }
         let body: Block = this.parse_block();
         return new FnDecl(fname, ps, ret, body, l, c);
+    }
+
+    fn parse_extern_fn_decl(): FnDecl {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        this.expect(TOK_KEYWORD, "fn");
+        let fname: string = "";
+        if this.peek_kind() == TOK_IDENT {
+            let t: Token = this.advance();
+            fname = t.value;
+        } else {
+            let t: Token = this.tokens[this.pos];
+            print("parse error at " + int_to_string(t.line) + ":" + int_to_string(t.col)
+                + ": expected function name after 'extern fn'");
+            exit(1);
+        }
+        this.expect(TOK_OP, "(");
+        let ps: Param[] = [];
+        if !this.check(TOK_OP, ")") {
+            let p: Param = this.parse_param();
+            push(ps, p);
+            while this.eat(TOK_OP, ",") {
+                let p2: Param = this.parse_param();
+                push(ps, p2);
+            }
+        }
+        this.expect(TOK_OP, ")");
+        let ret: TypeExpr = null;
+        if this.eat(TOK_OP, ":") {
+            ret = this.parse_type_expr();
+        }
+        this.expect(TOK_OP, ";");
+        let fd: FnDecl = new FnDecl(fname, ps, ret, null, l, c);
+        fd.is_extern = true;
+        return fd;
     }
 
     fn parse_param(): Param {

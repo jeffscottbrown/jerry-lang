@@ -454,6 +454,10 @@ class Generator {
             "declare i8   @jerry_string_ends_with(ptr, ptr)\n" +
             "declare i64  @jerry_string_index_of(ptr, ptr)\n" +
             "declare i64  @jerry_string_to_int(ptr)\n" +
+            "declare ptr  @jerry_string_to_lower(ptr)\n" +
+            "declare ptr  @jerry_string_to_upper(ptr)\n" +
+            "declare ptr  @jerry_string_trim(ptr)\n" +
+            "declare ptr  @jerry_string_replace(ptr, ptr, ptr)\n" +
             "declare ptr  @jerry_read_bytes(i64)\n" +
             "declare ptr  @jerry_map_new(i8, i64)\n" +
             "declare void @jerry_map_set(ptr, ptr, ptr)\n" +
@@ -544,6 +548,20 @@ class Generator {
     }
 
     // ── Function declaration generation ──────────────────────────────────────
+
+    // Emit an LLVM declare for an extern fn — called by its exact C name, no _jerry suffix.
+    fn gen_extern_decl(fd: FnDecl, ft: JType) {
+        if ft == null { return; }
+        let param_str: string = "";
+        let pi: int = 0;
+        while pi < len(ft.params) {
+            if len(param_str) > 0 { param_str = param_str + ", "; }
+            param_str = param_str + this.llvm_ty(ft.params[pi]);
+            pi = pi + 1;
+        }
+        let ret_lt: string = this.llvm_ty(ft.ret);
+        this.eml("declare " + ret_lt + " @" + fd.name + "(" + param_str + ")");
+    }
 
     // Generate a top-level function (is_method=false) or class method (is_method=true).
     fn gen_fn(fd: FnDecl, is_method: bool, class_name: string, ft: JType) {
@@ -1755,6 +1773,22 @@ class Generator {
             return res;
         }
 
+        if name == "string_to_lower" || name == "string_to_upper" || name == "string_trim" {
+            let sv:  string = this.gen_expr(e.args[0]);
+            let res: string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_" + name + "(ptr " + sv + ")");
+            return res;
+        }
+
+        if name == "string_replace" {
+            let sv:   string = this.gen_expr(e.args[0]);
+            let fromv: string = this.gen_expr(e.args[1]);
+            let tov:   string = this.gen_expr(e.args[2]);
+            let res:   string = this.new_tmp();
+            this.eml("  " + res + " = call ptr @jerry_string_replace(ptr " + sv + ", ptr " + fromv + ", ptr " + tov + ")");
+            return res;
+        }
+
         if name == "read_bytes" {
             let nv:  string = this.gen_expr(e.args[0]);
             nv = this.coerce_to_i64(nv, e.args[0].jtype);
@@ -1808,7 +1842,12 @@ class Generator {
 
         // Named top-level function
         let callee_ty: JType = this.info.find_func(name);
-        let fn_llvm: string  = name + "_jerry";
+        let fn_llvm: string = "";
+        if this.info.is_extern(name) {
+            fn_llvm = name;          // extern fn — call by exact C name
+        } else {
+            fn_llvm = name + "_jerry";
+        }
 
         let arg_str: string  = "";
         let arg_vals: string[] = [];
@@ -2154,7 +2193,11 @@ class Generator {
             let tl: TopLevel = prog.tops[j];
             if tl.kind == TL_FN {
                 let ft: JType = this.info.find_func(tl.fn_decl.name);
-                this.gen_fn(tl.fn_decl, false, "", ft);
+                if tl.fn_decl.is_extern {
+                    this.gen_extern_decl(tl.fn_decl, ft);
+                } else {
+                    this.gen_fn(tl.fn_decl, false, "", ft);
+                }
             }
             if tl.kind == TL_CLASS { this.gen_class_decl(tl.class_decl); }
             j = j + 1;

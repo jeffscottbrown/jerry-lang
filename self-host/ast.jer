@@ -370,12 +370,13 @@ class Expr {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class FnDecl {
-    name:   string;
-    params: Param[];
-    ret:    TypeExpr;   // null = void
-    body:   Block;
-    line:   int;
-    col:    int;
+    name:      string;
+    params:    Param[];
+    ret:       TypeExpr;   // null = void
+    body:      Block;
+    is_extern: bool;       // true = extern fn declaration (no body, calls C by exact name)
+    line:      int;
+    col:       int;
 
     fn new(n: string, ps: Param[], r: TypeExpr, b: Block, l: int, c: int) {
         this.name   = n;

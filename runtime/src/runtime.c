@@ -1,4 +1,5 @@
 #include "runtime.h"
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -188,6 +189,73 @@ int64_t jerry_string_to_int(JerryStr* s) {
     memcpy(buf, s->data, (size_t)n);
     buf[n] = '\0';
     return (int64_t)strtoll(buf, NULL, 10);
+}
+
+JerryStr* jerry_string_to_lower(JerryStr* s) {
+    if (s == NULL) return jerry_string_new("", 0);
+    char* buf = malloc((size_t)s->len);
+    if (!buf) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    for (int64_t i = 0; i < s->len; i++)
+        buf[i] = (char)tolower((unsigned char)s->data[i]);
+    JerryStr* r = jerry_string_new(buf, s->len);
+    free(buf);
+    return r;
+}
+
+JerryStr* jerry_string_to_upper(JerryStr* s) {
+    if (s == NULL) return jerry_string_new("", 0);
+    char* buf = malloc((size_t)s->len);
+    if (!buf) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    for (int64_t i = 0; i < s->len; i++)
+        buf[i] = (char)toupper((unsigned char)s->data[i]);
+    JerryStr* r = jerry_string_new(buf, s->len);
+    free(buf);
+    return r;
+}
+
+JerryStr* jerry_string_trim(JerryStr* s) {
+    if (s == NULL) return jerry_string_new("", 0);
+    int64_t lo = 0, hi = s->len;
+    while (lo < hi && (unsigned char)s->data[lo] <= ' ') lo++;
+    while (hi > lo && (unsigned char)s->data[hi - 1] <= ' ') hi--;
+    return jerry_string_new(s->data + lo, hi - lo);
+}
+
+JerryStr* jerry_string_replace(JerryStr* s, JerryStr* from, JerryStr* to) {
+    if (s == NULL) return jerry_string_new("", 0);
+    if (from == NULL || from->len == 0) {
+        jerry_retain(s);
+        return s;
+    }
+    /* Count occurrences to preallocate result buffer. */
+    int64_t count = 0;
+    for (int64_t i = 0; i <= s->len - from->len; ) {
+        if (memcmp(s->data + i, from->data, (size_t)from->len) == 0) {
+            count++;
+            i += from->len;
+        } else {
+            i++;
+        }
+    }
+    int64_t new_len = s->len + count * (to == NULL ? 0 : to->len) - count * from->len;
+    char* buf = malloc((size_t)(new_len > 0 ? new_len : 1));
+    if (!buf) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
+    int64_t wi = 0, ri = 0;
+    while (ri <= s->len - from->len) {
+        if (memcmp(s->data + ri, from->data, (size_t)from->len) == 0) {
+            if (to != NULL && to->len > 0) {
+                memcpy(buf + wi, to->data, (size_t)to->len);
+                wi += to->len;
+            }
+            ri += from->len;
+        } else {
+            buf[wi++] = s->data[ri++];
+        }
+    }
+    while (ri < s->len) buf[wi++] = s->data[ri++];
+    JerryStr* r = jerry_string_new(buf, wi);
+    free(buf);
+    return r;
 }
 
 JerryStr* jerry_read_bytes(int64_t n) {

@@ -144,11 +144,17 @@ fn main() {
 
     let test_files: string[] = [];
     let source_files: string[] = [];
+    let link_flags: string[] = [];
 
     let i: int = 0;
     while i < len(argv) {
         let arg: string = argv[i];
-        if is_dir(arg) {
+        if arg == "-l" || arg == "-L" {
+            i = i + 1;
+            if i < len(argv) { push(link_flags, arg + argv[i]); }
+        } else if string_starts_with(arg, "-l") || string_starts_with(arg, "-L") {
+            push(link_flags, arg);
+        } else if is_dir(arg) {
             collect_dir(arg, test_files, source_files);
         } else if string_ends_with(arg, "_test.jer") {
             push(test_files, arg);
@@ -215,6 +221,11 @@ fn main() {
     push(compile_args, tmp_jer);
     push(compile_args, "-o");
     push(compile_args, tmp_bin);
+    let lfi: int = 0;
+    while lfi < len(link_flags) {
+        push(compile_args, link_flags[lfi]);
+        lfi = lfi + 1;
+    }
 
     let compile_code: int = exec(compile_args);
     delete_file(tmp_jer);

@@ -111,14 +111,30 @@ class ClassInfo {
 // ── CheckInfo ─────────────────────────────────────────────────────────────────
 
 class CheckInfo {
-    classes: ClassInfo[];
-    funcs:   Symbol[];    // top-level function name → fn JType
+    classes:      ClassInfo[];
+    funcs:        Symbol[];    // top-level function name → fn JType
+    extern_funcs: string[];    // names of extern fn declarations (called without _jerry suffix)
 
     fn new() {
         let c: ClassInfo[] = [];
         this.classes = c;
         let f: Symbol[] = [];
         this.funcs = f;
+        let e: string[] = [];
+        this.extern_funcs = e;
+    }
+
+    fn mark_extern(name: string) {
+        push(this.extern_funcs, name);
+    }
+
+    fn is_extern(name: string): bool {
+        let i: int = 0;
+        while i < len(this.extern_funcs) {
+            if this.extern_funcs[i] == name { return true; }
+            i = i + 1;
+        }
+        return false;
     }
 
     fn find_class(name: string): ClassInfo {
@@ -264,6 +280,7 @@ class Checker {
         let ft: JType = this.build_fn_type(fd);
         this.info.add_func(fd.name, ft);
         this.define(fd.name, ft);
+        if fd.is_extern { this.info.mark_extern(fd.name); }
     }
 
     fn register_top_var(tl: TopLevel) {
@@ -290,6 +307,7 @@ class Checker {
     // ── Declaration checking (second pass) ───────────────────────────────────
 
     fn check_fn_decl(fd: FnDecl) {
+        if fd.is_extern { return; }  // no body to check
         let ft: JType = this.info.find_func(fd.name);
         if ft == null { ft = this.build_fn_type(fd); }
         let saved_ret: JType = this.ret_type;

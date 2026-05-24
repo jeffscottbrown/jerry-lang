@@ -118,3 +118,33 @@ fn test_string_ordering() {
     assert_true("" < "a", "empty < a");
     assert_true("a" > "", "a > empty");
 }
+
+fn test_string_to_lower() {
+    assert_eq_string(string_to_lower("Hello"), "hello", "mixed case");
+    assert_eq_string(string_to_lower("WORLD"), "world", "all caps");
+    assert_eq_string(string_to_lower("already"), "already", "already lower");
+    assert_eq_string(string_to_lower(""), "", "empty");
+}
+
+fn test_string_to_upper() {
+    assert_eq_string(string_to_upper("hello"), "HELLO", "all lower");
+    assert_eq_string(string_to_upper("World"), "WORLD", "mixed case");
+    assert_eq_string(string_to_upper("ALREADY"), "ALREADY", "already upper");
+    assert_eq_string(string_to_upper(""), "", "empty");
+}
+
+fn test_string_trim() {
+    assert_eq_string(string_trim("  hello  "), "hello", "both sides");
+    assert_eq_string(string_trim("hello"), "hello", "nothing to trim");
+    assert_eq_string(string_trim("   "), "", "all spaces");
+    assert_eq_string(string_trim(""), "", "empty");
+    assert_eq_string(string_trim("\t hi \n"), "hi", "tabs and newlines");
+}
+
+fn test_string_replace() {
+    assert_eq_string(string_replace("hello world", "world", "jerry"), "hello jerry", "basic replace");
+    assert_eq_string(string_replace("aaa", "a", "b"), "bbb", "multiple occurrences");
+    assert_eq_string(string_replace("hello", "x", "y"), "hello", "no match");
+    assert_eq_string(string_replace("hello", "hello", ""), "", "replace with empty");
+    assert_eq_string(string_replace("", "x", "y"), "", "empty source");
+}

@@ -44,6 +44,7 @@ fn is_keyword(word: string): bool {
     if word == "break"    { return true; }
     if word == "continue" { return true; }
     if word == "include"  { return true; }
+    if word == "extern"   { return true; }
     // "this" — 't'=116 'h'=104 'i'=105 's'=115
     let kw_this: string = char_to_string(116) + char_to_string(104) + char_to_string(105) + char_to_string(115);
     if word == kw_this { return true; }
