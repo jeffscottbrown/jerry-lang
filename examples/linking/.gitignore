@@ -1,0 +1,4 @@
+hello
+libhello.a
+src/asm/*.o
+src/c/*.o
