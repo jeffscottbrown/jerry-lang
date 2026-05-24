@@ -55,7 +55,7 @@ jobs:
     runs-on: macos-latest   # always macOS; IR cross-compilation handles other targets
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install cross-compilation toolchain (Linux target)
         if: inputs.platform == 'linux-x86_64'
