@@ -9,6 +9,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#if defined(__APPLE__)
+#  include <mach-o/dyld.h>   /* _NSGetExecutablePath */
+#endif
 
 /* ── Reference-counted allocator ────────────────────────────────────────────── */
 /* Every allocation is preceded by a 16-byte header:
@@ -550,36 +553,62 @@ JerryArray* jerry_args(void) {
 
 /* Returns JERRY_RUNTIME env var, or <binary_dir>/../lib/jerry_runtime.a.
    Mirrors the same discovery logic as internal/build/build.go:runtimeLibPath(). */
+/* exe_dir fills buf (size cap) with the directory containing the running
+   executable, with no trailing slash.  Returns 1 on success, 0 on failure.
+   Uses OS APIs that work regardless of how argv[0] was set by the shell. */
+static int exe_dir(char* buf, size_t cap) {
+#if defined(__APPLE__)
+    char tmp[4096];
+    uint32_t sz = sizeof(tmp);
+    if (_NSGetExecutablePath(tmp, &sz) != 0) return 0;
+    char resolved[4096];
+    if (!realpath(tmp, resolved)) return 0;
+    char* slash = strrchr(resolved, '/');
+    if (!slash) return 0;
+    *slash = '\0';
+    snprintf(buf, cap, "%s", resolved);
+    return 1;
+#elif defined(__linux__)
+    char resolved[4096];
+    ssize_t len = readlink("/proc/self/exe", resolved, sizeof(resolved) - 1);
+    if (len < 0) return 0;
+    resolved[len] = '\0';
+    char* slash = strrchr(resolved, '/');
+    if (!slash) return 0;
+    *slash = '\0';
+    snprintf(buf, cap, "%s", resolved);
+    return 1;
+#else
+    /* Generic fallback: try argv[0] via realpath */
+    if (!g_argv || !g_argv[0]) return 0;
+    char resolved[4096];
+    if (!realpath(g_argv[0], resolved)) return 0;
+    char* slash = strrchr(resolved, '/');
+    if (!slash) return 0;
+    *slash = '\0';
+    snprintf(buf, cap, "%s", resolved);
+    return 1;
+#endif
+}
+
 JerryStr* jerry_runtime_lib_path(void) {
     const char* env = getenv("JERRY_RUNTIME");
     if (env && env[0]) return jerry_string_new(env, (int64_t)strlen(env));
-    if (g_argv && g_argv[0]) {
-        char resolved[4096];
-        if (realpath(g_argv[0], resolved)) {
-            char* slash = strrchr(resolved, '/');
-            if (slash) { *slash = '\0'; }
-            strncat(resolved, "/../lib/jerry_runtime.a",
-                    sizeof(resolved) - strlen(resolved) - 1);
-            return jerry_string_new(resolved, (int64_t)strlen(resolved));
-        }
-    }
-    return jerry_string_new("", 0);
+    char dir[4096];
+    if (!exe_dir(dir, sizeof(dir))) return jerry_string_new("", 0);
+    char path[4096];
+    snprintf(path, sizeof(path), "%s/../lib/jerry_runtime.a", dir);
+    return jerry_string_new(path, (int64_t)strlen(path));
 }
 
 JerryStr* jerry_stdlib_dir_path(void) {
     const char* env = getenv("JERRY_STDLIB");
     if (env && env[0]) return jerry_string_new(env, (int64_t)strlen(env));
-    if (g_argv && g_argv[0]) {
-        char resolved[4096];
-        if (realpath(g_argv[0], resolved)) {
-            char* slash = strrchr(resolved, '/');
-            if (slash) { *slash = '\0'; }
-            strncat(resolved, "/../share/jerry/stdlib",
-                    sizeof(resolved) - strlen(resolved) - 1);
-            return jerry_string_new(resolved, (int64_t)strlen(resolved));
-        }
-    }
-    return jerry_string_new("", 0);
+    char dir[4096];
+    if (!exe_dir(dir, sizeof(dir))) return jerry_string_new("", 0);
+    char path[4096];
+    snprintf(path, sizeof(path), "%s/../share/jerry/stdlib", dir);
+    return jerry_string_new(path, (int64_t)strlen(path));
 }
 
 void jerry_flush_stdout(void) {
