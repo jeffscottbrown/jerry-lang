@@ -1,0 +1,94 @@
+// tests/rc_test.jer — reference-counting correctness for heap-typed locals.
+//
+// These tests verify that assigning to a heap-typed local that was initialised
+// from a simple identifier (variable alias) does not prematurely free the
+// original.  The bug: `let x: T = y` was treated as a borrow (no retain), so
+// a later `x = z` would release y's pointer, corrupting memory.
+include @testing
+
+// ── String aliasing ───────────────────────────────────────────────────────────
+
+// Initialise a string local from another string, then reassign it.
+// The original must remain valid after the reassignment.
+fn test_string_alias_then_reassign() {
+    let original: string = "hello";
+    let alias: string = original;
+    alias = "world";
+    assert_eq_string(original, "hello", "original unaffected after alias reassign");
+    assert_eq_string(alias,    "world", "alias holds new value");
+}
+
+// The same pattern triggered by a conditional branch (the gdgrep footgun).
+fn test_string_alias_conditional_reassign() {
+    let base: string = "base";
+    let result: string = base;
+    let flag: bool = true;
+    if flag {
+        result = "updated";
+    }
+    assert_eq_string(base,   "base",    "base unaffected after conditional reassign");
+    assert_eq_string(result, "updated", "result holds updated value");
+}
+
+// Alias is reassigned back to the original — refcount must not go negative.
+fn test_string_alias_reassign_to_original() {
+    let s: string = "abc";
+    let t: string = s;
+    t = s;
+    assert_eq_string(s, "abc", "source unchanged");
+    assert_eq_string(t, "abc", "alias still matches");
+}
+
+// ── Parameter aliasing ────────────────────────────────────────────────────────
+
+// Mirror of the search_pattern bug: a function parameter aliased into a local,
+// then the local is reassigned.  Caller's string must survive the call.
+fn helper_param_alias(p: string, replace: bool): string {
+    let local: string = p;
+    if replace {
+        local = string_to_upper(p);
+    }
+    return local;
+}
+
+fn test_param_alias_no_replace() {
+    let src: string = "keep";
+    let out: string = helper_param_alias(src, false);
+    assert_eq_string(src, "keep", "caller string intact when no replace");
+    assert_eq_string(out, "keep", "result is original");
+}
+
+fn test_param_alias_with_replace() {
+    let src: string = "hello";
+    let out: string = helper_param_alias(src, true);
+    assert_eq_string(src, "hello", "caller string intact after replace");
+    assert_eq_string(out, "HELLO", "result is uppercased");
+}
+
+// ── Array aliasing ────────────────────────────────────────────────────────────
+
+// Alias an array, then overwrite the alias with a new array.
+// The original array must remain intact.
+fn test_array_alias_then_reassign() {
+    let orig: string[] = ["a", "b", "c"];
+    let alias: string[] = orig;
+    let fresh: string[] = ["x", "y"];
+    alias = fresh;
+    assert_eq_int(len(orig),  3,   "orig length unchanged");
+    assert_eq_string(orig[0], "a", "orig[0] intact");
+    assert_eq_string(orig[2], "c", "orig[2] intact");
+    assert_eq_int(len(alias), 2,   "alias now points to fresh");
+    assert_eq_string(alias[0], "x", "alias[0] is from fresh");
+}
+
+// Multiple alias/reassign cycles on the same variable.
+fn test_string_alias_multiple_cycles() {
+    let a: string = "one";
+    let b: string = a;
+    b = "two";
+    let c: string = b;
+    b = "three";
+    assert_eq_string(a, "one",   "a unchanged");
+    assert_eq_string(b, "three", "b holds last assignment");
+    assert_eq_string(c, "two",   "c holds value captured before b's reassign");
+}

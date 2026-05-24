@@ -821,11 +821,15 @@ class Generator {
             this.eml("  call void @jerry_array_mark_heap(ptr " + val + ")");
         }
 
-        // Track for release if this is a fresh heap allocation (not a bare load).
-        if this.is_heap(ty) && !this.is_simple_ident(s.var_value) {
-            if this.is_index_expr(s.var_value) || this.is_field_expr(s.var_value) || this.is_bare_this(s.var_value) {
-                // Borrowed references (array element, field access, `this`) need an explicit
-                // retain so this variable owns its reference and the paired release is balanced.
+        // Every heap-typed local owns its reference and is released at scope exit.
+        // Sources that don't transfer ownership (variable alias, array element, field
+        // access, `this`) need an explicit retain so the paired release is balanced.
+        if this.is_heap(ty) {
+            let needs_retain: bool = this.is_simple_ident(s.var_value);
+            if !needs_retain { needs_retain = this.is_index_expr(s.var_value); }
+            if !needs_retain { needs_retain = this.is_field_expr(s.var_value); }
+            if !needs_retain { needs_retain = this.is_bare_this(s.var_value); }
+            if needs_retain {
                 this.eml("  call void @jerry_retain(ptr " + val + ")");
             }
             this.register_heap_local(reg, ty);

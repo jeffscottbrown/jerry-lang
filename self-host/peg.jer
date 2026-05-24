@@ -194,9 +194,6 @@ fn ms_next_is_rule_start(ms: MetaState): bool {
     return len(name) > 0 && is_eq;
 }
 
-// Forward declarations (functions call each other).
-fn ms_parse_choice(ms: MetaState): PegExpr;
-
 fn ms_parse_atom(ms: MetaState): PegExpr {
     ms_skip(ms);
     let c: int = ms_peek(ms);
@@ -301,8 +298,10 @@ fn peg_load(path: string): PegGrammar {
     ms.pos = 0;
 
     let g: PegGrammar = new PegGrammar();
-    g.names = [];
-    g.exprs = [];
+    let init_names: string[] = [];
+    let init_exprs: PegExpr[] = [];
+    g.names = init_names;
+    g.exprs = init_exprs;
 
     ms_skip(ms);
     while !ms_at_end(ms) {
@@ -383,8 +382,6 @@ fn peg_str_eq_at(s: string, pos: int, lit: string): bool {
 // ws=true: skip whitespace before atoms (parser rule context).
 // Returns end position on success, PEG_FAIL on failure.
 // memo: map key "rule_name@pos" → PEG_FAIL or end_pos (Packrat cache).
-fn peg_match_e(g: PegGrammar, e: PegExpr, s: string, pos: int, ws: bool, memo: map<string, int>): int;
-
 fn peg_match_r(g: PegGrammar, name: string, s: string, pos: int, memo: map<string, int>): int {
     // Packrat: check memo before doing work.
     let key: string = name + "@" + int_to_string(pos);
