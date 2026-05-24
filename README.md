@@ -129,6 +129,7 @@ sudo cp jerry jerry-compiler /usr/local/bin/
 jerry run   hello.jer               # compile and run immediately
 jerry compile hello.jer -o hello    # compile to a native binary
 jerry ir    hello.jer               # dump LLVM IR to stdout
+jerry parse hello.jer               # validate syntax against the PEG grammar
 jerry --version                     # print version
 ```
 
@@ -212,6 +213,8 @@ modules, see the **[Jerry Language Guide](docs/language.md)**.
 ## Documentation
 
 - **[Language Guide](docs/language.md)** — practical tour of every feature with runnable snippets.
+- **[Contributing Guide](docs/contributing.md)** — compiler internals, grammar workflow, tree-sitter and LSP update procedures.
+- [`grammar/jerry.peg`](grammar/jerry.peg) — canonical PEG grammar; the authoritative definition of Jerry's syntax.
 - [`stdlib/core.jer`](stdlib/core.jer) — always-available numeric and bool helpers.
 - [`stdlib/time.jer`](stdlib/time.jer) — `Timer` class and `millis_to_duration`.
 - [`stdlib/json.jer`](stdlib/json.jer) — JSON parser, serializer, and object helpers.

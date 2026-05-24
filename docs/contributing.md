@@ -18,6 +18,78 @@ The tree-sitter grammar lives in `jerry-lang/tree-sitter-jerry/`. The
 
 ---
 
+## The PEG grammar (`grammar/jerry.peg`)
+
+### Role
+
+`grammar/jerry.peg` is the **canonical specification** of Jerry's syntax.
+It is the single document you should read when you need to know exactly what
+is or is not legal Jerry.
+
+The file is written in a standard PEG (Parsing Expression Grammar) notation:
+
+| Notation | Meaning |
+|---|---|
+| `lowercase` | Parser rule — whitespace and comments are skipped between atoms |
+| `UPPERCASE` | Lexer rule — atomic; no implicit skipping inside |
+| `"..."` | Literal string terminal |
+| `[a-z]` | Character class |
+| `x?` `x*` `x+` | Optional, zero-or-more, one-or-more |
+| `x \| y` | Ordered choice — `x` tried first |
+| `!x` `&x` | Negative / positive lookahead |
+
+### Relationship to the compiler
+
+The compiler's lexer (`self-host/lexer.jer`) and parser
+(`self-host/parser.jer`) are hand-written recursive-descent implementations
+of the same grammar.  They are **not generated from** `jerry.peg` — they are
+maintained in parallel.  The grammar does not drive the compiler at runtime.
+
+**Why hand-written?**  A PEG interpreter that runs at compile time would be
+significantly slower, and hand-written parsers produce much better error
+messages ("expected `;` after statement" rather than "unexpected input at
+3:12").
+
+### Conformance enforcement — `jerry parse`
+
+`jerry parse <file.jer>` validates any `.jer` file against the PEG grammar
+at runtime, exiting non-zero if the file does not match:
+
+```sh
+jerry parse examples/hello.jer          # OK: examples/hello.jer
+jerry parse src/main.jer src/util.jer   # validates multiple files
+```
+
+CI runs `jerry parse` against representative source files on every push.
+This catches cases where the hand-written parser and the grammar diverge —
+one accepts something the other rejects.
+
+If you add a new syntax construct:
+
+1. Update `grammar/jerry.peg` first (this is the spec).
+2. Implement the change in `self-host/lexer.jer` and/or `self-host/parser.jer`.
+3. Add a test `.jer` file that exercises the new construct.
+4. Run `jerry parse` against the new file to confirm the grammar matches.
+
+### Keyword list
+
+The `KEYWORD` rule in the grammar is the authoritative list of reserved
+words.  The same list is replicated in the lexer (`self-host/lexer.jer`).
+When adding or removing a keyword, update **both** files and confirm that
+`jerry parse` still accepts all existing test files.
+
+### What the grammar does NOT cover
+
+- **Semantics** — type checking, scoping, and name resolution are defined by
+  the type-checker (`self-host/checker.jer`), not the grammar.
+- **Standard library** — stdlib modules live in `stdlib/` and are documented
+  separately.
+- **Tree-sitter grammar** — `tree-sitter-jerry/grammar.js` is a separate
+  grammar used for editor syntax highlighting.  It must be kept in sync with
+  `jerry.peg` manually (see the tree-sitter section below).
+
+---
+
 ## Updating the tree-sitter grammar
 
 ### When to update
@@ -139,6 +211,8 @@ The only time jerry-zed needs a change for LSP work is if:
 
 | Changed | Action required |
 |---|---|
+| `grammar/jerry.peg` | Update lexer/parser in `self-host/` → run `jerry parse` on test files |
+| `self-host/lexer.jer` or `self-host/parser.jer` | Sync `grammar/jerry.peg` → run `jerry parse` on test files |
 | `grammar.js` | Regenerate parser → commit to jerry-lang → bump commit hash in jerry-zed → rebuild wasm |
 | `runnables.scm` / `highlights.scm` / etc. | Commit to jerry-zed → rebuild wasm |
 | LSP behaviour (completions, diagnostics, hover) | Commit to jerry-lang only |

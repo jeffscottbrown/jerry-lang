@@ -1,12 +1,43 @@
 // Jerry Language — PEG Grammar
 //
-// This file is the source of truth for Jerry's syntax.  The self-hosted parser
-// (self-host/parser.jer) implements the same grammar; if the two ever diverge
-// this file wins.  `jerry parse <file>` validates a source file against this
-// grammar and exits non-zero on failure.
+// ── Role ─────────────────────────────────────────────────────────────────────
 //
-// Format conventions
-// ──────────────────
+// This file is the canonical specification of Jerry's syntax.  When in doubt
+// about what is or is not valid Jerry, this file is the authority.
+//
+// The compiler's hand-written lexer (self-host/lexer.jer) and recursive-
+// descent parser (self-host/parser.jer) implement the same grammar.  They are
+// NOT generated from this file — they are maintained in parallel.  The reason
+// for keeping the parser hand-written is performance and error quality: a PEG
+// interpreter running at compile time would be slower, and recursive-descent
+// parsers produce better diagnostics ("expected `;`" rather than "unexpected
+// input").
+//
+// ── Conformance ───────────────────────────────────────────────────────────────
+//
+// `jerry parse <file.jer>` validates a source file against this grammar at
+// runtime using the packrat PEG engine in self-host/peg.jer.  It exits
+// non-zero if the file does not match:
+//
+//   jerry parse examples/hello.jer
+//   jerry parse src/main.jer src/util.jer
+//
+// CI runs `jerry parse` against representative source files on every push, so
+// any divergence between this grammar and the hand-written parser will surface
+// as a CI failure.
+//
+// ── Keeping in sync ───────────────────────────────────────────────────────────
+//
+// When adding or changing syntax:
+//   1. Update this file first (it is the spec).
+//   2. Update self-host/lexer.jer and/or self-host/parser.jer to match.
+//   3. Run `jerry parse` against relevant source files to confirm alignment.
+//
+// The KEYWORD rule below is the authoritative keyword list.  The lexer
+// contains a matching list; both must be updated together.
+//
+// ── Format conventions ────────────────────────────────────────────────────────
+//
 //   lowercase   parser rule — whitespace / comments skipped between every atom
 //   UPPERCASE   lexer rule  — atomic; no implicit skipping inside
 //   "..."       literal string terminal (case-sensitive)
