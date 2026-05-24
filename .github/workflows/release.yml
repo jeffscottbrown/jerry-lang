@@ -17,9 +17,55 @@ env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
+  # ── Compile self-host/ to LLVM IR on macOS ────────────────────────────────
+  # Generating IR on macOS avoids the OOM issue that occurs when a
+  # Jerry-compiled binary compiles the large self-host/ codebase on Linux
+  # runners.  The IR is platform-independent and compiled with clang in each
+  # matrix job below.
+  compiler-ir:
+    name: Build compiler IR
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build runtime library
+        run: |
+          cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
+          ar rcs jerry_runtime.a jerry_runtime.o
+
+      - name: Install stdlib
+        run: |
+          mkdir -p stdlib-dist
+          cp stdlib/*.jer stdlib-dist/
+
+      - name: Download seed jerry-compiler from latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST=$(gh release list --repo jeffscottbrown/jerry-lang --limit 1 --json tagName --jq '.[0].tagName')
+          gh release download "$LATEST" --repo jeffscottbrown/jerry-lang --pattern "jerry-macos-arm64.tar.gz"
+          tar xf jerry-macos-arm64.tar.gz jerry-compiler
+          chmod +x jerry-compiler
+
+      - name: Compile self-host/ to LLVM IR
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler self-host/ --ir > self-host.ll
+
+      - name: Upload IR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiler-ir
+          path: self-host.ll
+          retention-days: 1
+
   # ── Build one binary per platform ──────────────────────────────────────────
   build:
     name: Build (${{ matrix.name }})
+    needs: compiler-ir
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,24 +73,18 @@ jobs:
         include:
           - name: linux-x86_64
             os: ubuntu-latest
-            goos: linux
-            goarch: amd64
             cc_arch_flag: ""
             jerry_target: ""
             asset_name: jerry-linux-x86_64
 
           - name: macos-x86_64
             os: macos-latest
-            goos: darwin
-            goarch: amd64
             cc_arch_flag: "-arch x86_64"
             jerry_target: "x86_64-apple-darwin"
             asset_name: jerry-macos-x86_64
 
           - name: macos-arm64
             os: macos-latest      # GitHub's Apple Silicon runner
-            goos: darwin
-            goarch: arm64
             cc_arch_flag: "-arch arm64"
             jerry_target: ""
             asset_name: jerry-macos-arm64
@@ -58,58 +98,31 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y clang
 
-      - name: Build runtime library (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build runtime library
         run: |
           cc -O2 ${{ matrix.cc_arch_flag }} -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
           ar rcs jerry_runtime.a jerry_runtime.o
 
-      - name: Build stdlib (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build stdlib
         run: |
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      - name: Download seed jerry-compiler from latest release
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          case "$(uname -s)-$(uname -m)" in
-            Linux-x86_64)  ASSET="jerry-linux-x86_64" ;;
-            Darwin-arm64)  ASSET="jerry-macos-arm64" ;;
-            Darwin-x86_64) ASSET="jerry-macos-x86_64" ;;
-          esac
-          LATEST=$(gh release list --repo jeffscottbrown/jerry-lang --limit 1 --json tagName --jq '.[0].tagName')
-          gh release download "$LATEST" --repo jeffscottbrown/jerry-lang --pattern "${ASSET}.tar.gz"
-          tar xf "${ASSET}.tar.gz" jerry-compiler
-          chmod +x jerry-compiler
+      - name: Download compiler IR
+        uses: actions/download-artifact@v4
+        with:
+          name: compiler-ir
 
-      - name: Build jerry-compiler from source
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
-        env:
-          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
-          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+      - name: Build jerry-compiler from IR
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
             TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
-          ./jerry-compiler self-host/ -o jerry-compiler-new $TARGET_FLAG
-          mv jerry-compiler-new jerry-compiler
+          clang $TARGET_FLAG -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
+          chmod +x jerry-compiler
 
-      - name: Build jerry-test (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-test
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -120,10 +133,7 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-test/ -o jerry-test $TARGET_FLAG
 
-      - name: Build jerry-create (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-create
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -134,10 +144,7 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-create/ -o jerry-create $TARGET_FLAG
 
-      - name: Build jerry-sweep (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-sweep
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -148,10 +155,7 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-sweep/ -o jerry-sweep $TARGET_FLAG
 
-      - name: Build jerry-get (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-get
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -162,10 +166,7 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-get/ -o jerry-get $TARGET_FLAG
 
-      - name: Build jerry-lsp (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Build jerry-lsp
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -177,9 +178,6 @@ jobs:
           ./jerry-compiler cmd/jerry-lsp/ -o jerry-lsp $TARGET_FLAG
 
       - name: Build jerry-main (native Jerry dispatcher)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -193,10 +191,8 @@ jobs:
           ./jerry-compiler cmd/jerry-main/ -o ${{ matrix.asset_name }} $TARGET_FLAG
           echo 'fn jerry_version(): string { return "dev"; }' > cmd/jerry-main/version.jer
 
-      - name: Smoke-test binary (native only)
-        if: |
-          (matrix.goos == 'linux' && runner.os == 'Linux') ||
-          (matrix.goos == 'darwin' && runner.os == 'macOS')
+      - name: Smoke-test binary (arm64 only)
+        if: matrix.jerry_target == ''
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
