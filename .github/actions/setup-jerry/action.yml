@@ -79,6 +79,16 @@ runs:
 
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
+        # Expose compiler, runtime, and stdlib paths so consumer projects can
+        # compile Jerry programs without any additional setup.
+        echo "JERRY_COMPILER=$RUNNER_TEMP/jerry-compiler" >> "$GITHUB_ENV"
+        if [ -f "$RUNNER_TEMP/jerry_runtime.a" ]; then
+          echo "JERRY_RUNTIME=$RUNNER_TEMP/jerry_runtime.a" >> "$GITHUB_ENV"
+        fi
+        if [ -d "$RUNNER_TEMP/stdlib" ]; then
+          echo "JERRY_STDLIB=$RUNNER_TEMP/stdlib" >> "$GITHUB_ENV"
+        fi
+
     - name: Verify
       shell: bash
       run: jerry --version

@@ -10,25 +10,12 @@
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-// dir_of returns the directory component of a file path.
-fn dir_of(path: string): string {
-    let i: int = len(path) - 1;
-    while i >= 0 {
-        if char_at(path, i) == 47 { // '/'
-            return string_slice(path, 0, i);
-        }
-        i = i - 1;
-    }
-    return ".";
-}
-
 // find_compiler returns the path to jerry-compiler.
-// Order: JERRY_COMPILER env var → beside this binary → "jerry-compiler" on PATH.
+// Order: JERRY_COMPILER env var → "jerry-compiler" on PATH.
 fn find_compiler(): string {
     let env: string = getenv("JERRY_COMPILER");
     if len(env) > 0 { return env; }
-    let dir: string = dir_of(args()[0]);
-    return dir + "/jerry-compiler";
+    return "jerry-compiler";
 }
 
 // trim_line removes leading whitespace from a line.

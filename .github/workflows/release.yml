@@ -220,7 +220,12 @@ jobs:
           [ -f jerry-sweep ]    && EXTRAS="$EXTRAS jerry-sweep"
           [ -f jerry-lsp ]      && EXTRAS="$EXTRAS jerry-lsp"
           [ -f jerry-get ]      && EXTRAS="$EXTRAS jerry-get"
-          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS
+          [ -f jerry_runtime.a ] && EXTRAS="$EXTRAS jerry_runtime.a"
+          # Include stdlib so consumer projects (and setup-jerry) have everything
+          # needed to compile Jerry programs without building from source.
+          cp -r stdlib-dist stdlib
+          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS stdlib
+          rm -rf stdlib
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
