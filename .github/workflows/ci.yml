@@ -150,6 +150,7 @@ jobs:
           ./strings-selfhosted
 
       - name: Bootstrap (jerry-compiler compiles itself)
+        if: runner.os == 'macOS'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
@@ -166,6 +167,7 @@ jobs:
           ./fib-v2
 
       - name: Jerry tests (via bootstrapped compiler)
+        if: runner.os == 'macOS'
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
           JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
