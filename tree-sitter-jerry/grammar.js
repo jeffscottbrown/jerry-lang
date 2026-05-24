@@ -55,6 +55,7 @@ module.exports = grammar({
 
     _top_level_item: $ => choice(
       $.include_declaration,
+      $.extern_function_declaration,
       $.function_declaration,
       $.class_declaration,
       $.variable_declaration,
@@ -74,6 +75,18 @@ module.exports = grammar({
     // -------------------------------------------------------------------------
     // Functions
     // -------------------------------------------------------------------------
+
+    // extern fn name(params): ReturnType;   (no body — declaration only)
+    extern_function_declaration: $ => seq(
+      'extern',
+      'fn',
+      field('name', $.identifier),
+      '(',
+      field('parameters', optional($.parameter_list)),
+      ')',
+      optional(seq(':', field('return_type', $._type))),
+      ';',
+    ),
 
     // fn name(params): ReturnType { body }
     function_declaration: $ => seq(
@@ -285,6 +298,7 @@ module.exports = grammar({
       $.null,
       $.float_literal,
       $.integer_literal,
+      $.char_literal,
       $.string_literal,
       $.identifier,
     ),
@@ -408,6 +422,17 @@ module.exports = grammar({
     // Float must take priority over integer so "3.14" lexes as one token.
     float_literal: $ => token(prec(1, /[0-9]+\.[0-9]+/)),
     integer_literal: $ => /[0-9]+/,
+
+    // Single-quoted char literals: 'a', '\n', '\\', etc.
+    // The value is the ASCII/Unicode code point (an int at runtime).
+    char_literal: $ => token(seq(
+      "'",
+      choice(
+        /[^'\\]/,                 // any single non-escape character
+        seq('\\', /[ntr\\'0]/),  // recognised escape sequences
+      ),
+      "'",
+    )),
 
     // Double-quoted strings with escape sequences.
     string_literal: $ => /"(?:[^"\\]|\\.)*"/,
