@@ -40,23 +40,12 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # Stage 1: compile the checked-in bootstrap IR into a jerry-compiler binary.
-      # self-host/bootstrap.ll is generated from self-host/ (minus flush_stdout) and
-      # updated whenever self-host sources change. Using a checked-in IR removes the
-      # dependency on a downloaded seed binary, making CI fast and reliable.
-      - name: "Bootstrap stage 1: checked-in IR → binary"
+      # Bootstrap: compile the checked-in IR directly into jerry-compiler.
+      # self-host/bootstrap.ll is the full self-host compilation output, regenerated
+      # whenever self-host/ sources change (see docs/bootstrap.md). No seed binary needed.
+      - name: Build jerry-compiler (bootstrap IR → binary)
         run: |
-          clang -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler-stage1 -lm
-          chmod +x jerry-compiler-stage1
-
-      # Stage 2: stage-1 knows the full language; compile the complete self-host source.
-      - name: "Bootstrap stage 2: stage-1 → jerry-compiler"
-        env:
-          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
-          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
-        run: |
-          ./jerry-compiler-stage1 self-host/ --ir > self-host.ll
-          clang -O0 self-host.ll jerry_runtime.a -o jerry-compiler -lm
+          clang -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
           chmod +x jerry-compiler
 
       - name: Build jerry-test (self-hosted)

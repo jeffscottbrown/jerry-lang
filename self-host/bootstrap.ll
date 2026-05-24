@@ -100,6 +100,7 @@ declare void @jerry_each_line(ptr, ptr)
 declare void @jerry_capture_args(i64, ptr)
 declare ptr  @jerry_args()
 declare void @jerry_print_err(ptr)
+declare void @jerry_flush_stdout()
 declare ptr  @jerry_read_stdin()
 declare i64  @jerry_now_millis()
 declare i64  @jerry_now_seconds()
@@ -1436,198 +1437,198 @@ declare ptr  @jerry_map_keys(ptr)
 @.str.1257 = private unnamed_addr constant [2 x i8] c"[\00"
 @.str.1258 = private unnamed_addr constant [2 x i8] c"]\00"
 @.str.1259 = private unnamed_addr constant [2 x i8] c"@\00"
-@.str.1260 = private unnamed_addr constant [16 x i8] c"parse error at \00"
-@.str.1261 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1262 = private unnamed_addr constant [13 x i8] c": expected '\00"
-@.str.1263 = private unnamed_addr constant [12 x i8] c"' but got '\00"
-@.str.1264 = private unnamed_addr constant [2 x i8] c"'\00"
-@.str.1265 = private unnamed_addr constant [8 x i8] c"include\00"
-@.str.1266 = private unnamed_addr constant [6 x i8] c"class\00"
-@.str.1267 = private unnamed_addr constant [3 x i8] c"fn\00"
-@.str.1268 = private unnamed_addr constant [4 x i8] c"let\00"
-@.str.1269 = private unnamed_addr constant [16 x i8] c"parse error at \00"
-@.str.1270 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1271 = private unnamed_addr constant [21 x i8] c": unexpected token '\00"
-@.str.1272 = private unnamed_addr constant [15 x i8] c"' at top level\00"
-@.str.1273 = private unnamed_addr constant [2 x i8] c"@\00"
-@.str.1274 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1275 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1276 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1277 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1278 = private unnamed_addr constant [2 x i8] c"=\00"
-@.str.1279 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1280 = private unnamed_addr constant [4 x i8] c"map\00"
-@.str.1281 = private unnamed_addr constant [2 x i8] c"<\00"
-@.str.1282 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1283 = private unnamed_addr constant [2 x i8] c">\00"
-@.str.1284 = private unnamed_addr constant [3 x i8] c"fn\00"
-@.str.1285 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1286 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1287 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1288 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1289 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1290 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1291 = private unnamed_addr constant [2 x i8] c"[\00"
-@.str.1292 = private unnamed_addr constant [2 x i8] c"]\00"
-@.str.1293 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1294 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1295 = private unnamed_addr constant [8 x i8] c"extends\00"
-@.str.1296 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1297 = private unnamed_addr constant [2 x i8] c"{\00"
-@.str.1298 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1299 = private unnamed_addr constant [3 x i8] c"fn\00"
-@.str.1300 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1301 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1302 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1303 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1304 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1305 = private unnamed_addr constant [16 x i8] c"parse error at \00"
-@.str.1306 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1307 = private unnamed_addr constant [25 x i8] c": expected function name\00"
-@.str.1308 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1309 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1310 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1311 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1260 = private unnamed_addr constant [5 x i8] c".jer\00"
+@.str.1261 = private unnamed_addr constant [10 x i8] c"_test.jer\00"
+@.str.1262 = private unnamed_addr constant [2 x i8] c"/\00"
+@.str.1263 = private unnamed_addr constant [10 x i8] c"include @\00"
+@.str.1264 = private unnamed_addr constant [5 x i8] c"core\00"
+@.str.1265 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1266 = private unnamed_addr constant [10 x i8] c"include @\00"
+@.str.1267 = private unnamed_addr constant [10 x i8] c"include \22\00"
+@.str.1268 = private unnamed_addr constant [2 x i8] c"\0A\00"
+@.str.1269 = private unnamed_addr constant [6 x i8] c"a.out\00"
+@.str.1270 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1271 = private unnamed_addr constant [3 x i8] c"-o\00"
+@.str.1272 = private unnamed_addr constant [5 x i8] c"--ir\00"
+@.str.1273 = private unnamed_addr constant [8 x i8] c"--check\00"
+@.str.1274 = private unnamed_addr constant [8 x i8] c"-target\00"
+@.str.1275 = private unnamed_addr constant [79 x i8] c"usage: jerry-compiler <source.jer|dir/> [more...] [-o output] [--ir] [--check]\00"
+@.str.1276 = private unnamed_addr constant [36 x i8] c"jerry-compiler: no .jer files found\00"
+@.str.1277 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1278 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1279 = private unnamed_addr constant [43 x i8] c"jerry-compiler: stdlib directory not found\00"
+@.str.1280 = private unnamed_addr constant [70 x i8] c"Run `make install-stdlib` or set JERRY_STDLIB to the stdlib directory\00"
+@.str.1281 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1282 = private unnamed_addr constant [10 x i8] c"/core.jer\00"
+@.str.1283 = private unnamed_addr constant [2 x i8] c"/\00"
+@.str.1284 = private unnamed_addr constant [5 x i8] c".jer\00"
+@.str.1285 = private unnamed_addr constant [12 x i8] c"/tmp/jerry-\00"
+@.str.1286 = private unnamed_addr constant [4 x i8] c".ll\00"
+@.str.1287 = private unnamed_addr constant [42 x i8] c"jerry-compiler: runtime library not found\00"
+@.str.1288 = private unnamed_addr constant [67 x i8] c"Run `make install-runtime` or set JERRY_RUNTIME to jerry_runtime.a\00"
+@.str.1289 = private unnamed_addr constant [6 x i8] c"clang\00"
+@.str.1290 = private unnamed_addr constant [4 x i8] c"-O1\00"
+@.str.1291 = private unnamed_addr constant [8 x i8] c"-target\00"
+@.str.1292 = private unnamed_addr constant [3 x i8] c"-o\00"
+@.str.1293 = private unnamed_addr constant [4 x i8] c"-lm\00"
+@.str.1294 = private unnamed_addr constant [40 x i8] c"jerry-compiler: clang exited with code \00"
+@.str.1295 = private unnamed_addr constant [16 x i8] c"parse error at \00"
+@.str.1296 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1297 = private unnamed_addr constant [13 x i8] c": expected '\00"
+@.str.1298 = private unnamed_addr constant [12 x i8] c"' but got '\00"
+@.str.1299 = private unnamed_addr constant [2 x i8] c"'\00"
+@.str.1300 = private unnamed_addr constant [8 x i8] c"include\00"
+@.str.1301 = private unnamed_addr constant [6 x i8] c"class\00"
+@.str.1302 = private unnamed_addr constant [3 x i8] c"fn\00"
+@.str.1303 = private unnamed_addr constant [4 x i8] c"let\00"
+@.str.1304 = private unnamed_addr constant [16 x i8] c"parse error at \00"
+@.str.1305 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1306 = private unnamed_addr constant [21 x i8] c": unexpected token '\00"
+@.str.1307 = private unnamed_addr constant [15 x i8] c"' at top level\00"
+@.str.1308 = private unnamed_addr constant [2 x i8] c"@\00"
+@.str.1309 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1310 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1311 = private unnamed_addr constant [1 x i8] c"\00"
 @.str.1312 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1313 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1314 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1315 = private unnamed_addr constant [2 x i8] c"{\00"
-@.str.1316 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1317 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1318 = private unnamed_addr constant [4 x i8] c"let\00"
-@.str.1319 = private unnamed_addr constant [7 x i8] c"return\00"
-@.str.1320 = private unnamed_addr constant [3 x i8] c"if\00"
-@.str.1321 = private unnamed_addr constant [6 x i8] c"while\00"
-@.str.1322 = private unnamed_addr constant [4 x i8] c"for\00"
-@.str.1323 = private unnamed_addr constant [6 x i8] c"break\00"
-@.str.1324 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1325 = private unnamed_addr constant [9 x i8] c"continue\00"
-@.str.1326 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1327 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1313 = private unnamed_addr constant [2 x i8] c"=\00"
+@.str.1314 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1315 = private unnamed_addr constant [4 x i8] c"map\00"
+@.str.1316 = private unnamed_addr constant [2 x i8] c"<\00"
+@.str.1317 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1318 = private unnamed_addr constant [2 x i8] c">\00"
+@.str.1319 = private unnamed_addr constant [3 x i8] c"fn\00"
+@.str.1320 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1321 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1322 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1323 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1324 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1325 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1326 = private unnamed_addr constant [2 x i8] c"[\00"
+@.str.1327 = private unnamed_addr constant [2 x i8] c"]\00"
 @.str.1328 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1329 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1330 = private unnamed_addr constant [2 x i8] c"=\00"
-@.str.1331 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1332 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1333 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1334 = private unnamed_addr constant [5 x i8] c"else\00"
-@.str.1335 = private unnamed_addr constant [3 x i8] c"if\00"
-@.str.1336 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1337 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1338 = private unnamed_addr constant [4 x i8] c"let\00"
-@.str.1339 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1340 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1341 = private unnamed_addr constant [2 x i8] c";\00"
-@.str.1342 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1343 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1344 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1345 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1346 = private unnamed_addr constant [2 x i8] c"=\00"
-@.str.1347 = private unnamed_addr constant [2 x i8] c"=\00"
-@.str.1348 = private unnamed_addr constant [3 x i8] c"||\00"
-@.str.1349 = private unnamed_addr constant [3 x i8] c"||\00"
-@.str.1350 = private unnamed_addr constant [3 x i8] c"&&\00"
-@.str.1351 = private unnamed_addr constant [3 x i8] c"&&\00"
-@.str.1352 = private unnamed_addr constant [3 x i8] c"==\00"
-@.str.1353 = private unnamed_addr constant [3 x i8] c"!=\00"
-@.str.1354 = private unnamed_addr constant [2 x i8] c"<\00"
-@.str.1355 = private unnamed_addr constant [2 x i8] c">\00"
-@.str.1356 = private unnamed_addr constant [3 x i8] c"<=\00"
-@.str.1357 = private unnamed_addr constant [3 x i8] c">=\00"
-@.str.1358 = private unnamed_addr constant [2 x i8] c"+\00"
-@.str.1359 = private unnamed_addr constant [2 x i8] c"-\00"
-@.str.1360 = private unnamed_addr constant [2 x i8] c"*\00"
-@.str.1361 = private unnamed_addr constant [2 x i8] c"/\00"
-@.str.1362 = private unnamed_addr constant [2 x i8] c"%\00"
-@.str.1363 = private unnamed_addr constant [2 x i8] c"!\00"
-@.str.1364 = private unnamed_addr constant [2 x i8] c"-\00"
-@.str.1365 = private unnamed_addr constant [2 x i8] c".\00"
-@.str.1366 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1367 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1368 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1369 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1370 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1371 = private unnamed_addr constant [2 x i8] c"[\00"
-@.str.1372 = private unnamed_addr constant [2 x i8] c"]\00"
-@.str.1373 = private unnamed_addr constant [3 x i8] c"++\00"
-@.str.1374 = private unnamed_addr constant [3 x i8] c"--\00"
-@.str.1375 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1376 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1329 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1330 = private unnamed_addr constant [8 x i8] c"extends\00"
+@.str.1331 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1332 = private unnamed_addr constant [2 x i8] c"{\00"
+@.str.1333 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1334 = private unnamed_addr constant [3 x i8] c"fn\00"
+@.str.1335 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1336 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1337 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1338 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1339 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1340 = private unnamed_addr constant [16 x i8] c"parse error at \00"
+@.str.1341 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1342 = private unnamed_addr constant [25 x i8] c": expected function name\00"
+@.str.1343 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1344 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1345 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1346 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1347 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1348 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1349 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1350 = private unnamed_addr constant [2 x i8] c"{\00"
+@.str.1351 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1352 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1353 = private unnamed_addr constant [4 x i8] c"let\00"
+@.str.1354 = private unnamed_addr constant [7 x i8] c"return\00"
+@.str.1355 = private unnamed_addr constant [3 x i8] c"if\00"
+@.str.1356 = private unnamed_addr constant [6 x i8] c"while\00"
+@.str.1357 = private unnamed_addr constant [4 x i8] c"for\00"
+@.str.1358 = private unnamed_addr constant [6 x i8] c"break\00"
+@.str.1359 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1360 = private unnamed_addr constant [9 x i8] c"continue\00"
+@.str.1361 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1362 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1363 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1364 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1365 = private unnamed_addr constant [2 x i8] c"=\00"
+@.str.1366 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1367 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1368 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1369 = private unnamed_addr constant [5 x i8] c"else\00"
+@.str.1370 = private unnamed_addr constant [3 x i8] c"if\00"
+@.str.1371 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1372 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1373 = private unnamed_addr constant [4 x i8] c"let\00"
+@.str.1374 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1375 = private unnamed_addr constant [2 x i8] c";\00"
+@.str.1376 = private unnamed_addr constant [2 x i8] c";\00"
 @.str.1377 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1378 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1379 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1380 = private unnamed_addr constant [3 x i8] c"fn\00"
-@.str.1381 = private unnamed_addr constant [2 x i8] c"[\00"
-@.str.1382 = private unnamed_addr constant [2 x i8] c"]\00"
-@.str.1383 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1384 = private unnamed_addr constant [2 x i8] c"]\00"
-@.str.1385 = private unnamed_addr constant [2 x i8] c"{\00"
-@.str.1386 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1387 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1388 = private unnamed_addr constant [16 x i8] c"parse error at \00"
-@.str.1389 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1390 = private unnamed_addr constant [21 x i8] c": unexpected token '\00"
-@.str.1391 = private unnamed_addr constant [16 x i8] c"' in expression\00"
-@.str.1392 = private unnamed_addr constant [2 x i8] c"(\00"
-@.str.1393 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1394 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1395 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1396 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1397 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1398 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1399 = private unnamed_addr constant [2 x i8] c",\00"
-@.str.1400 = private unnamed_addr constant [2 x i8] c":\00"
-@.str.1401 = private unnamed_addr constant [2 x i8] c"}\00"
-@.str.1402 = private unnamed_addr constant [5 x i8] c"void\00"
-@.str.1403 = private unnamed_addr constant [4 x i8] c"int\00"
-@.str.1404 = private unnamed_addr constant [6 x i8] c"float\00"
-@.str.1405 = private unnamed_addr constant [5 x i8] c"bool\00"
-@.str.1406 = private unnamed_addr constant [7 x i8] c"string\00"
-@.str.1407 = private unnamed_addr constant [5 x i8] c"null\00"
-@.str.1408 = private unnamed_addr constant [3 x i8] c"[]\00"
-@.str.1409 = private unnamed_addr constant [5 x i8] c"map<\00"
-@.str.1410 = private unnamed_addr constant [3 x i8] c", \00"
-@.str.1411 = private unnamed_addr constant [2 x i8] c">\00"
-@.str.1412 = private unnamed_addr constant [4 x i8] c"fn(\00"
-@.str.1413 = private unnamed_addr constant [3 x i8] c", \00"
+@.str.1378 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1379 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1380 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1381 = private unnamed_addr constant [2 x i8] c"=\00"
+@.str.1382 = private unnamed_addr constant [2 x i8] c"=\00"
+@.str.1383 = private unnamed_addr constant [3 x i8] c"||\00"
+@.str.1384 = private unnamed_addr constant [3 x i8] c"||\00"
+@.str.1385 = private unnamed_addr constant [3 x i8] c"&&\00"
+@.str.1386 = private unnamed_addr constant [3 x i8] c"&&\00"
+@.str.1387 = private unnamed_addr constant [3 x i8] c"==\00"
+@.str.1388 = private unnamed_addr constant [3 x i8] c"!=\00"
+@.str.1389 = private unnamed_addr constant [2 x i8] c"<\00"
+@.str.1390 = private unnamed_addr constant [2 x i8] c">\00"
+@.str.1391 = private unnamed_addr constant [3 x i8] c"<=\00"
+@.str.1392 = private unnamed_addr constant [3 x i8] c">=\00"
+@.str.1393 = private unnamed_addr constant [2 x i8] c"+\00"
+@.str.1394 = private unnamed_addr constant [2 x i8] c"-\00"
+@.str.1395 = private unnamed_addr constant [2 x i8] c"*\00"
+@.str.1396 = private unnamed_addr constant [2 x i8] c"/\00"
+@.str.1397 = private unnamed_addr constant [2 x i8] c"%\00"
+@.str.1398 = private unnamed_addr constant [2 x i8] c"!\00"
+@.str.1399 = private unnamed_addr constant [2 x i8] c"-\00"
+@.str.1400 = private unnamed_addr constant [2 x i8] c".\00"
+@.str.1401 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1402 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1403 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1404 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1405 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1406 = private unnamed_addr constant [2 x i8] c"[\00"
+@.str.1407 = private unnamed_addr constant [2 x i8] c"]\00"
+@.str.1408 = private unnamed_addr constant [3 x i8] c"++\00"
+@.str.1409 = private unnamed_addr constant [3 x i8] c"--\00"
+@.str.1410 = private unnamed_addr constant [1 x i8] c"\00"
+@.str.1411 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1412 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1413 = private unnamed_addr constant [2 x i8] c",\00"
 @.str.1414 = private unnamed_addr constant [2 x i8] c")\00"
-@.str.1415 = private unnamed_addr constant [3 x i8] c": \00"
-@.str.1416 = private unnamed_addr constant [8 x i8] c"unknown\00"
-@.str.1417 = private unnamed_addr constant [5 x i8] c".jer\00"
-@.str.1418 = private unnamed_addr constant [10 x i8] c"_test.jer\00"
-@.str.1419 = private unnamed_addr constant [2 x i8] c"/\00"
-@.str.1420 = private unnamed_addr constant [10 x i8] c"include @\00"
-@.str.1421 = private unnamed_addr constant [5 x i8] c"core\00"
-@.str.1422 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1423 = private unnamed_addr constant [10 x i8] c"include @\00"
-@.str.1424 = private unnamed_addr constant [10 x i8] c"include \22\00"
-@.str.1425 = private unnamed_addr constant [2 x i8] c"\0A\00"
-@.str.1426 = private unnamed_addr constant [6 x i8] c"a.out\00"
-@.str.1427 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1428 = private unnamed_addr constant [3 x i8] c"-o\00"
-@.str.1429 = private unnamed_addr constant [5 x i8] c"--ir\00"
-@.str.1430 = private unnamed_addr constant [8 x i8] c"--check\00"
-@.str.1431 = private unnamed_addr constant [8 x i8] c"-target\00"
-@.str.1432 = private unnamed_addr constant [79 x i8] c"usage: jerry-compiler <source.jer|dir/> [more...] [-o output] [--ir] [--check]\00"
-@.str.1433 = private unnamed_addr constant [36 x i8] c"jerry-compiler: no .jer files found\00"
-@.str.1434 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1435 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1436 = private unnamed_addr constant [43 x i8] c"jerry-compiler: stdlib directory not found\00"
-@.str.1437 = private unnamed_addr constant [70 x i8] c"Run `make install-stdlib` or set JERRY_STDLIB to the stdlib directory\00"
-@.str.1438 = private unnamed_addr constant [1 x i8] c"\00"
-@.str.1439 = private unnamed_addr constant [10 x i8] c"/core.jer\00"
-@.str.1440 = private unnamed_addr constant [2 x i8] c"/\00"
-@.str.1441 = private unnamed_addr constant [5 x i8] c".jer\00"
-@.str.1442 = private unnamed_addr constant [12 x i8] c"/tmp/jerry-\00"
-@.str.1443 = private unnamed_addr constant [4 x i8] c".ll\00"
-@.str.1444 = private unnamed_addr constant [42 x i8] c"jerry-compiler: runtime library not found\00"
-@.str.1445 = private unnamed_addr constant [67 x i8] c"Run `make install-runtime` or set JERRY_RUNTIME to jerry_runtime.a\00"
-@.str.1446 = private unnamed_addr constant [6 x i8] c"clang\00"
-@.str.1447 = private unnamed_addr constant [4 x i8] c"-O1\00"
-@.str.1448 = private unnamed_addr constant [8 x i8] c"-target\00"
-@.str.1449 = private unnamed_addr constant [3 x i8] c"-o\00"
-@.str.1450 = private unnamed_addr constant [4 x i8] c"-lm\00"
-@.str.1451 = private unnamed_addr constant [40 x i8] c"jerry-compiler: clang exited with code \00"
+@.str.1415 = private unnamed_addr constant [3 x i8] c"fn\00"
+@.str.1416 = private unnamed_addr constant [2 x i8] c"[\00"
+@.str.1417 = private unnamed_addr constant [2 x i8] c"]\00"
+@.str.1418 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1419 = private unnamed_addr constant [2 x i8] c"]\00"
+@.str.1420 = private unnamed_addr constant [2 x i8] c"{\00"
+@.str.1421 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1422 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1423 = private unnamed_addr constant [16 x i8] c"parse error at \00"
+@.str.1424 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1425 = private unnamed_addr constant [21 x i8] c": unexpected token '\00"
+@.str.1426 = private unnamed_addr constant [16 x i8] c"' in expression\00"
+@.str.1427 = private unnamed_addr constant [2 x i8] c"(\00"
+@.str.1428 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1429 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1430 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1431 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1432 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1433 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1434 = private unnamed_addr constant [2 x i8] c",\00"
+@.str.1435 = private unnamed_addr constant [2 x i8] c":\00"
+@.str.1436 = private unnamed_addr constant [2 x i8] c"}\00"
+@.str.1437 = private unnamed_addr constant [5 x i8] c"void\00"
+@.str.1438 = private unnamed_addr constant [4 x i8] c"int\00"
+@.str.1439 = private unnamed_addr constant [6 x i8] c"float\00"
+@.str.1440 = private unnamed_addr constant [5 x i8] c"bool\00"
+@.str.1441 = private unnamed_addr constant [7 x i8] c"string\00"
+@.str.1442 = private unnamed_addr constant [5 x i8] c"null\00"
+@.str.1443 = private unnamed_addr constant [3 x i8] c"[]\00"
+@.str.1444 = private unnamed_addr constant [5 x i8] c"map<\00"
+@.str.1445 = private unnamed_addr constant [3 x i8] c", \00"
+@.str.1446 = private unnamed_addr constant [2 x i8] c">\00"
+@.str.1447 = private unnamed_addr constant [4 x i8] c"fn(\00"
+@.str.1448 = private unnamed_addr constant [3 x i8] c", \00"
+@.str.1449 = private unnamed_addr constant [2 x i8] c")\00"
+@.str.1450 = private unnamed_addr constant [3 x i8] c": \00"
+@.str.1451 = private unnamed_addr constant [8 x i8] c"unknown\00"
 
 define private void @TypeExpr_destroy_jerry(ptr %self) {
 entry:
@@ -26232,262 +26233,1325 @@ while.end.2424:
   ret ptr %t14696
 }
 
+define ptr @expand_src_jerry(ptr %arg.arg) {
+entry:
+  %arg.14697 = alloca ptr
+  store ptr %arg.arg, ptr %arg.14697
+  %t14698 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %result.14699 = alloca ptr
+  store ptr %t14698, ptr %result.14699
+  call void @jerry_array_mark_heap(ptr %t14698)
+  %t14700 = load ptr, ptr %arg.14697
+  %t14701 = call i8 @jerry_is_dir(ptr %t14700)
+  %t14702 = icmp ne i8 %t14701, 0
+  br i1 %t14702, label %if.then.2431, label %if.else.2432
+if.then.2431:
+  %t14703 = load ptr, ptr %arg.14697
+  %t14704 = call ptr @jerry_list_dir(ptr %t14703)
+  %names.14705 = alloca ptr
+  store ptr %t14704, ptr %names.14705
+  %i.14706 = alloca i64
+  store i64 0, ptr %i.14706
+  br label %while.cond.2434
+while.cond.2434:
+  %t14707 = load i64, ptr %i.14706
+  %t14708 = load ptr, ptr %names.14705
+  %t14709 = call i64 @jerry_array_len(ptr %t14708)
+  %t14710 = icmp slt i64 %t14707, %t14709
+  br i1 %t14710, label %while.body.2435, label %while.end.2436
+while.body.2435:
+  %t14711 = load ptr, ptr %names.14705
+  %t14712 = load i64, ptr %i.14706
+  %t14713 = call ptr @jerry_array_get(ptr %t14711, i64 %t14712)
+  %t14714 = load ptr, ptr %t14713
+  %name.14715 = alloca ptr
+  store ptr %t14714, ptr %name.14715
+  call void @jerry_retain(ptr %t14714)
+  %t14716 = load ptr, ptr %name.14715
+  %t14717 = call ptr @jerry_string_new(ptr @.str.1260, i64 4)
+  %t14718 = call i8 @jerry_string_ends_with(ptr %t14716, ptr %t14717)
+  %t14719 = icmp ne i8 %t14718, 0
+  br i1 %t14719, label %and.rhs.2441, label %and.false.2440
+and.rhs.2441:
+  %t14720 = load ptr, ptr %name.14715
+  %t14721 = call ptr @jerry_string_new(ptr @.str.1261, i64 9)
+  %t14722 = call i8 @jerry_string_ends_with(ptr %t14720, ptr %t14721)
+  %t14723 = icmp ne i8 %t14722, 0
+  %t14724 = xor i1 %t14723, true
+  br label %and.merge.2442
+and.false.2440:
+  br label %and.merge.2442
+and.merge.2442:
+  %t14725 = phi i1 [ %t14724, %and.rhs.2441 ], [ false, %and.false.2440 ]
+  br i1 %t14725, label %if.then.2437, label %if.else.2438
+if.then.2437:
+  %t14726 = load ptr, ptr %result.14699
+  %t14727 = load ptr, ptr %arg.14697
+  %t14728 = call ptr @jerry_string_new(ptr @.str.1262, i64 1)
+  %t14729 = call ptr @jerry_string_concat(ptr %t14727, ptr %t14728)
+  %t14730 = load ptr, ptr %name.14715
+  %t14731 = call ptr @jerry_string_concat(ptr %t14729, ptr %t14730)
+  %t14732.slot = alloca ptr
+  store ptr %t14731, ptr %t14732.slot
+  call void @jerry_array_push(ptr %t14726, ptr %t14732.slot)
+  br label %if.merge.2439
+if.else.2438:
+  br label %if.merge.2439
+if.merge.2439:
+  %t14733 = load i64, ptr %i.14706
+  %t14734 = add i64 %t14733, 1
+  store i64 %t14734, ptr %i.14706
+  %t14735 = load ptr, ptr %name.14715
+  call void @jerry_release(ptr %t14735)
+  br label %while.cond.2434
+while.end.2436:
+  %t14736 = load ptr, ptr %names.14705
+  call void @jerry_release(ptr %t14736)
+  br label %if.merge.2433
+if.else.2432:
+  %t14737 = load ptr, ptr %result.14699
+  %t14738 = load ptr, ptr %arg.14697
+  %t14739.slot = alloca ptr
+  store ptr %t14738, ptr %t14739.slot
+  call void @jerry_array_push(ptr %t14737, ptr %t14739.slot)
+  br label %if.merge.2433
+if.merge.2433:
+  %t14740 = load ptr, ptr %result.14699
+  ret ptr %t14740
+}
+
+define ptr @collect_stdlib_names_jerry(ptr %src.arg) {
+entry:
+  %src.14741 = alloca ptr
+  store ptr %src.arg, ptr %src.14741
+  %t14742 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %names.14743 = alloca ptr
+  store ptr %t14742, ptr %names.14743
+  call void @jerry_array_mark_heap(ptr %t14742)
+  %t14744 = load ptr, ptr %src.14741
+  %t14745 = call i64 @jerry_string_len(ptr %t14744)
+  %n.14746 = alloca i64
+  store i64 %t14745, ptr %n.14746
+  %i.14747 = alloca i64
+  store i64 0, ptr %i.14747
+  br label %while.cond.2443
+while.cond.2443:
+  %t14748 = load i64, ptr %i.14747
+  %t14749 = load i64, ptr %n.14746
+  %t14750 = icmp slt i64 %t14748, %t14749
+  br i1 %t14750, label %while.body.2444, label %while.end.2445
+while.body.2444:
+  %t14751 = load i64, ptr %i.14747
+  %j.14752 = alloca i64
+  store i64 %t14751, ptr %j.14752
+  br label %while.cond.2446
+while.cond.2446:
+  %t14753 = load i64, ptr %j.14752
+  %t14754 = load i64, ptr %n.14746
+  %t14755 = icmp slt i64 %t14753, %t14754
+  br i1 %t14755, label %and.rhs.2450, label %and.false.2449
+and.rhs.2450:
+  %t14756 = load ptr, ptr %src.14741
+  %t14757 = load i64, ptr %j.14752
+  %t14758 = call i64 @jerry_char_at(ptr %t14756, i64 %t14757)
+  %t14759 = icmp ne i64 %t14758, 10
+  br label %and.merge.2451
+and.false.2449:
+  br label %and.merge.2451
+and.merge.2451:
+  %t14760 = phi i1 [ %t14759, %and.rhs.2450 ], [ false, %and.false.2449 ]
+  br i1 %t14760, label %while.body.2447, label %while.end.2448
+while.body.2447:
+  %t14761 = load i64, ptr %j.14752
+  %t14762 = add i64 %t14761, 1
+  store i64 %t14762, ptr %j.14752
+  br label %while.cond.2446
+while.end.2448:
+  %t14763 = load ptr, ptr %src.14741
+  %t14764 = load i64, ptr %i.14747
+  %t14765 = load i64, ptr %j.14752
+  %t14766 = call ptr @jerry_string_slice(ptr %t14763, i64 %t14764, i64 %t14765)
+  %line.14767 = alloca ptr
+  store ptr %t14766, ptr %line.14767
+  %k.14768 = alloca i64
+  store i64 0, ptr %k.14768
+  %t14769 = load ptr, ptr %line.14767
+  %t14770 = call i64 @jerry_string_len(ptr %t14769)
+  %ll.14771 = alloca i64
+  store i64 %t14770, ptr %ll.14771
+  br label %while.cond.2452
+while.cond.2452:
+  %t14772 = load i64, ptr %k.14768
+  %t14773 = load i64, ptr %ll.14771
+  %t14774 = icmp slt i64 %t14772, %t14773
+  br i1 %t14774, label %and.rhs.2456, label %and.false.2455
+and.rhs.2456:
+  %t14775 = load ptr, ptr %line.14767
+  %t14776 = load i64, ptr %k.14768
+  %t14777 = call i64 @jerry_char_at(ptr %t14775, i64 %t14776)
+  %t14778 = icmp eq i64 %t14777, 32
+  br i1 %t14778, label %or.true.2458, label %or.rhs.2459
+or.rhs.2459:
+  %t14779 = load ptr, ptr %line.14767
+  %t14780 = load i64, ptr %k.14768
+  %t14781 = call i64 @jerry_char_at(ptr %t14779, i64 %t14780)
+  %t14782 = icmp eq i64 %t14781, 9
+  br label %or.merge.2460
+or.true.2458:
+  br label %or.merge.2460
+or.merge.2460:
+  %t14783 = phi i1 [ true, %or.true.2458 ], [ %t14782, %or.rhs.2459 ]
+  br label %and.merge.2457
+and.false.2455:
+  br label %and.merge.2457
+and.merge.2457:
+  %t14784 = phi i1 [ %t14783, %or.merge.2460 ], [ false, %and.false.2455 ]
+  br i1 %t14784, label %while.body.2453, label %while.end.2454
+while.body.2453:
+  %t14785 = load i64, ptr %k.14768
+  %t14786 = add i64 %t14785, 1
+  store i64 %t14786, ptr %k.14768
+  br label %while.cond.2452
+while.end.2454:
+  %t14787 = load ptr, ptr %line.14767
+  %t14788 = load i64, ptr %k.14768
+  %t14789 = load i64, ptr %ll.14771
+  %t14790 = call ptr @jerry_string_slice(ptr %t14787, i64 %t14788, i64 %t14789)
+  %trimmed.14791 = alloca ptr
+  store ptr %t14790, ptr %trimmed.14791
+  %t14792 = load ptr, ptr %trimmed.14791
+  %t14793 = call ptr @jerry_string_new(ptr @.str.1263, i64 9)
+  %t14794 = call i8 @jerry_string_starts_with(ptr %t14792, ptr %t14793)
+  %t14795 = icmp ne i8 %t14794, 0
+  br i1 %t14795, label %if.then.2461, label %if.else.2462
+if.then.2461:
+  %t14796 = load ptr, ptr %trimmed.14791
+  %t14797 = load ptr, ptr %trimmed.14791
+  %t14798 = call i64 @jerry_string_len(ptr %t14797)
+  %t14799 = call ptr @jerry_string_slice(ptr %t14796, i64 9, i64 %t14798)
+  %name.14800 = alloca ptr
+  store ptr %t14799, ptr %name.14800
+  %t14801 = load ptr, ptr %name.14800
+  %t14802 = call i64 @jerry_string_len(ptr %t14801)
+  %nl.14803 = alloca i64
+  store i64 %t14802, ptr %nl.14803
+  br label %while.cond.2464
+while.cond.2464:
+  %t14804 = load i64, ptr %nl.14803
+  %t14805 = icmp sgt i64 %t14804, 0
+  br i1 %t14805, label %and.rhs.2468, label %and.false.2467
+and.rhs.2468:
+  %t14806 = load ptr, ptr %name.14800
+  %t14807 = load i64, ptr %nl.14803
+  %t14808 = sub i64 %t14807, 1
+  %t14809 = call i64 @jerry_char_at(ptr %t14806, i64 %t14808)
+  %t14810 = icmp eq i64 %t14809, 32
+  br i1 %t14810, label %or.true.2470, label %or.rhs.2471
+or.rhs.2471:
+  %t14811 = load ptr, ptr %name.14800
+  %t14812 = load i64, ptr %nl.14803
+  %t14813 = sub i64 %t14812, 1
+  %t14814 = call i64 @jerry_char_at(ptr %t14811, i64 %t14813)
+  %t14815 = icmp eq i64 %t14814, 9
+  br label %or.merge.2472
+or.true.2470:
+  br label %or.merge.2472
+or.merge.2472:
+  %t14816 = phi i1 [ true, %or.true.2470 ], [ %t14815, %or.rhs.2471 ]
+  br i1 %t14816, label %or.true.2473, label %or.rhs.2474
+or.rhs.2474:
+  %t14817 = load ptr, ptr %name.14800
+  %t14818 = load i64, ptr %nl.14803
+  %t14819 = sub i64 %t14818, 1
+  %t14820 = call i64 @jerry_char_at(ptr %t14817, i64 %t14819)
+  %t14821 = icmp eq i64 %t14820, 13
+  br label %or.merge.2475
+or.true.2473:
+  br label %or.merge.2475
+or.merge.2475:
+  %t14822 = phi i1 [ true, %or.true.2473 ], [ %t14821, %or.rhs.2474 ]
+  br label %and.merge.2469
+and.false.2467:
+  br label %and.merge.2469
+and.merge.2469:
+  %t14823 = phi i1 [ %t14822, %or.merge.2475 ], [ false, %and.false.2467 ]
+  br i1 %t14823, label %while.body.2465, label %while.end.2466
+while.body.2465:
+  %t14824 = load i64, ptr %nl.14803
+  %t14825 = sub i64 %t14824, 1
+  store i64 %t14825, ptr %nl.14803
+  br label %while.cond.2464
+while.end.2466:
+  %t14826 = load ptr, ptr %name.14800
+  %t14827 = load i64, ptr %nl.14803
+  %t14828 = call ptr @jerry_string_slice(ptr %t14826, i64 0, i64 %t14827)
+  %t14829 = load ptr, ptr %name.14800
+  call void @jerry_retain(ptr %t14828)
+  store ptr %t14828, ptr %name.14800
+  call void @jerry_release(ptr %t14829)
+  %t14830 = load ptr, ptr %name.14800
+  %t14831 = call ptr @jerry_string_new(ptr @.str.1264, i64 4)
+  %t14832 = call i8 @jerry_string_ne(ptr %t14830, ptr %t14831)
+  %t14833 = icmp ne i8 %t14832, 0
+  br i1 %t14833, label %and.rhs.2480, label %and.false.2479
+and.rhs.2480:
+  %t14834 = load ptr, ptr %name.14800
+  %t14835 = call i64 @jerry_string_len(ptr %t14834)
+  %t14836 = icmp sgt i64 %t14835, 0
+  br label %and.merge.2481
+and.false.2479:
+  br label %and.merge.2481
+and.merge.2481:
+  %t14837 = phi i1 [ %t14836, %and.rhs.2480 ], [ false, %and.false.2479 ]
+  br i1 %t14837, label %if.then.2476, label %if.else.2477
+if.then.2476:
+  %found.14838 = alloca i1
+  store i1 false, ptr %found.14838
+  %m.14839 = alloca i64
+  store i64 0, ptr %m.14839
+  br label %while.cond.2482
+while.cond.2482:
+  %t14840 = load i64, ptr %m.14839
+  %t14841 = load ptr, ptr %names.14743
+  %t14842 = call i64 @jerry_array_len(ptr %t14841)
+  %t14843 = icmp slt i64 %t14840, %t14842
+  br i1 %t14843, label %while.body.2483, label %while.end.2484
+while.body.2483:
+  %t14844 = load ptr, ptr %names.14743
+  %t14845 = load i64, ptr %m.14839
+  %t14846 = call ptr @jerry_array_get(ptr %t14844, i64 %t14845)
+  %t14847 = load ptr, ptr %t14846
+  %t14848 = load ptr, ptr %name.14800
+  %t14849 = call i8 @jerry_string_eq(ptr %t14847, ptr %t14848)
+  %t14850 = icmp ne i8 %t14849, 0
+  br i1 %t14850, label %if.then.2485, label %if.else.2486
+if.then.2485:
+  store i1 true, ptr %found.14838
+  br label %if.merge.2487
+if.else.2486:
+  br label %if.merge.2487
+if.merge.2487:
+  %t14851 = load i64, ptr %m.14839
+  %t14852 = add i64 %t14851, 1
+  store i64 %t14852, ptr %m.14839
+  br label %while.cond.2482
+while.end.2484:
+  %t14853 = load i1, ptr %found.14838
+  %t14854 = xor i1 %t14853, true
+  br i1 %t14854, label %if.then.2488, label %if.else.2489
+if.then.2488:
+  %t14855 = load ptr, ptr %names.14743
+  %t14856 = load ptr, ptr %name.14800
+  %t14857.slot = alloca ptr
+  store ptr %t14856, ptr %t14857.slot
+  call void @jerry_array_push(ptr %t14855, ptr %t14857.slot)
+  br label %if.merge.2490
+if.else.2489:
+  br label %if.merge.2490
+if.merge.2490:
+  br label %if.merge.2478
+if.else.2477:
+  br label %if.merge.2478
+if.merge.2478:
+  %t14858 = load ptr, ptr %name.14800
+  call void @jerry_release(ptr %t14858)
+  br label %if.merge.2463
+if.else.2462:
+  br label %if.merge.2463
+if.merge.2463:
+  %t14859 = load i64, ptr %j.14752
+  %t14860 = add i64 %t14859, 1
+  store i64 %t14860, ptr %i.14747
+  %t14861 = load ptr, ptr %trimmed.14791
+  call void @jerry_release(ptr %t14861)
+  %t14862 = load ptr, ptr %line.14767
+  call void @jerry_release(ptr %t14862)
+  br label %while.cond.2443
+while.end.2445:
+  %t14863 = load ptr, ptr %names.14743
+  ret ptr %t14863
+}
+
+define ptr @strip_includes_jerry(ptr %src.arg) {
+entry:
+  %src.14864 = alloca ptr
+  store ptr %src.arg, ptr %src.14864
+  %t14865 = call ptr @jerry_string_new(ptr @.str.1265, i64 0)
+  %result.14866 = alloca ptr
+  store ptr %t14865, ptr %result.14866
+  %t14867 = load ptr, ptr %src.14864
+  %t14868 = call i64 @jerry_string_len(ptr %t14867)
+  %n.14869 = alloca i64
+  store i64 %t14868, ptr %n.14869
+  %i.14870 = alloca i64
+  store i64 0, ptr %i.14870
+  br label %while.cond.2491
+while.cond.2491:
+  %t14871 = load i64, ptr %i.14870
+  %t14872 = load i64, ptr %n.14869
+  %t14873 = icmp slt i64 %t14871, %t14872
+  br i1 %t14873, label %while.body.2492, label %while.end.2493
+while.body.2492:
+  %t14874 = load i64, ptr %i.14870
+  %j.14875 = alloca i64
+  store i64 %t14874, ptr %j.14875
+  br label %while.cond.2494
+while.cond.2494:
+  %t14876 = load i64, ptr %j.14875
+  %t14877 = load i64, ptr %n.14869
+  %t14878 = icmp slt i64 %t14876, %t14877
+  br i1 %t14878, label %and.rhs.2498, label %and.false.2497
+and.rhs.2498:
+  %t14879 = load ptr, ptr %src.14864
+  %t14880 = load i64, ptr %j.14875
+  %t14881 = call i64 @jerry_char_at(ptr %t14879, i64 %t14880)
+  %t14882 = icmp ne i64 %t14881, 10
+  br label %and.merge.2499
+and.false.2497:
+  br label %and.merge.2499
+and.merge.2499:
+  %t14883 = phi i1 [ %t14882, %and.rhs.2498 ], [ false, %and.false.2497 ]
+  br i1 %t14883, label %while.body.2495, label %while.end.2496
+while.body.2495:
+  %t14884 = load i64, ptr %j.14875
+  %t14885 = add i64 %t14884, 1
+  store i64 %t14885, ptr %j.14875
+  br label %while.cond.2494
+while.end.2496:
+  %t14886 = load ptr, ptr %src.14864
+  %t14887 = load i64, ptr %i.14870
+  %t14888 = load i64, ptr %j.14875
+  %t14889 = call ptr @jerry_string_slice(ptr %t14886, i64 %t14887, i64 %t14888)
+  %line.14890 = alloca ptr
+  store ptr %t14889, ptr %line.14890
+  %k.14891 = alloca i64
+  store i64 0, ptr %k.14891
+  %t14892 = load ptr, ptr %line.14890
+  %t14893 = call i64 @jerry_string_len(ptr %t14892)
+  %ll.14894 = alloca i64
+  store i64 %t14893, ptr %ll.14894
+  br label %while.cond.2500
+while.cond.2500:
+  %t14895 = load i64, ptr %k.14891
+  %t14896 = load i64, ptr %ll.14894
+  %t14897 = icmp slt i64 %t14895, %t14896
+  br i1 %t14897, label %and.rhs.2504, label %and.false.2503
+and.rhs.2504:
+  %t14898 = load ptr, ptr %line.14890
+  %t14899 = load i64, ptr %k.14891
+  %t14900 = call i64 @jerry_char_at(ptr %t14898, i64 %t14899)
+  %t14901 = icmp eq i64 %t14900, 32
+  br i1 %t14901, label %or.true.2506, label %or.rhs.2507
+or.rhs.2507:
+  %t14902 = load ptr, ptr %line.14890
+  %t14903 = load i64, ptr %k.14891
+  %t14904 = call i64 @jerry_char_at(ptr %t14902, i64 %t14903)
+  %t14905 = icmp eq i64 %t14904, 9
+  br label %or.merge.2508
+or.true.2506:
+  br label %or.merge.2508
+or.merge.2508:
+  %t14906 = phi i1 [ true, %or.true.2506 ], [ %t14905, %or.rhs.2507 ]
+  br label %and.merge.2505
+and.false.2503:
+  br label %and.merge.2505
+and.merge.2505:
+  %t14907 = phi i1 [ %t14906, %or.merge.2508 ], [ false, %and.false.2503 ]
+  br i1 %t14907, label %while.body.2501, label %while.end.2502
+while.body.2501:
+  %t14908 = load i64, ptr %k.14891
+  %t14909 = add i64 %t14908, 1
+  store i64 %t14909, ptr %k.14891
+  br label %while.cond.2500
+while.end.2502:
+  %t14910 = load ptr, ptr %line.14890
+  %t14911 = load i64, ptr %k.14891
+  %t14912 = load i64, ptr %ll.14894
+  %t14913 = call ptr @jerry_string_slice(ptr %t14910, i64 %t14911, i64 %t14912)
+  %trimmed.14914 = alloca ptr
+  store ptr %t14913, ptr %trimmed.14914
+  %t14915 = load ptr, ptr %trimmed.14914
+  %t14916 = call ptr @jerry_string_new(ptr @.str.1266, i64 9)
+  %t14917 = call i8 @jerry_string_starts_with(ptr %t14915, ptr %t14916)
+  %t14918 = icmp ne i8 %t14917, 0
+  %t14919 = xor i1 %t14918, true
+  br i1 %t14919, label %and.rhs.2513, label %and.false.2512
+and.rhs.2513:
+  %t14920 = load ptr, ptr %trimmed.14914
+  %t14921 = call ptr @jerry_string_new(ptr @.str.1267, i64 9)
+  %t14922 = call i8 @jerry_string_starts_with(ptr %t14920, ptr %t14921)
+  %t14923 = icmp ne i8 %t14922, 0
+  %t14924 = xor i1 %t14923, true
+  br label %and.merge.2514
+and.false.2512:
+  br label %and.merge.2514
+and.merge.2514:
+  %t14925 = phi i1 [ %t14924, %and.rhs.2513 ], [ false, %and.false.2512 ]
+  br i1 %t14925, label %if.then.2509, label %if.else.2510
+if.then.2509:
+  %t14926 = load ptr, ptr %result.14866
+  %t14927 = load ptr, ptr %line.14890
+  %t14928 = call ptr @jerry_string_concat(ptr %t14926, ptr %t14927)
+  %t14929 = call ptr @jerry_string_new(ptr @.str.1268, i64 1)
+  %t14930 = call ptr @jerry_string_concat(ptr %t14928, ptr %t14929)
+  %t14931 = load ptr, ptr %result.14866
+  call void @jerry_retain(ptr %t14930)
+  store ptr %t14930, ptr %result.14866
+  call void @jerry_release(ptr %t14931)
+  br label %if.merge.2511
+if.else.2510:
+  br label %if.merge.2511
+if.merge.2511:
+  %t14932 = load i64, ptr %j.14875
+  %t14933 = add i64 %t14932, 1
+  store i64 %t14933, ptr %i.14870
+  %t14934 = load ptr, ptr %trimmed.14914
+  call void @jerry_release(ptr %t14934)
+  %t14935 = load ptr, ptr %line.14890
+  call void @jerry_release(ptr %t14935)
+  br label %while.cond.2491
+while.end.2493:
+  %t14936 = load ptr, ptr %result.14866
+  ret ptr %t14936
+}
+
+define void @main_jerry() {
+entry:
+  %t14937 = call ptr @jerry_args()
+  %argv.14938 = alloca ptr
+  store ptr %t14937, ptr %argv.14938
+  %t14939 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %src_args.14940 = alloca ptr
+  store ptr %t14939, ptr %src_args.14940
+  call void @jerry_array_mark_heap(ptr %t14939)
+  %t14941 = call ptr @jerry_string_new(ptr @.str.1269, i64 5)
+  %out_path.14942 = alloca ptr
+  store ptr %t14941, ptr %out_path.14942
+  %ir_only.14943 = alloca i1
+  store i1 false, ptr %ir_only.14943
+  %check_only.14944 = alloca i1
+  store i1 false, ptr %check_only.14944
+  %t14945 = call ptr @jerry_string_new(ptr @.str.1270, i64 0)
+  %target_triple.14946 = alloca ptr
+  store ptr %t14945, ptr %target_triple.14946
+  %i.14947 = alloca i64
+  store i64 0, ptr %i.14947
+  br label %while.cond.2515
+while.cond.2515:
+  %t14948 = load i64, ptr %i.14947
+  %t14949 = load ptr, ptr %argv.14938
+  %t14950 = call i64 @jerry_array_len(ptr %t14949)
+  %t14951 = icmp slt i64 %t14948, %t14950
+  br i1 %t14951, label %while.body.2516, label %while.end.2517
+while.body.2516:
+  %t14952 = load ptr, ptr %argv.14938
+  %t14953 = load i64, ptr %i.14947
+  %t14954 = call ptr @jerry_array_get(ptr %t14952, i64 %t14953)
+  %t14955 = load ptr, ptr %t14954
+  %a.14956 = alloca ptr
+  store ptr %t14955, ptr %a.14956
+  call void @jerry_retain(ptr %t14955)
+  %t14957 = load ptr, ptr %a.14956
+  %t14958 = call ptr @jerry_string_new(ptr @.str.1271, i64 2)
+  %t14959 = call i8 @jerry_string_eq(ptr %t14957, ptr %t14958)
+  %t14960 = icmp ne i8 %t14959, 0
+  br i1 %t14960, label %if.then.2518, label %if.else.2519
+if.then.2518:
+  %t14961 = load i64, ptr %i.14947
+  %t14962 = add i64 %t14961, 1
+  store i64 %t14962, ptr %i.14947
+  %t14963 = load i64, ptr %i.14947
+  %t14964 = load ptr, ptr %argv.14938
+  %t14965 = call i64 @jerry_array_len(ptr %t14964)
+  %t14966 = icmp slt i64 %t14963, %t14965
+  br i1 %t14966, label %if.then.2521, label %if.else.2522
+if.then.2521:
+  %t14967 = load ptr, ptr %argv.14938
+  %t14968 = load i64, ptr %i.14947
+  %t14969 = call ptr @jerry_array_get(ptr %t14967, i64 %t14968)
+  %t14970 = load ptr, ptr %t14969
+  %t14971 = load ptr, ptr %out_path.14942
+  call void @jerry_retain(ptr %t14970)
+  store ptr %t14970, ptr %out_path.14942
+  call void @jerry_release(ptr %t14971)
+  br label %if.merge.2523
+if.else.2522:
+  br label %if.merge.2523
+if.merge.2523:
+  br label %if.merge.2520
+if.else.2519:
+  %t14972 = load ptr, ptr %a.14956
+  %t14973 = call ptr @jerry_string_new(ptr @.str.1272, i64 4)
+  %t14974 = call i8 @jerry_string_eq(ptr %t14972, ptr %t14973)
+  %t14975 = icmp ne i8 %t14974, 0
+  br i1 %t14975, label %if.then.2524, label %if.else.2525
+if.then.2524:
+  store i1 true, ptr %ir_only.14943
+  br label %if.merge.2526
+if.else.2525:
+  %t14976 = load ptr, ptr %a.14956
+  %t14977 = call ptr @jerry_string_new(ptr @.str.1273, i64 7)
+  %t14978 = call i8 @jerry_string_eq(ptr %t14976, ptr %t14977)
+  %t14979 = icmp ne i8 %t14978, 0
+  br i1 %t14979, label %if.then.2527, label %if.else.2528
+if.then.2527:
+  store i1 true, ptr %check_only.14944
+  br label %if.merge.2529
+if.else.2528:
+  %t14980 = load ptr, ptr %a.14956
+  %t14981 = call ptr @jerry_string_new(ptr @.str.1274, i64 7)
+  %t14982 = call i8 @jerry_string_eq(ptr %t14980, ptr %t14981)
+  %t14983 = icmp ne i8 %t14982, 0
+  br i1 %t14983, label %if.then.2530, label %if.else.2531
+if.then.2530:
+  %t14984 = load i64, ptr %i.14947
+  %t14985 = add i64 %t14984, 1
+  store i64 %t14985, ptr %i.14947
+  %t14986 = load i64, ptr %i.14947
+  %t14987 = load ptr, ptr %argv.14938
+  %t14988 = call i64 @jerry_array_len(ptr %t14987)
+  %t14989 = icmp slt i64 %t14986, %t14988
+  br i1 %t14989, label %if.then.2533, label %if.else.2534
+if.then.2533:
+  %t14990 = load ptr, ptr %argv.14938
+  %t14991 = load i64, ptr %i.14947
+  %t14992 = call ptr @jerry_array_get(ptr %t14990, i64 %t14991)
+  %t14993 = load ptr, ptr %t14992
+  %t14994 = load ptr, ptr %target_triple.14946
+  call void @jerry_retain(ptr %t14993)
+  store ptr %t14993, ptr %target_triple.14946
+  call void @jerry_release(ptr %t14994)
+  br label %if.merge.2535
+if.else.2534:
+  br label %if.merge.2535
+if.merge.2535:
+  br label %if.merge.2532
+if.else.2531:
+  %t14995 = load ptr, ptr %src_args.14940
+  %t14996 = load ptr, ptr %a.14956
+  %t14997.slot = alloca ptr
+  store ptr %t14996, ptr %t14997.slot
+  call void @jerry_array_push(ptr %t14995, ptr %t14997.slot)
+  br label %if.merge.2532
+if.merge.2532:
+  br label %if.merge.2529
+if.merge.2529:
+  br label %if.merge.2526
+if.merge.2526:
+  br label %if.merge.2520
+if.merge.2520:
+  %t14998 = load i64, ptr %i.14947
+  %t14999 = add i64 %t14998, 1
+  store i64 %t14999, ptr %i.14947
+  %t15000 = load ptr, ptr %a.14956
+  call void @jerry_release(ptr %t15000)
+  br label %while.cond.2515
+while.end.2517:
+  %t15001 = load ptr, ptr %src_args.14940
+  %t15002 = call i64 @jerry_array_len(ptr %t15001)
+  %t15003 = icmp eq i64 %t15002, 0
+  br i1 %t15003, label %if.then.2536, label %if.else.2537
+if.then.2536:
+  %t15004 = call ptr @jerry_string_new(ptr @.str.1275, i64 78)
+  call void @jerry_print_err(ptr %t15004)
+  call void @jerry_release(ptr %t15004)
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2537:
+  br label %if.merge.2538
+if.merge.2538:
+  %t15005 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %src_files.15006 = alloca ptr
+  store ptr %t15005, ptr %src_files.15006
+  call void @jerry_array_mark_heap(ptr %t15005)
+  %j.15007 = alloca i64
+  store i64 0, ptr %j.15007
+  br label %while.cond.2539
+while.cond.2539:
+  %t15008 = load i64, ptr %j.15007
+  %t15009 = load ptr, ptr %src_args.14940
+  %t15010 = call i64 @jerry_array_len(ptr %t15009)
+  %t15011 = icmp slt i64 %t15008, %t15010
+  br i1 %t15011, label %while.body.2540, label %while.end.2541
+while.body.2540:
+  %t15012 = load ptr, ptr %src_args.14940
+  %t15013 = load i64, ptr %j.15007
+  %t15014 = call ptr @jerry_array_get(ptr %t15012, i64 %t15013)
+  %t15015 = load ptr, ptr %t15014
+  %t15016 = call ptr @expand_src_jerry(ptr %t15015)
+  %expanded.15017 = alloca ptr
+  store ptr %t15016, ptr %expanded.15017
+  %k.15018 = alloca i64
+  store i64 0, ptr %k.15018
+  br label %while.cond.2542
+while.cond.2542:
+  %t15019 = load i64, ptr %k.15018
+  %t15020 = load ptr, ptr %expanded.15017
+  %t15021 = call i64 @jerry_array_len(ptr %t15020)
+  %t15022 = icmp slt i64 %t15019, %t15021
+  br i1 %t15022, label %while.body.2543, label %while.end.2544
+while.body.2543:
+  %t15023 = load ptr, ptr %src_files.15006
+  %t15024 = load ptr, ptr %expanded.15017
+  %t15025 = load i64, ptr %k.15018
+  %t15026 = call ptr @jerry_array_get(ptr %t15024, i64 %t15025)
+  %t15027 = load ptr, ptr %t15026
+  %t15028.slot = alloca ptr
+  store ptr %t15027, ptr %t15028.slot
+  call void @jerry_array_push(ptr %t15023, ptr %t15028.slot)
+  %t15029 = load i64, ptr %k.15018
+  %t15030 = add i64 %t15029, 1
+  store i64 %t15030, ptr %k.15018
+  br label %while.cond.2542
+while.end.2544:
+  %t15031 = load i64, ptr %j.15007
+  %t15032 = add i64 %t15031, 1
+  store i64 %t15032, ptr %j.15007
+  %t15033 = load ptr, ptr %expanded.15017
+  call void @jerry_release(ptr %t15033)
+  br label %while.cond.2539
+while.end.2541:
+  %t15034 = load ptr, ptr %src_files.15006
+  %t15035 = call i64 @jerry_array_len(ptr %t15034)
+  %t15036 = icmp eq i64 %t15035, 0
+  br i1 %t15036, label %if.then.2545, label %if.else.2546
+if.then.2545:
+  %t15037 = call ptr @jerry_string_new(ptr @.str.1276, i64 35)
+  call void @jerry_print_err(ptr %t15037)
+  call void @jerry_release(ptr %t15037)
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2546:
+  br label %if.merge.2547
+if.merge.2547:
+  %t15038 = call ptr @jerry_string_new(ptr @.str.1277, i64 0)
+  %src.15039 = alloca ptr
+  store ptr %t15038, ptr %src.15039
+  %fi.15040 = alloca i64
+  store i64 0, ptr %fi.15040
+  br label %while.cond.2548
+while.cond.2548:
+  %t15041 = load i64, ptr %fi.15040
+  %t15042 = load ptr, ptr %src_files.15006
+  %t15043 = call i64 @jerry_array_len(ptr %t15042)
+  %t15044 = icmp slt i64 %t15041, %t15043
+  br i1 %t15044, label %while.body.2549, label %while.end.2550
+while.body.2549:
+  %t15045 = load ptr, ptr %src.15039
+  %t15046 = load ptr, ptr %src_files.15006
+  %t15047 = load i64, ptr %fi.15040
+  %t15048 = call ptr @jerry_array_get(ptr %t15046, i64 %t15047)
+  %t15049 = load ptr, ptr %t15048
+  %t15050 = call ptr @jerry_read_file(ptr %t15049)
+  %t15051 = call ptr @jerry_string_concat(ptr %t15045, ptr %t15050)
+  %t15052 = load ptr, ptr %src.15039
+  call void @jerry_retain(ptr %t15051)
+  store ptr %t15051, ptr %src.15039
+  call void @jerry_release(ptr %t15052)
+  %t15053 = load i64, ptr %fi.15040
+  %t15054 = add i64 %t15053, 1
+  store i64 %t15054, ptr %fi.15040
+  br label %while.cond.2548
+while.end.2550:
+  %t15055 = load ptr, ptr %src.15039
+  %t15056 = call ptr @collect_stdlib_names_jerry(ptr %t15055)
+  %stdlib_names.15057 = alloca ptr
+  store ptr %t15056, ptr %stdlib_names.15057
+  %t15058 = load ptr, ptr %stdlib_names.15057
+  %t15059 = call i64 @jerry_array_len(ptr %t15058)
+  %t15060 = icmp sgt i64 %t15059, 0
+  %needs_stdlib.15061 = alloca i1
+  store i1 %t15060, ptr %needs_stdlib.15061
+  %t15062 = call ptr @jerry_string_new(ptr @.str.1278, i64 0)
+  %stdlib_dir.15063 = alloca ptr
+  store ptr %t15062, ptr %stdlib_dir.15063
+  %t15064 = load i1, ptr %needs_stdlib.15061
+  br i1 %t15064, label %if.then.2551, label %if.else.2552
+if.then.2551:
+  %t15065 = call ptr @jerry_stdlib_dir_path()
+  %t15066 = load ptr, ptr %stdlib_dir.15063
+  call void @jerry_retain(ptr %t15065)
+  store ptr %t15065, ptr %stdlib_dir.15063
+  call void @jerry_release(ptr %t15066)
+  %t15067 = load ptr, ptr %stdlib_dir.15063
+  %t15068 = call i64 @jerry_string_len(ptr %t15067)
+  %t15069 = icmp eq i64 %t15068, 0
+  br i1 %t15069, label %if.then.2554, label %if.else.2555
+if.then.2554:
+  %t15070 = call ptr @jerry_string_new(ptr @.str.1279, i64 42)
+  call void @jerry_print_err(ptr %t15070)
+  call void @jerry_release(ptr %t15070)
+  %t15071 = call ptr @jerry_string_new(ptr @.str.1280, i64 69)
+  call void @jerry_print_err(ptr %t15071)
+  call void @jerry_release(ptr %t15071)
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2555:
+  br label %if.merge.2556
+if.merge.2556:
+  br label %if.merge.2553
+if.else.2552:
+  br label %if.merge.2553
+if.merge.2553:
+  %t15072 = load ptr, ptr %src.15039
+  %t15073 = call ptr @strip_includes_jerry(ptr %t15072)
+  %src_clean.15074 = alloca ptr
+  store ptr %t15073, ptr %src_clean.15074
+  %t15075 = call ptr @jerry_string_new(ptr @.str.1281, i64 0)
+  %prelude.15076 = alloca ptr
+  store ptr %t15075, ptr %prelude.15076
+  %t15077 = call ptr @jerry_stdlib_dir_path()
+  %t15078 = call ptr @jerry_string_new(ptr @.str.1282, i64 9)
+  %t15079 = call ptr @jerry_string_concat(ptr %t15077, ptr %t15078)
+  %core_path.15080 = alloca ptr
+  store ptr %t15079, ptr %core_path.15080
+  %t15081 = call ptr @jerry_stdlib_dir_path()
+  %t15082 = call i8 @jerry_is_dir(ptr %t15081)
+  %t15083 = icmp ne i8 %t15082, 0
+  br i1 %t15083, label %if.then.2557, label %if.else.2558
+if.then.2557:
+  %t15084 = load ptr, ptr %core_path.15080
+  %t15085 = call ptr @jerry_read_file(ptr %t15084)
+  %t15086 = load ptr, ptr %prelude.15076
+  call void @jerry_retain(ptr %t15085)
+  store ptr %t15085, ptr %prelude.15076
+  call void @jerry_release(ptr %t15086)
+  br label %if.merge.2559
+if.else.2558:
+  br label %if.merge.2559
+if.merge.2559:
+  %si.15087 = alloca i64
+  store i64 0, ptr %si.15087
+  br label %while.cond.2560
+while.cond.2560:
+  %t15088 = load i64, ptr %si.15087
+  %t15089 = load ptr, ptr %stdlib_names.15057
+  %t15090 = call i64 @jerry_array_len(ptr %t15089)
+  %t15091 = icmp slt i64 %t15088, %t15090
+  br i1 %t15091, label %while.body.2561, label %while.end.2562
+while.body.2561:
+  %t15092 = load ptr, ptr %stdlib_dir.15063
+  %t15093 = call ptr @jerry_string_new(ptr @.str.1283, i64 1)
+  %t15094 = call ptr @jerry_string_concat(ptr %t15092, ptr %t15093)
+  %t15095 = load ptr, ptr %stdlib_names.15057
+  %t15096 = load i64, ptr %si.15087
+  %t15097 = call ptr @jerry_array_get(ptr %t15095, i64 %t15096)
+  %t15098 = load ptr, ptr %t15097
+  %t15099 = call ptr @jerry_string_concat(ptr %t15094, ptr %t15098)
+  %t15100 = call ptr @jerry_string_new(ptr @.str.1284, i64 4)
+  %t15101 = call ptr @jerry_string_concat(ptr %t15099, ptr %t15100)
+  %mod_path.15102 = alloca ptr
+  store ptr %t15101, ptr %mod_path.15102
+  %t15103 = load ptr, ptr %prelude.15076
+  %t15104 = load ptr, ptr %mod_path.15102
+  %t15105 = call ptr @jerry_read_file(ptr %t15104)
+  %t15106 = call ptr @jerry_string_concat(ptr %t15103, ptr %t15105)
+  %t15107 = load ptr, ptr %prelude.15076
+  call void @jerry_retain(ptr %t15106)
+  store ptr %t15106, ptr %prelude.15076
+  call void @jerry_release(ptr %t15107)
+  %t15108 = load i64, ptr %si.15087
+  %t15109 = add i64 %t15108, 1
+  store i64 %t15109, ptr %si.15087
+  %t15110 = load ptr, ptr %mod_path.15102
+  call void @jerry_release(ptr %t15110)
+  br label %while.cond.2560
+while.end.2562:
+  %t15111 = load ptr, ptr %prelude.15076
+  %t15112 = load ptr, ptr %src_clean.15074
+  %t15113 = call ptr @jerry_string_concat(ptr %t15111, ptr %t15112)
+  %full_src.15114 = alloca ptr
+  store ptr %t15113, ptr %full_src.15114
+  %t15115 = load ptr, ptr %full_src.15114
+  %t15116 = call ptr @parse_jerry(ptr %t15115)
+  %prog.15117 = alloca ptr
+  store ptr %t15116, ptr %prog.15117
+  %t15118 = load ptr, ptr %prog.15117
+  %t15119 = call ptr @type_check_jerry(ptr %t15118)
+  %result.15120 = alloca ptr
+  store ptr %t15119, ptr %result.15120
+  %t15121 = load i1, ptr %check_only.14944
+  br i1 %t15121, label %if.then.2563, label %if.else.2564
+if.then.2563:
+  %t15122 = load ptr, ptr %result.15120
+  %t15123 = call i1 @CheckResult_has_errors_jerry(ptr %t15122)
+  br i1 %t15123, label %if.then.2566, label %if.else.2567
+if.then.2566:
+  %t15124 = load ptr, ptr %result.15120
+  %t15125 = call ptr @CheckResult_error_string_jerry(ptr %t15124)
+  call void @jerry_print_string(ptr %t15125)
+  call void @jerry_flush_stdout()
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2567:
+  br label %if.merge.2568
+if.merge.2568:
+  call void @jerry_exit(i64 0)
+  unreachable
+if.else.2564:
+  br label %if.merge.2565
+if.merge.2565:
+  %t15126 = load ptr, ptr %result.15120
+  %t15127 = call i1 @CheckResult_has_errors_jerry(ptr %t15126)
+  br i1 %t15127, label %if.then.2569, label %if.else.2570
+if.then.2569:
+  %t15128 = load ptr, ptr %result.15120
+  %t15129 = call ptr @CheckResult_error_string_jerry(ptr %t15128)
+  call void @jerry_print_err(ptr %t15129)
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2570:
+  br label %if.merge.2571
+if.merge.2571:
+  %t15130 = load ptr, ptr %prog.15117
+  %t15131 = load ptr, ptr %result.15120
+  %t15132 = getelementptr %CheckResult, ptr %t15131, i32 0, i32 1
+  %t15133 = load ptr, ptr %t15132
+  %t15134 = call ptr @generate_jerry(ptr %t15130, ptr %t15133)
+  %ir.15135 = alloca ptr
+  store ptr %t15134, ptr %ir.15135
+  %t15136 = load i1, ptr %ir_only.14943
+  br i1 %t15136, label %if.then.2572, label %if.else.2573
+if.then.2572:
+  %t15137 = load ptr, ptr %ir.15135
+  call void @jerry_print_string(ptr %t15137)
+  %t15138 = load ptr, ptr %ir.15135
+  call void @jerry_release(ptr %t15138)
+  %t15139 = load ptr, ptr %result.15120
+  call void @jerry_release(ptr %t15139)
+  %t15140 = load ptr, ptr %prog.15117
+  call void @jerry_release(ptr %t15140)
+  %t15141 = load ptr, ptr %full_src.15114
+  call void @jerry_release(ptr %t15141)
+  %t15142 = load ptr, ptr %core_path.15080
+  call void @jerry_release(ptr %t15142)
+  %t15143 = load ptr, ptr %prelude.15076
+  call void @jerry_release(ptr %t15143)
+  %t15144 = load ptr, ptr %src_clean.15074
+  call void @jerry_release(ptr %t15144)
+  %t15145 = load ptr, ptr %stdlib_dir.15063
+  call void @jerry_release(ptr %t15145)
+  %t15146 = load ptr, ptr %stdlib_names.15057
+  call void @jerry_release(ptr %t15146)
+  %t15147 = load ptr, ptr %src.15039
+  call void @jerry_release(ptr %t15147)
+  %t15148 = load ptr, ptr %src_files.15006
+  call void @jerry_release(ptr %t15148)
+  %t15149 = load ptr, ptr %target_triple.14946
+  call void @jerry_release(ptr %t15149)
+  %t15150 = load ptr, ptr %out_path.14942
+  call void @jerry_release(ptr %t15150)
+  %t15151 = load ptr, ptr %src_args.14940
+  call void @jerry_release(ptr %t15151)
+  %t15152 = load ptr, ptr %argv.14938
+  call void @jerry_release(ptr %t15152)
+  ret void
+if.else.2573:
+  br label %if.merge.2574
+if.merge.2574:
+  %t15153 = call ptr @jerry_string_new(ptr @.str.1285, i64 11)
+  %t15154 = call i64 @jerry_now_millis()
+  %t15155 = call ptr @jerry_int_to_string(i64 %t15154)
+  %t15156 = call ptr @jerry_string_concat(ptr %t15153, ptr %t15155)
+  %t15157 = call ptr @jerry_string_new(ptr @.str.1286, i64 3)
+  %t15158 = call ptr @jerry_string_concat(ptr %t15156, ptr %t15157)
+  %tmp.15159 = alloca ptr
+  store ptr %t15158, ptr %tmp.15159
+  %t15160 = load ptr, ptr %tmp.15159
+  %t15161 = load ptr, ptr %ir.15135
+  call void @jerry_write_file(ptr %t15160, ptr %t15161)
+  %t15162 = call ptr @jerry_runtime_lib_path()
+  %runtime_lib.15163 = alloca ptr
+  store ptr %t15162, ptr %runtime_lib.15163
+  %t15164 = load ptr, ptr %runtime_lib.15163
+  %t15165 = call i64 @jerry_string_len(ptr %t15164)
+  %t15166 = icmp eq i64 %t15165, 0
+  br i1 %t15166, label %if.then.2575, label %if.else.2576
+if.then.2575:
+  %t15167 = load ptr, ptr %tmp.15159
+  call void @jerry_delete_file(ptr %t15167)
+  %t15168 = call ptr @jerry_string_new(ptr @.str.1287, i64 41)
+  call void @jerry_print_err(ptr %t15168)
+  call void @jerry_release(ptr %t15168)
+  %t15169 = call ptr @jerry_string_new(ptr @.str.1288, i64 66)
+  call void @jerry_print_err(ptr %t15169)
+  call void @jerry_release(ptr %t15169)
+  call void @jerry_exit(i64 1)
+  unreachable
+if.else.2576:
+  br label %if.merge.2577
+if.merge.2577:
+  %t15170 = call ptr @jerry_array_new(i64 8, i64 2, i8 1)
+  %t15171 = call ptr @jerry_string_new(ptr @.str.1289, i64 5)
+  %t15172.slot = alloca ptr
+  store ptr %t15171, ptr %t15172.slot
+  call void @jerry_array_push(ptr %t15170, ptr %t15172.slot)
+  %t15173 = call ptr @jerry_string_new(ptr @.str.1290, i64 3)
+  %t15174.slot = alloca ptr
+  store ptr %t15173, ptr %t15174.slot
+  call void @jerry_array_push(ptr %t15170, ptr %t15174.slot)
+  %clang_args.15175 = alloca ptr
+  store ptr %t15170, ptr %clang_args.15175
+  %t15176 = load ptr, ptr %target_triple.14946
+  %t15177 = call i64 @jerry_string_len(ptr %t15176)
+  %t15178 = icmp sgt i64 %t15177, 0
+  br i1 %t15178, label %if.then.2578, label %if.else.2579
+if.then.2578:
+  %t15179 = load ptr, ptr %clang_args.15175
+  %t15180 = call ptr @jerry_string_new(ptr @.str.1291, i64 7)
+  %t15181.slot = alloca ptr
+  store ptr %t15180, ptr %t15181.slot
+  call void @jerry_array_push(ptr %t15179, ptr %t15181.slot)
+  %t15182 = load ptr, ptr %clang_args.15175
+  %t15183 = load ptr, ptr %target_triple.14946
+  %t15184.slot = alloca ptr
+  store ptr %t15183, ptr %t15184.slot
+  call void @jerry_array_push(ptr %t15182, ptr %t15184.slot)
+  br label %if.merge.2580
+if.else.2579:
+  br label %if.merge.2580
+if.merge.2580:
+  %t15185 = load ptr, ptr %clang_args.15175
+  %t15186 = load ptr, ptr %tmp.15159
+  %t15187.slot = alloca ptr
+  store ptr %t15186, ptr %t15187.slot
+  call void @jerry_array_push(ptr %t15185, ptr %t15187.slot)
+  %t15188 = load ptr, ptr %clang_args.15175
+  %t15189 = load ptr, ptr %runtime_lib.15163
+  %t15190.slot = alloca ptr
+  store ptr %t15189, ptr %t15190.slot
+  call void @jerry_array_push(ptr %t15188, ptr %t15190.slot)
+  %t15191 = load ptr, ptr %clang_args.15175
+  %t15192 = call ptr @jerry_string_new(ptr @.str.1292, i64 2)
+  %t15193.slot = alloca ptr
+  store ptr %t15192, ptr %t15193.slot
+  call void @jerry_array_push(ptr %t15191, ptr %t15193.slot)
+  %t15194 = load ptr, ptr %clang_args.15175
+  %t15195 = load ptr, ptr %out_path.14942
+  %t15196.slot = alloca ptr
+  store ptr %t15195, ptr %t15196.slot
+  call void @jerry_array_push(ptr %t15194, ptr %t15196.slot)
+  %t15197 = load ptr, ptr %clang_args.15175
+  %t15198 = call ptr @jerry_string_new(ptr @.str.1293, i64 3)
+  %t15199.slot = alloca ptr
+  store ptr %t15198, ptr %t15199.slot
+  call void @jerry_array_push(ptr %t15197, ptr %t15199.slot)
+  %t15200 = load ptr, ptr %clang_args.15175
+  %t15201 = call i64 @jerry_exec(ptr %t15200)
+  %code.15202 = alloca i64
+  store i64 %t15201, ptr %code.15202
+  %t15203 = load ptr, ptr %tmp.15159
+  call void @jerry_delete_file(ptr %t15203)
+  %t15204 = load i64, ptr %code.15202
+  %t15205 = icmp ne i64 %t15204, 0
+  br i1 %t15205, label %if.then.2581, label %if.else.2582
+if.then.2581:
+  %t15206 = call ptr @jerry_string_new(ptr @.str.1294, i64 39)
+  %t15207 = load i64, ptr %code.15202
+  %t15208 = call ptr @jerry_int_to_string(i64 %t15207)
+  %t15209 = call ptr @jerry_string_concat(ptr %t15206, ptr %t15208)
+  call void @jerry_print_err(ptr %t15209)
+  %t15210 = load i64, ptr %code.15202
+  call void @jerry_exit(i64 %t15210)
+  unreachable
+if.else.2582:
+  br label %if.merge.2583
+if.merge.2583:
+  %t15211 = load ptr, ptr %clang_args.15175
+  call void @jerry_release(ptr %t15211)
+  %t15212 = load ptr, ptr %runtime_lib.15163
+  call void @jerry_release(ptr %t15212)
+  %t15213 = load ptr, ptr %tmp.15159
+  call void @jerry_release(ptr %t15213)
+  %t15214 = load ptr, ptr %ir.15135
+  call void @jerry_release(ptr %t15214)
+  %t15215 = load ptr, ptr %result.15120
+  call void @jerry_release(ptr %t15215)
+  %t15216 = load ptr, ptr %prog.15117
+  call void @jerry_release(ptr %t15216)
+  %t15217 = load ptr, ptr %full_src.15114
+  call void @jerry_release(ptr %t15217)
+  %t15218 = load ptr, ptr %core_path.15080
+  call void @jerry_release(ptr %t15218)
+  %t15219 = load ptr, ptr %prelude.15076
+  call void @jerry_release(ptr %t15219)
+  %t15220 = load ptr, ptr %src_clean.15074
+  call void @jerry_release(ptr %t15220)
+  %t15221 = load ptr, ptr %stdlib_dir.15063
+  call void @jerry_release(ptr %t15221)
+  %t15222 = load ptr, ptr %stdlib_names.15057
+  call void @jerry_release(ptr %t15222)
+  %t15223 = load ptr, ptr %src.15039
+  call void @jerry_release(ptr %t15223)
+  %t15224 = load ptr, ptr %src_files.15006
+  call void @jerry_release(ptr %t15224)
+  %t15225 = load ptr, ptr %target_triple.14946
+  call void @jerry_release(ptr %t15225)
+  %t15226 = load ptr, ptr %out_path.14942
+  call void @jerry_release(ptr %t15226)
+  %t15227 = load ptr, ptr %src_args.14940
+  call void @jerry_release(ptr %t15227)
+  %t15228 = load ptr, ptr %argv.14938
+  call void @jerry_release(ptr %t15228)
+  ret void
+}
+
 define void @Parser_new_jerry(ptr %self.arg, ptr %toks.arg) {
 entry:
-  %this.14697 = alloca ptr
-  store ptr %self.arg, ptr %this.14697
-  %toks.14698 = alloca ptr
-  store ptr %toks.arg, ptr %toks.14698
-  %t14699 = load ptr, ptr %toks.14698
-  %t14700 = load ptr, ptr %this.14697
-  %t14701 = getelementptr %Parser, ptr %t14700, i32 0, i32 1
-  %t14702 = load ptr, ptr %t14701
-  call void @jerry_retain(ptr %t14699)
-  store ptr %t14699, ptr %t14701
-  call void @jerry_release(ptr %t14702)
-  %t14703 = load ptr, ptr %this.14697
-  %t14704 = getelementptr %Parser, ptr %t14703, i32 0, i32 2
-  store i64 0, ptr %t14704
+  %this.15229 = alloca ptr
+  store ptr %self.arg, ptr %this.15229
+  %toks.15230 = alloca ptr
+  store ptr %toks.arg, ptr %toks.15230
+  %t15231 = load ptr, ptr %toks.15230
+  %t15232 = load ptr, ptr %this.15229
+  %t15233 = getelementptr %Parser, ptr %t15232, i32 0, i32 1
+  %t15234 = load ptr, ptr %t15233
+  call void @jerry_retain(ptr %t15231)
+  store ptr %t15231, ptr %t15233
+  call void @jerry_release(ptr %t15234)
+  %t15235 = load ptr, ptr %this.15229
+  %t15236 = getelementptr %Parser, ptr %t15235, i32 0, i32 2
+  store i64 0, ptr %t15236
   ret void
 }
 
 define ptr @Parser_cur_jerry(ptr %self.arg) {
 entry:
-  %this.14705 = alloca ptr
-  store ptr %self.arg, ptr %this.14705
-  %t14706 = load ptr, ptr %this.14705
-  %t14707 = getelementptr %Parser, ptr %t14706, i32 0, i32 1
-  %t14708 = load ptr, ptr %t14707
-  %t14709 = load ptr, ptr %this.14705
-  %t14710 = getelementptr %Parser, ptr %t14709, i32 0, i32 2
-  %t14711 = load i64, ptr %t14710
-  %t14712 = call ptr @jerry_array_get(ptr %t14708, i64 %t14711)
-  %t14713 = load ptr, ptr %t14712
-  call void @jerry_retain(ptr %t14713)
-  ret ptr %t14713
+  %this.15237 = alloca ptr
+  store ptr %self.arg, ptr %this.15237
+  %t15238 = load ptr, ptr %this.15237
+  %t15239 = getelementptr %Parser, ptr %t15238, i32 0, i32 1
+  %t15240 = load ptr, ptr %t15239
+  %t15241 = load ptr, ptr %this.15237
+  %t15242 = getelementptr %Parser, ptr %t15241, i32 0, i32 2
+  %t15243 = load i64, ptr %t15242
+  %t15244 = call ptr @jerry_array_get(ptr %t15240, i64 %t15243)
+  %t15245 = load ptr, ptr %t15244
+  call void @jerry_retain(ptr %t15245)
+  ret ptr %t15245
 }
 
 define i64 @Parser_peek_kind_jerry(ptr %self.arg) {
 entry:
-  %this.14714 = alloca ptr
-  store ptr %self.arg, ptr %this.14714
-  %t14715 = load ptr, ptr %this.14714
-  %t14716 = getelementptr %Parser, ptr %t14715, i32 0, i32 1
-  %t14717 = load ptr, ptr %t14716
-  %t14718 = load ptr, ptr %this.14714
-  %t14719 = getelementptr %Parser, ptr %t14718, i32 0, i32 2
-  %t14720 = load i64, ptr %t14719
-  %t14721 = call ptr @jerry_array_get(ptr %t14717, i64 %t14720)
-  %t14722 = load ptr, ptr %t14721
-  %t14723 = getelementptr %Token, ptr %t14722, i32 0, i32 1
-  %t14724 = load i64, ptr %t14723
-  ret i64 %t14724
+  %this.15246 = alloca ptr
+  store ptr %self.arg, ptr %this.15246
+  %t15247 = load ptr, ptr %this.15246
+  %t15248 = getelementptr %Parser, ptr %t15247, i32 0, i32 1
+  %t15249 = load ptr, ptr %t15248
+  %t15250 = load ptr, ptr %this.15246
+  %t15251 = getelementptr %Parser, ptr %t15250, i32 0, i32 2
+  %t15252 = load i64, ptr %t15251
+  %t15253 = call ptr @jerry_array_get(ptr %t15249, i64 %t15252)
+  %t15254 = load ptr, ptr %t15253
+  %t15255 = getelementptr %Token, ptr %t15254, i32 0, i32 1
+  %t15256 = load i64, ptr %t15255
+  ret i64 %t15256
 }
 
 define ptr @Parser_peek_val_jerry(ptr %self.arg) {
 entry:
-  %this.14725 = alloca ptr
-  store ptr %self.arg, ptr %this.14725
-  %t14726 = load ptr, ptr %this.14725
-  %t14727 = getelementptr %Parser, ptr %t14726, i32 0, i32 1
-  %t14728 = load ptr, ptr %t14727
-  %t14729 = load ptr, ptr %this.14725
-  %t14730 = getelementptr %Parser, ptr %t14729, i32 0, i32 2
-  %t14731 = load i64, ptr %t14730
-  %t14732 = call ptr @jerry_array_get(ptr %t14728, i64 %t14731)
-  %t14733 = load ptr, ptr %t14732
-  %t14734 = getelementptr %Token, ptr %t14733, i32 0, i32 2
-  %t14735 = load ptr, ptr %t14734
-  call void @jerry_retain(ptr %t14735)
-  ret ptr %t14735
+  %this.15257 = alloca ptr
+  store ptr %self.arg, ptr %this.15257
+  %t15258 = load ptr, ptr %this.15257
+  %t15259 = getelementptr %Parser, ptr %t15258, i32 0, i32 1
+  %t15260 = load ptr, ptr %t15259
+  %t15261 = load ptr, ptr %this.15257
+  %t15262 = getelementptr %Parser, ptr %t15261, i32 0, i32 2
+  %t15263 = load i64, ptr %t15262
+  %t15264 = call ptr @jerry_array_get(ptr %t15260, i64 %t15263)
+  %t15265 = load ptr, ptr %t15264
+  %t15266 = getelementptr %Token, ptr %t15265, i32 0, i32 2
+  %t15267 = load ptr, ptr %t15266
+  call void @jerry_retain(ptr %t15267)
+  ret ptr %t15267
 }
 
 define i64 @Parser_peek_line_jerry(ptr %self.arg) {
 entry:
-  %this.14736 = alloca ptr
-  store ptr %self.arg, ptr %this.14736
-  %t14737 = load ptr, ptr %this.14736
-  %t14738 = getelementptr %Parser, ptr %t14737, i32 0, i32 1
-  %t14739 = load ptr, ptr %t14738
-  %t14740 = load ptr, ptr %this.14736
-  %t14741 = getelementptr %Parser, ptr %t14740, i32 0, i32 2
-  %t14742 = load i64, ptr %t14741
-  %t14743 = call ptr @jerry_array_get(ptr %t14739, i64 %t14742)
-  %t14744 = load ptr, ptr %t14743
-  %t14745 = getelementptr %Token, ptr %t14744, i32 0, i32 3
-  %t14746 = load i64, ptr %t14745
-  ret i64 %t14746
+  %this.15268 = alloca ptr
+  store ptr %self.arg, ptr %this.15268
+  %t15269 = load ptr, ptr %this.15268
+  %t15270 = getelementptr %Parser, ptr %t15269, i32 0, i32 1
+  %t15271 = load ptr, ptr %t15270
+  %t15272 = load ptr, ptr %this.15268
+  %t15273 = getelementptr %Parser, ptr %t15272, i32 0, i32 2
+  %t15274 = load i64, ptr %t15273
+  %t15275 = call ptr @jerry_array_get(ptr %t15271, i64 %t15274)
+  %t15276 = load ptr, ptr %t15275
+  %t15277 = getelementptr %Token, ptr %t15276, i32 0, i32 3
+  %t15278 = load i64, ptr %t15277
+  ret i64 %t15278
 }
 
 define i64 @Parser_peek_col_jerry(ptr %self.arg) {
 entry:
-  %this.14747 = alloca ptr
-  store ptr %self.arg, ptr %this.14747
-  %t14748 = load ptr, ptr %this.14747
-  %t14749 = getelementptr %Parser, ptr %t14748, i32 0, i32 1
-  %t14750 = load ptr, ptr %t14749
-  %t14751 = load ptr, ptr %this.14747
-  %t14752 = getelementptr %Parser, ptr %t14751, i32 0, i32 2
-  %t14753 = load i64, ptr %t14752
-  %t14754 = call ptr @jerry_array_get(ptr %t14750, i64 %t14753)
-  %t14755 = load ptr, ptr %t14754
-  %t14756 = getelementptr %Token, ptr %t14755, i32 0, i32 4
-  %t14757 = load i64, ptr %t14756
-  ret i64 %t14757
+  %this.15279 = alloca ptr
+  store ptr %self.arg, ptr %this.15279
+  %t15280 = load ptr, ptr %this.15279
+  %t15281 = getelementptr %Parser, ptr %t15280, i32 0, i32 1
+  %t15282 = load ptr, ptr %t15281
+  %t15283 = load ptr, ptr %this.15279
+  %t15284 = getelementptr %Parser, ptr %t15283, i32 0, i32 2
+  %t15285 = load i64, ptr %t15284
+  %t15286 = call ptr @jerry_array_get(ptr %t15282, i64 %t15285)
+  %t15287 = load ptr, ptr %t15286
+  %t15288 = getelementptr %Token, ptr %t15287, i32 0, i32 4
+  %t15289 = load i64, ptr %t15288
+  ret i64 %t15289
 }
 
 define ptr @Parser_advance_jerry(ptr %self.arg) {
 entry:
-  %this.14758 = alloca ptr
-  store ptr %self.arg, ptr %this.14758
-  %t14759 = load ptr, ptr %this.14758
-  %t14760 = getelementptr %Parser, ptr %t14759, i32 0, i32 1
-  %t14761 = load ptr, ptr %t14760
-  %t14762 = load ptr, ptr %this.14758
-  %t14763 = getelementptr %Parser, ptr %t14762, i32 0, i32 2
-  %t14764 = load i64, ptr %t14763
-  %t14765 = call ptr @jerry_array_get(ptr %t14761, i64 %t14764)
-  %t14766 = load ptr, ptr %t14765
-  %t.14767 = alloca ptr
-  store ptr %t14766, ptr %t.14767
-  call void @jerry_retain(ptr %t14766)
-  %t14768 = load ptr, ptr %this.14758
-  %t14769 = getelementptr %Parser, ptr %t14768, i32 0, i32 2
-  %t14770 = load i64, ptr %t14769
-  %t14771 = add i64 %t14770, 1
-  %t14772 = load ptr, ptr %this.14758
-  %t14773 = getelementptr %Parser, ptr %t14772, i32 0, i32 1
-  %t14774 = load ptr, ptr %t14773
-  %t14775 = call i64 @jerry_array_len(ptr %t14774)
-  %t14776 = icmp slt i64 %t14771, %t14775
-  br i1 %t14776, label %if.then.2431, label %if.else.2432
-if.then.2431:
-  %t14777 = load ptr, ptr %this.14758
-  %t14778 = getelementptr %Parser, ptr %t14777, i32 0, i32 2
-  %t14779 = load i64, ptr %t14778
-  %t14780 = add i64 %t14779, 1
-  %t14781 = load ptr, ptr %this.14758
-  %t14782 = getelementptr %Parser, ptr %t14781, i32 0, i32 2
-  store i64 %t14780, ptr %t14782
-  br label %if.merge.2433
-if.else.2432:
-  br label %if.merge.2433
-if.merge.2433:
-  %t14783 = load ptr, ptr %t.14767
-  ret ptr %t14783
+  %this.15290 = alloca ptr
+  store ptr %self.arg, ptr %this.15290
+  %t15291 = load ptr, ptr %this.15290
+  %t15292 = getelementptr %Parser, ptr %t15291, i32 0, i32 1
+  %t15293 = load ptr, ptr %t15292
+  %t15294 = load ptr, ptr %this.15290
+  %t15295 = getelementptr %Parser, ptr %t15294, i32 0, i32 2
+  %t15296 = load i64, ptr %t15295
+  %t15297 = call ptr @jerry_array_get(ptr %t15293, i64 %t15296)
+  %t15298 = load ptr, ptr %t15297
+  %t.15299 = alloca ptr
+  store ptr %t15298, ptr %t.15299
+  call void @jerry_retain(ptr %t15298)
+  %t15300 = load ptr, ptr %this.15290
+  %t15301 = getelementptr %Parser, ptr %t15300, i32 0, i32 2
+  %t15302 = load i64, ptr %t15301
+  %t15303 = add i64 %t15302, 1
+  %t15304 = load ptr, ptr %this.15290
+  %t15305 = getelementptr %Parser, ptr %t15304, i32 0, i32 1
+  %t15306 = load ptr, ptr %t15305
+  %t15307 = call i64 @jerry_array_len(ptr %t15306)
+  %t15308 = icmp slt i64 %t15303, %t15307
+  br i1 %t15308, label %if.then.2584, label %if.else.2585
+if.then.2584:
+  %t15309 = load ptr, ptr %this.15290
+  %t15310 = getelementptr %Parser, ptr %t15309, i32 0, i32 2
+  %t15311 = load i64, ptr %t15310
+  %t15312 = add i64 %t15311, 1
+  %t15313 = load ptr, ptr %this.15290
+  %t15314 = getelementptr %Parser, ptr %t15313, i32 0, i32 2
+  store i64 %t15312, ptr %t15314
+  br label %if.merge.2586
+if.else.2585:
+  br label %if.merge.2586
+if.merge.2586:
+  %t15315 = load ptr, ptr %t.15299
+  ret ptr %t15315
 }
 
 define i1 @Parser_check_jerry(ptr %self.arg, i64 %kind.arg, ptr %val.arg) {
 entry:
-  %this.14784 = alloca ptr
-  store ptr %self.arg, ptr %this.14784
-  %kind.14785 = alloca i64
-  store i64 %kind.arg, ptr %kind.14785
-  %val.14786 = alloca ptr
-  store ptr %val.arg, ptr %val.14786
-  %t14787 = load ptr, ptr %this.14784
-  %t14788 = getelementptr %Parser, ptr %t14787, i32 0, i32 1
-  %t14789 = load ptr, ptr %t14788
-  %t14790 = load ptr, ptr %this.14784
-  %t14791 = getelementptr %Parser, ptr %t14790, i32 0, i32 2
-  %t14792 = load i64, ptr %t14791
-  %t14793 = call ptr @jerry_array_get(ptr %t14789, i64 %t14792)
-  %t14794 = load ptr, ptr %t14793
-  %t.14795 = alloca ptr
-  store ptr %t14794, ptr %t.14795
-  call void @jerry_retain(ptr %t14794)
-  %t14796 = load ptr, ptr %t.14795
-  %t14797 = getelementptr %Token, ptr %t14796, i32 0, i32 1
-  %t14798 = load i64, ptr %t14797
-  %t14799 = load i64, ptr %kind.14785
-  %t14800 = icmp ne i64 %t14798, %t14799
-  br i1 %t14800, label %if.then.2434, label %if.else.2435
-if.then.2434:
-  %t14801 = load ptr, ptr %t.14795
-  call void @jerry_release(ptr %t14801)
+  %this.15316 = alloca ptr
+  store ptr %self.arg, ptr %this.15316
+  %kind.15317 = alloca i64
+  store i64 %kind.arg, ptr %kind.15317
+  %val.15318 = alloca ptr
+  store ptr %val.arg, ptr %val.15318
+  %t15319 = load ptr, ptr %this.15316
+  %t15320 = getelementptr %Parser, ptr %t15319, i32 0, i32 1
+  %t15321 = load ptr, ptr %t15320
+  %t15322 = load ptr, ptr %this.15316
+  %t15323 = getelementptr %Parser, ptr %t15322, i32 0, i32 2
+  %t15324 = load i64, ptr %t15323
+  %t15325 = call ptr @jerry_array_get(ptr %t15321, i64 %t15324)
+  %t15326 = load ptr, ptr %t15325
+  %t.15327 = alloca ptr
+  store ptr %t15326, ptr %t.15327
+  call void @jerry_retain(ptr %t15326)
+  %t15328 = load ptr, ptr %t.15327
+  %t15329 = getelementptr %Token, ptr %t15328, i32 0, i32 1
+  %t15330 = load i64, ptr %t15329
+  %t15331 = load i64, ptr %kind.15317
+  %t15332 = icmp ne i64 %t15330, %t15331
+  br i1 %t15332, label %if.then.2587, label %if.else.2588
+if.then.2587:
+  %t15333 = load ptr, ptr %t.15327
+  call void @jerry_release(ptr %t15333)
   ret i1 false
-if.else.2435:
-  br label %if.merge.2436
-if.merge.2436:
-  %t14802 = load ptr, ptr %val.14786
-  %t14803 = call i64 @jerry_string_len(ptr %t14802)
-  %t14804 = icmp eq i64 %t14803, 0
-  br i1 %t14804, label %if.then.2437, label %if.else.2438
-if.then.2437:
-  %t14805 = load ptr, ptr %t.14795
-  call void @jerry_release(ptr %t14805)
+if.else.2588:
+  br label %if.merge.2589
+if.merge.2589:
+  %t15334 = load ptr, ptr %val.15318
+  %t15335 = call i64 @jerry_string_len(ptr %t15334)
+  %t15336 = icmp eq i64 %t15335, 0
+  br i1 %t15336, label %if.then.2590, label %if.else.2591
+if.then.2590:
+  %t15337 = load ptr, ptr %t.15327
+  call void @jerry_release(ptr %t15337)
   ret i1 true
-if.else.2438:
-  br label %if.merge.2439
-if.merge.2439:
-  %t14806 = load ptr, ptr %t.14795
-  %t14807 = getelementptr %Token, ptr %t14806, i32 0, i32 2
-  %t14808 = load ptr, ptr %t14807
-  %t14809 = load ptr, ptr %val.14786
-  %t14810 = call i8 @jerry_string_eq(ptr %t14808, ptr %t14809)
-  %t14811 = icmp ne i8 %t14810, 0
-  %t14812 = load ptr, ptr %t.14795
-  call void @jerry_release(ptr %t14812)
-  ret i1 %t14811
+if.else.2591:
+  br label %if.merge.2592
+if.merge.2592:
+  %t15338 = load ptr, ptr %t.15327
+  %t15339 = getelementptr %Token, ptr %t15338, i32 0, i32 2
+  %t15340 = load ptr, ptr %t15339
+  %t15341 = load ptr, ptr %val.15318
+  %t15342 = call i8 @jerry_string_eq(ptr %t15340, ptr %t15341)
+  %t15343 = icmp ne i8 %t15342, 0
+  %t15344 = load ptr, ptr %t.15327
+  call void @jerry_release(ptr %t15344)
+  ret i1 %t15343
 }
 
 define ptr @Parser_expect_jerry(ptr %self.arg, i64 %kind.arg, ptr %val.arg) {
 entry:
-  %this.14813 = alloca ptr
-  store ptr %self.arg, ptr %this.14813
-  %kind.14814 = alloca i64
-  store i64 %kind.arg, ptr %kind.14814
-  %val.14815 = alloca ptr
-  store ptr %val.arg, ptr %val.14815
-  %t14816 = load ptr, ptr %this.14813
-  %t14817 = load i64, ptr %kind.14814
-  %t14818 = load ptr, ptr %val.14815
-  %t14819 = call i1 @Parser_check_jerry(ptr %t14816, i64 %t14817, ptr %t14818)
-  br i1 %t14819, label %if.then.2440, label %if.else.2441
-if.then.2440:
-  %t14820 = load ptr, ptr %this.14813
-  %t14821 = call ptr @Parser_advance_jerry(ptr %t14820)
-  ret ptr %t14821
-if.else.2441:
-  br label %if.merge.2442
-if.merge.2442:
-  %t14822 = load ptr, ptr %this.14813
-  %t14823 = getelementptr %Parser, ptr %t14822, i32 0, i32 1
-  %t14824 = load ptr, ptr %t14823
-  %t14825 = load ptr, ptr %this.14813
-  %t14826 = getelementptr %Parser, ptr %t14825, i32 0, i32 2
-  %t14827 = load i64, ptr %t14826
-  %t14828 = call ptr @jerry_array_get(ptr %t14824, i64 %t14827)
-  %t14829 = load ptr, ptr %t14828
-  %t.14830 = alloca ptr
-  store ptr %t14829, ptr %t.14830
-  call void @jerry_retain(ptr %t14829)
-  %t14831 = call ptr @jerry_string_new(ptr @.str.1260, i64 15)
-  %t14832 = load ptr, ptr %t.14830
-  %t14833 = getelementptr %Token, ptr %t14832, i32 0, i32 3
-  %t14834 = load i64, ptr %t14833
-  %t14835 = call ptr @jerry_int_to_string(i64 %t14834)
-  %t14836 = call ptr @jerry_string_concat(ptr %t14831, ptr %t14835)
-  %t14837 = call ptr @jerry_string_new(ptr @.str.1261, i64 1)
-  %t14838 = call ptr @jerry_string_concat(ptr %t14836, ptr %t14837)
-  %t14839 = load ptr, ptr %t.14830
-  %t14840 = getelementptr %Token, ptr %t14839, i32 0, i32 4
-  %t14841 = load i64, ptr %t14840
-  %t14842 = call ptr @jerry_int_to_string(i64 %t14841)
-  %t14843 = call ptr @jerry_string_concat(ptr %t14838, ptr %t14842)
-  %t14844 = call ptr @jerry_string_new(ptr @.str.1262, i64 12)
-  %t14845 = call ptr @jerry_string_concat(ptr %t14843, ptr %t14844)
-  %t14846 = load ptr, ptr %val.14815
-  %t14847 = call ptr @jerry_string_concat(ptr %t14845, ptr %t14846)
-  %t14848 = call ptr @jerry_string_new(ptr @.str.1263, i64 11)
-  %t14849 = call ptr @jerry_string_concat(ptr %t14847, ptr %t14848)
-  %t14850 = load ptr, ptr %t.14830
-  %t14851 = getelementptr %Token, ptr %t14850, i32 0, i32 2
-  %t14852 = load ptr, ptr %t14851
-  %t14853 = call ptr @jerry_string_concat(ptr %t14849, ptr %t14852)
-  %t14854 = call ptr @jerry_string_new(ptr @.str.1264, i64 1)
-  %t14855 = call ptr @jerry_string_concat(ptr %t14853, ptr %t14854)
-  call void @jerry_print_string(ptr %t14855)
+  %this.15345 = alloca ptr
+  store ptr %self.arg, ptr %this.15345
+  %kind.15346 = alloca i64
+  store i64 %kind.arg, ptr %kind.15346
+  %val.15347 = alloca ptr
+  store ptr %val.arg, ptr %val.15347
+  %t15348 = load ptr, ptr %this.15345
+  %t15349 = load i64, ptr %kind.15346
+  %t15350 = load ptr, ptr %val.15347
+  %t15351 = call i1 @Parser_check_jerry(ptr %t15348, i64 %t15349, ptr %t15350)
+  br i1 %t15351, label %if.then.2593, label %if.else.2594
+if.then.2593:
+  %t15352 = load ptr, ptr %this.15345
+  %t15353 = call ptr @Parser_advance_jerry(ptr %t15352)
+  ret ptr %t15353
+if.else.2594:
+  br label %if.merge.2595
+if.merge.2595:
+  %t15354 = load ptr, ptr %this.15345
+  %t15355 = getelementptr %Parser, ptr %t15354, i32 0, i32 1
+  %t15356 = load ptr, ptr %t15355
+  %t15357 = load ptr, ptr %this.15345
+  %t15358 = getelementptr %Parser, ptr %t15357, i32 0, i32 2
+  %t15359 = load i64, ptr %t15358
+  %t15360 = call ptr @jerry_array_get(ptr %t15356, i64 %t15359)
+  %t15361 = load ptr, ptr %t15360
+  %t.15362 = alloca ptr
+  store ptr %t15361, ptr %t.15362
+  call void @jerry_retain(ptr %t15361)
+  %t15363 = call ptr @jerry_string_new(ptr @.str.1295, i64 15)
+  %t15364 = load ptr, ptr %t.15362
+  %t15365 = getelementptr %Token, ptr %t15364, i32 0, i32 3
+  %t15366 = load i64, ptr %t15365
+  %t15367 = call ptr @jerry_int_to_string(i64 %t15366)
+  %t15368 = call ptr @jerry_string_concat(ptr %t15363, ptr %t15367)
+  %t15369 = call ptr @jerry_string_new(ptr @.str.1296, i64 1)
+  %t15370 = call ptr @jerry_string_concat(ptr %t15368, ptr %t15369)
+  %t15371 = load ptr, ptr %t.15362
+  %t15372 = getelementptr %Token, ptr %t15371, i32 0, i32 4
+  %t15373 = load i64, ptr %t15372
+  %t15374 = call ptr @jerry_int_to_string(i64 %t15373)
+  %t15375 = call ptr @jerry_string_concat(ptr %t15370, ptr %t15374)
+  %t15376 = call ptr @jerry_string_new(ptr @.str.1297, i64 12)
+  %t15377 = call ptr @jerry_string_concat(ptr %t15375, ptr %t15376)
+  %t15378 = load ptr, ptr %val.15347
+  %t15379 = call ptr @jerry_string_concat(ptr %t15377, ptr %t15378)
+  %t15380 = call ptr @jerry_string_new(ptr @.str.1298, i64 11)
+  %t15381 = call ptr @jerry_string_concat(ptr %t15379, ptr %t15380)
+  %t15382 = load ptr, ptr %t.15362
+  %t15383 = getelementptr %Token, ptr %t15382, i32 0, i32 2
+  %t15384 = load ptr, ptr %t15383
+  %t15385 = call ptr @jerry_string_concat(ptr %t15381, ptr %t15384)
+  %t15386 = call ptr @jerry_string_new(ptr @.str.1299, i64 1)
+  %t15387 = call ptr @jerry_string_concat(ptr %t15385, ptr %t15386)
+  call void @jerry_print_string(ptr %t15387)
   call void @jerry_println()
   call void @jerry_exit(i64 1)
   unreachable
@@ -26495,227 +27559,227 @@ if.merge.2442:
 
 define i1 @Parser_eat_jerry(ptr %self.arg, i64 %kind.arg, ptr %val.arg) {
 entry:
-  %this.14856 = alloca ptr
-  store ptr %self.arg, ptr %this.14856
-  %kind.14857 = alloca i64
-  store i64 %kind.arg, ptr %kind.14857
-  %val.14858 = alloca ptr
-  store ptr %val.arg, ptr %val.14858
-  %t14859 = load ptr, ptr %this.14856
-  %t14860 = load i64, ptr %kind.14857
-  %t14861 = load ptr, ptr %val.14858
-  %t14862 = call i1 @Parser_check_jerry(ptr %t14859, i64 %t14860, ptr %t14861)
-  br i1 %t14862, label %if.then.2443, label %if.else.2444
-if.then.2443:
-  %t14863 = load ptr, ptr %this.14856
-  %t14864 = call ptr @Parser_advance_jerry(ptr %t14863)
+  %this.15388 = alloca ptr
+  store ptr %self.arg, ptr %this.15388
+  %kind.15389 = alloca i64
+  store i64 %kind.arg, ptr %kind.15389
+  %val.15390 = alloca ptr
+  store ptr %val.arg, ptr %val.15390
+  %t15391 = load ptr, ptr %this.15388
+  %t15392 = load i64, ptr %kind.15389
+  %t15393 = load ptr, ptr %val.15390
+  %t15394 = call i1 @Parser_check_jerry(ptr %t15391, i64 %t15392, ptr %t15393)
+  br i1 %t15394, label %if.then.2596, label %if.else.2597
+if.then.2596:
+  %t15395 = load ptr, ptr %this.15388
+  %t15396 = call ptr @Parser_advance_jerry(ptr %t15395)
   ret i1 true
-if.else.2444:
-  br label %if.merge.2445
-if.merge.2445:
+if.else.2597:
+  br label %if.merge.2598
+if.merge.2598:
   ret i1 false
 }
 
 define ptr @Parser_parse_program_jerry(ptr %self.arg) {
 entry:
-  %this.14865 = alloca ptr
-  store ptr %self.arg, ptr %this.14865
-  %t14866 = getelementptr %Program, ptr null, i32 1
-  %t14867 = ptrtoint ptr %t14866 to i64
-  %t14868 = call ptr @jerry_alloc(i64 %t14867)
-  %t14869 = getelementptr i8, ptr %t14868, i64 -8
-  store ptr @Program_destroy_jerry, ptr %t14869
-  %t14870 = getelementptr %Program, ptr %t14868, i32 0, i32 0
-  store ptr @vtable.Program, ptr %t14870
-  call void @Program_new_jerry(ptr %t14868)
-  %prog.14871 = alloca ptr
-  store ptr %t14868, ptr %prog.14871
-  br label %while.cond.2446
-while.cond.2446:
-  %t14872 = load ptr, ptr %this.14865
-  %t14873 = call i64 @Parser_peek_kind_jerry(ptr %t14872)
-  %t14874 = load i64, ptr @TOK_EOF
-  %t14875 = icmp ne i64 %t14873, %t14874
-  br i1 %t14875, label %while.body.2447, label %while.end.2448
-while.body.2447:
-  %t14876 = load ptr, ptr %this.14865
-  %t14877 = call ptr @Parser_parse_top_level_jerry(ptr %t14876)
-  %tl.14878 = alloca ptr
-  store ptr %t14877, ptr %tl.14878
-  %t14879 = load ptr, ptr %prog.14871
-  %t14880 = getelementptr %Program, ptr %t14879, i32 0, i32 1
-  %t14881 = load ptr, ptr %t14880
-  %t14882 = load ptr, ptr %tl.14878
-  %t14883.slot = alloca ptr
-  store ptr %t14882, ptr %t14883.slot
-  call void @jerry_array_push(ptr %t14881, ptr %t14883.slot)
-  %t14884 = load ptr, ptr %tl.14878
-  call void @jerry_release(ptr %t14884)
-  br label %while.cond.2446
-while.end.2448:
-  %t14885 = load ptr, ptr %prog.14871
-  ret ptr %t14885
+  %this.15397 = alloca ptr
+  store ptr %self.arg, ptr %this.15397
+  %t15398 = getelementptr %Program, ptr null, i32 1
+  %t15399 = ptrtoint ptr %t15398 to i64
+  %t15400 = call ptr @jerry_alloc(i64 %t15399)
+  %t15401 = getelementptr i8, ptr %t15400, i64 -8
+  store ptr @Program_destroy_jerry, ptr %t15401
+  %t15402 = getelementptr %Program, ptr %t15400, i32 0, i32 0
+  store ptr @vtable.Program, ptr %t15402
+  call void @Program_new_jerry(ptr %t15400)
+  %prog.15403 = alloca ptr
+  store ptr %t15400, ptr %prog.15403
+  br label %while.cond.2599
+while.cond.2599:
+  %t15404 = load ptr, ptr %this.15397
+  %t15405 = call i64 @Parser_peek_kind_jerry(ptr %t15404)
+  %t15406 = load i64, ptr @TOK_EOF
+  %t15407 = icmp ne i64 %t15405, %t15406
+  br i1 %t15407, label %while.body.2600, label %while.end.2601
+while.body.2600:
+  %t15408 = load ptr, ptr %this.15397
+  %t15409 = call ptr @Parser_parse_top_level_jerry(ptr %t15408)
+  %tl.15410 = alloca ptr
+  store ptr %t15409, ptr %tl.15410
+  %t15411 = load ptr, ptr %prog.15403
+  %t15412 = getelementptr %Program, ptr %t15411, i32 0, i32 1
+  %t15413 = load ptr, ptr %t15412
+  %t15414 = load ptr, ptr %tl.15410
+  %t15415.slot = alloca ptr
+  store ptr %t15414, ptr %t15415.slot
+  call void @jerry_array_push(ptr %t15413, ptr %t15415.slot)
+  %t15416 = load ptr, ptr %tl.15410
+  call void @jerry_release(ptr %t15416)
+  br label %while.cond.2599
+while.end.2601:
+  %t15417 = load ptr, ptr %prog.15403
+  ret ptr %t15417
 }
 
 define ptr @Parser_parse_top_level_jerry(ptr %self.arg) {
 entry:
-  %this.14886 = alloca ptr
-  store ptr %self.arg, ptr %this.14886
-  %t14887 = load ptr, ptr %this.14886
-  %t14888 = call i64 @Parser_peek_line_jerry(ptr %t14887)
-  %l.14889 = alloca i64
-  store i64 %t14888, ptr %l.14889
-  %t14890 = load ptr, ptr %this.14886
-  %t14891 = call i64 @Parser_peek_col_jerry(ptr %t14890)
-  %c.14892 = alloca i64
-  store i64 %t14891, ptr %c.14892
-  %t14893 = load ptr, ptr %this.14886
-  %t14894 = load i64, ptr @TOK_KEYWORD
-  %t14895 = call ptr @jerry_string_new(ptr @.str.1265, i64 7)
-  %t14896 = call i1 @Parser_check_jerry(ptr %t14893, i64 %t14894, ptr %t14895)
-  call void @jerry_release(ptr %t14895)
-  br i1 %t14896, label %if.then.2449, label %if.else.2450
-if.then.2449:
-  %t14897 = load ptr, ptr %this.14886
-  %t14898 = load i64, ptr %l.14889
-  %t14899 = load i64, ptr %c.14892
-  %t14900 = call ptr @Parser_parse_include_jerry(ptr %t14897, i64 %t14898, i64 %t14899)
-  ret ptr %t14900
-if.else.2450:
-  br label %if.merge.2451
-if.merge.2451:
-  %t14901 = load ptr, ptr %this.14886
-  %t14902 = load i64, ptr @TOK_KEYWORD
-  %t14903 = call ptr @jerry_string_new(ptr @.str.1266, i64 5)
-  %t14904 = call i1 @Parser_check_jerry(ptr %t14901, i64 %t14902, ptr %t14903)
-  call void @jerry_release(ptr %t14903)
-  br i1 %t14904, label %if.then.2452, label %if.else.2453
-if.then.2452:
-  %t14905 = load ptr, ptr %this.14886
-  %t14906 = call ptr @Parser_parse_class_decl_jerry(ptr %t14905)
-  %cd.14907 = alloca ptr
-  store ptr %t14906, ptr %cd.14907
-  %t14908 = getelementptr %TopLevel, ptr null, i32 1
-  %t14909 = ptrtoint ptr %t14908 to i64
-  %t14910 = call ptr @jerry_alloc(i64 %t14909)
-  %t14911 = getelementptr i8, ptr %t14910, i64 -8
-  store ptr @TopLevel_destroy_jerry, ptr %t14911
-  %t14912 = getelementptr %TopLevel, ptr %t14910, i32 0, i32 0
-  store ptr @vtable.TopLevel, ptr %t14912
-  %t14913 = load i64, ptr @TL_CLASS
-  %t14914 = load ptr, ptr %cd.14907
-  %t14915 = getelementptr %ClassDecl, ptr %t14914, i32 0, i32 5
-  %t14916 = load i64, ptr %t14915
-  %t14917 = load ptr, ptr %cd.14907
-  %t14918 = getelementptr %ClassDecl, ptr %t14917, i32 0, i32 6
-  %t14919 = load i64, ptr %t14918
-  call void @TopLevel_new_jerry(ptr %t14910, i64 %t14913, i64 %t14916, i64 %t14919)
-  %tl.14920 = alloca ptr
-  store ptr %t14910, ptr %tl.14920
-  %t14921 = load ptr, ptr %cd.14907
-  %t14922 = load ptr, ptr %tl.14920
-  %t14923 = getelementptr %TopLevel, ptr %t14922, i32 0, i32 5
-  %t14924 = load ptr, ptr %t14923
-  call void @jerry_retain(ptr %t14921)
-  store ptr %t14921, ptr %t14923
-  call void @jerry_release(ptr %t14924)
-  %t14925 = load ptr, ptr %tl.14920
-  %t14926 = load ptr, ptr %cd.14907
-  call void @jerry_release(ptr %t14926)
-  ret ptr %t14925
-if.else.2453:
-  br label %if.merge.2454
-if.merge.2454:
-  %t14927 = load ptr, ptr %this.14886
-  %t14928 = load i64, ptr @TOK_KEYWORD
-  %t14929 = call ptr @jerry_string_new(ptr @.str.1267, i64 2)
-  %t14930 = call i1 @Parser_check_jerry(ptr %t14927, i64 %t14928, ptr %t14929)
-  call void @jerry_release(ptr %t14929)
-  br i1 %t14930, label %if.then.2455, label %if.else.2456
-if.then.2455:
-  %t14931 = load ptr, ptr %this.14886
-  %t14932 = call ptr @Parser_parse_fn_decl_jerry(ptr %t14931)
-  %fd.14933 = alloca ptr
-  store ptr %t14932, ptr %fd.14933
-  %t14934 = getelementptr %TopLevel, ptr null, i32 1
-  %t14935 = ptrtoint ptr %t14934 to i64
-  %t14936 = call ptr @jerry_alloc(i64 %t14935)
-  %t14937 = getelementptr i8, ptr %t14936, i64 -8
-  store ptr @TopLevel_destroy_jerry, ptr %t14937
-  %t14938 = getelementptr %TopLevel, ptr %t14936, i32 0, i32 0
-  store ptr @vtable.TopLevel, ptr %t14938
-  %t14939 = load i64, ptr @TL_FN
-  %t14940 = load ptr, ptr %fd.14933
-  %t14941 = getelementptr %FnDecl, ptr %t14940, i32 0, i32 5
-  %t14942 = load i64, ptr %t14941
-  %t14943 = load ptr, ptr %fd.14933
-  %t14944 = getelementptr %FnDecl, ptr %t14943, i32 0, i32 6
-  %t14945 = load i64, ptr %t14944
-  call void @TopLevel_new_jerry(ptr %t14936, i64 %t14939, i64 %t14942, i64 %t14945)
-  %tl.14946 = alloca ptr
-  store ptr %t14936, ptr %tl.14946
-  %t14947 = load ptr, ptr %fd.14933
-  %t14948 = load ptr, ptr %tl.14946
-  %t14949 = getelementptr %TopLevel, ptr %t14948, i32 0, i32 4
-  %t14950 = load ptr, ptr %t14949
-  call void @jerry_retain(ptr %t14947)
-  store ptr %t14947, ptr %t14949
-  call void @jerry_release(ptr %t14950)
-  %t14951 = load ptr, ptr %tl.14946
-  %t14952 = load ptr, ptr %fd.14933
-  call void @jerry_release(ptr %t14952)
-  ret ptr %t14951
-if.else.2456:
-  br label %if.merge.2457
-if.merge.2457:
-  %t14953 = load ptr, ptr %this.14886
-  %t14954 = load i64, ptr @TOK_KEYWORD
-  %t14955 = call ptr @jerry_string_new(ptr @.str.1268, i64 3)
-  %t14956 = call i1 @Parser_check_jerry(ptr %t14953, i64 %t14954, ptr %t14955)
-  call void @jerry_release(ptr %t14955)
-  br i1 %t14956, label %if.then.2458, label %if.else.2459
-if.then.2458:
-  %t14957 = load ptr, ptr %this.14886
-  %t14958 = load i64, ptr %l.14889
-  %t14959 = load i64, ptr %c.14892
-  %t14960 = call ptr @Parser_parse_top_var_jerry(ptr %t14957, i64 %t14958, i64 %t14959)
-  ret ptr %t14960
-if.else.2459:
-  br label %if.merge.2460
-if.merge.2460:
-  %t14961 = load ptr, ptr %this.14886
-  %t14962 = getelementptr %Parser, ptr %t14961, i32 0, i32 1
-  %t14963 = load ptr, ptr %t14962
-  %t14964 = load ptr, ptr %this.14886
-  %t14965 = getelementptr %Parser, ptr %t14964, i32 0, i32 2
-  %t14966 = load i64, ptr %t14965
-  %t14967 = call ptr @jerry_array_get(ptr %t14963, i64 %t14966)
-  %t14968 = load ptr, ptr %t14967
-  %t.14969 = alloca ptr
-  store ptr %t14968, ptr %t.14969
-  call void @jerry_retain(ptr %t14968)
-  %t14970 = call ptr @jerry_string_new(ptr @.str.1269, i64 15)
-  %t14971 = load ptr, ptr %t.14969
-  %t14972 = getelementptr %Token, ptr %t14971, i32 0, i32 3
-  %t14973 = load i64, ptr %t14972
-  %t14974 = call ptr @jerry_int_to_string(i64 %t14973)
-  %t14975 = call ptr @jerry_string_concat(ptr %t14970, ptr %t14974)
-  %t14976 = call ptr @jerry_string_new(ptr @.str.1270, i64 1)
-  %t14977 = call ptr @jerry_string_concat(ptr %t14975, ptr %t14976)
-  %t14978 = load ptr, ptr %t.14969
-  %t14979 = getelementptr %Token, ptr %t14978, i32 0, i32 4
-  %t14980 = load i64, ptr %t14979
-  %t14981 = call ptr @jerry_int_to_string(i64 %t14980)
-  %t14982 = call ptr @jerry_string_concat(ptr %t14977, ptr %t14981)
-  %t14983 = call ptr @jerry_string_new(ptr @.str.1271, i64 20)
-  %t14984 = call ptr @jerry_string_concat(ptr %t14982, ptr %t14983)
-  %t14985 = load ptr, ptr %t.14969
-  %t14986 = getelementptr %Token, ptr %t14985, i32 0, i32 2
-  %t14987 = load ptr, ptr %t14986
-  %t14988 = call ptr @jerry_string_concat(ptr %t14984, ptr %t14987)
-  %t14989 = call ptr @jerry_string_new(ptr @.str.1272, i64 14)
-  %t14990 = call ptr @jerry_string_concat(ptr %t14988, ptr %t14989)
-  call void @jerry_print_string(ptr %t14990)
+  %this.15418 = alloca ptr
+  store ptr %self.arg, ptr %this.15418
+  %t15419 = load ptr, ptr %this.15418
+  %t15420 = call i64 @Parser_peek_line_jerry(ptr %t15419)
+  %l.15421 = alloca i64
+  store i64 %t15420, ptr %l.15421
+  %t15422 = load ptr, ptr %this.15418
+  %t15423 = call i64 @Parser_peek_col_jerry(ptr %t15422)
+  %c.15424 = alloca i64
+  store i64 %t15423, ptr %c.15424
+  %t15425 = load ptr, ptr %this.15418
+  %t15426 = load i64, ptr @TOK_KEYWORD
+  %t15427 = call ptr @jerry_string_new(ptr @.str.1300, i64 7)
+  %t15428 = call i1 @Parser_check_jerry(ptr %t15425, i64 %t15426, ptr %t15427)
+  call void @jerry_release(ptr %t15427)
+  br i1 %t15428, label %if.then.2602, label %if.else.2603
+if.then.2602:
+  %t15429 = load ptr, ptr %this.15418
+  %t15430 = load i64, ptr %l.15421
+  %t15431 = load i64, ptr %c.15424
+  %t15432 = call ptr @Parser_parse_include_jerry(ptr %t15429, i64 %t15430, i64 %t15431)
+  ret ptr %t15432
+if.else.2603:
+  br label %if.merge.2604
+if.merge.2604:
+  %t15433 = load ptr, ptr %this.15418
+  %t15434 = load i64, ptr @TOK_KEYWORD
+  %t15435 = call ptr @jerry_string_new(ptr @.str.1301, i64 5)
+  %t15436 = call i1 @Parser_check_jerry(ptr %t15433, i64 %t15434, ptr %t15435)
+  call void @jerry_release(ptr %t15435)
+  br i1 %t15436, label %if.then.2605, label %if.else.2606
+if.then.2605:
+  %t15437 = load ptr, ptr %this.15418
+  %t15438 = call ptr @Parser_parse_class_decl_jerry(ptr %t15437)
+  %cd.15439 = alloca ptr
+  store ptr %t15438, ptr %cd.15439
+  %t15440 = getelementptr %TopLevel, ptr null, i32 1
+  %t15441 = ptrtoint ptr %t15440 to i64
+  %t15442 = call ptr @jerry_alloc(i64 %t15441)
+  %t15443 = getelementptr i8, ptr %t15442, i64 -8
+  store ptr @TopLevel_destroy_jerry, ptr %t15443
+  %t15444 = getelementptr %TopLevel, ptr %t15442, i32 0, i32 0
+  store ptr @vtable.TopLevel, ptr %t15444
+  %t15445 = load i64, ptr @TL_CLASS
+  %t15446 = load ptr, ptr %cd.15439
+  %t15447 = getelementptr %ClassDecl, ptr %t15446, i32 0, i32 5
+  %t15448 = load i64, ptr %t15447
+  %t15449 = load ptr, ptr %cd.15439
+  %t15450 = getelementptr %ClassDecl, ptr %t15449, i32 0, i32 6
+  %t15451 = load i64, ptr %t15450
+  call void @TopLevel_new_jerry(ptr %t15442, i64 %t15445, i64 %t15448, i64 %t15451)
+  %tl.15452 = alloca ptr
+  store ptr %t15442, ptr %tl.15452
+  %t15453 = load ptr, ptr %cd.15439
+  %t15454 = load ptr, ptr %tl.15452
+  %t15455 = getelementptr %TopLevel, ptr %t15454, i32 0, i32 5
+  %t15456 = load ptr, ptr %t15455
+  call void @jerry_retain(ptr %t15453)
+  store ptr %t15453, ptr %t15455
+  call void @jerry_release(ptr %t15456)
+  %t15457 = load ptr, ptr %tl.15452
+  %t15458 = load ptr, ptr %cd.15439
+  call void @jerry_release(ptr %t15458)
+  ret ptr %t15457
+if.else.2606:
+  br label %if.merge.2607
+if.merge.2607:
+  %t15459 = load ptr, ptr %this.15418
+  %t15460 = load i64, ptr @TOK_KEYWORD
+  %t15461 = call ptr @jerry_string_new(ptr @.str.1302, i64 2)
+  %t15462 = call i1 @Parser_check_jerry(ptr %t15459, i64 %t15460, ptr %t15461)
+  call void @jerry_release(ptr %t15461)
+  br i1 %t15462, label %if.then.2608, label %if.else.2609
+if.then.2608:
+  %t15463 = load ptr, ptr %this.15418
+  %t15464 = call ptr @Parser_parse_fn_decl_jerry(ptr %t15463)
+  %fd.15465 = alloca ptr
+  store ptr %t15464, ptr %fd.15465
+  %t15466 = getelementptr %TopLevel, ptr null, i32 1
+  %t15467 = ptrtoint ptr %t15466 to i64
+  %t15468 = call ptr @jerry_alloc(i64 %t15467)
+  %t15469 = getelementptr i8, ptr %t15468, i64 -8
+  store ptr @TopLevel_destroy_jerry, ptr %t15469
+  %t15470 = getelementptr %TopLevel, ptr %t15468, i32 0, i32 0
+  store ptr @vtable.TopLevel, ptr %t15470
+  %t15471 = load i64, ptr @TL_FN
+  %t15472 = load ptr, ptr %fd.15465
+  %t15473 = getelementptr %FnDecl, ptr %t15472, i32 0, i32 5
+  %t15474 = load i64, ptr %t15473
+  %t15475 = load ptr, ptr %fd.15465
+  %t15476 = getelementptr %FnDecl, ptr %t15475, i32 0, i32 6
+  %t15477 = load i64, ptr %t15476
+  call void @TopLevel_new_jerry(ptr %t15468, i64 %t15471, i64 %t15474, i64 %t15477)
+  %tl.15478 = alloca ptr
+  store ptr %t15468, ptr %tl.15478
+  %t15479 = load ptr, ptr %fd.15465
+  %t15480 = load ptr, ptr %tl.15478
+  %t15481 = getelementptr %TopLevel, ptr %t15480, i32 0, i32 4
+  %t15482 = load ptr, ptr %t15481
+  call void @jerry_retain(ptr %t15479)
+  store ptr %t15479, ptr %t15481
+  call void @jerry_release(ptr %t15482)
+  %t15483 = load ptr, ptr %tl.15478
+  %t15484 = load ptr, ptr %fd.15465
+  call void @jerry_release(ptr %t15484)
+  ret ptr %t15483
+if.else.2609:
+  br label %if.merge.2610
+if.merge.2610:
+  %t15485 = load ptr, ptr %this.15418
+  %t15486 = load i64, ptr @TOK_KEYWORD
+  %t15487 = call ptr @jerry_string_new(ptr @.str.1303, i64 3)
+  %t15488 = call i1 @Parser_check_jerry(ptr %t15485, i64 %t15486, ptr %t15487)
+  call void @jerry_release(ptr %t15487)
+  br i1 %t15488, label %if.then.2611, label %if.else.2612
+if.then.2611:
+  %t15489 = load ptr, ptr %this.15418
+  %t15490 = load i64, ptr %l.15421
+  %t15491 = load i64, ptr %c.15424
+  %t15492 = call ptr @Parser_parse_top_var_jerry(ptr %t15489, i64 %t15490, i64 %t15491)
+  ret ptr %t15492
+if.else.2612:
+  br label %if.merge.2613
+if.merge.2613:
+  %t15493 = load ptr, ptr %this.15418
+  %t15494 = getelementptr %Parser, ptr %t15493, i32 0, i32 1
+  %t15495 = load ptr, ptr %t15494
+  %t15496 = load ptr, ptr %this.15418
+  %t15497 = getelementptr %Parser, ptr %t15496, i32 0, i32 2
+  %t15498 = load i64, ptr %t15497
+  %t15499 = call ptr @jerry_array_get(ptr %t15495, i64 %t15498)
+  %t15500 = load ptr, ptr %t15499
+  %t.15501 = alloca ptr
+  store ptr %t15500, ptr %t.15501
+  call void @jerry_retain(ptr %t15500)
+  %t15502 = call ptr @jerry_string_new(ptr @.str.1304, i64 15)
+  %t15503 = load ptr, ptr %t.15501
+  %t15504 = getelementptr %Token, ptr %t15503, i32 0, i32 3
+  %t15505 = load i64, ptr %t15504
+  %t15506 = call ptr @jerry_int_to_string(i64 %t15505)
+  %t15507 = call ptr @jerry_string_concat(ptr %t15502, ptr %t15506)
+  %t15508 = call ptr @jerry_string_new(ptr @.str.1305, i64 1)
+  %t15509 = call ptr @jerry_string_concat(ptr %t15507, ptr %t15508)
+  %t15510 = load ptr, ptr %t.15501
+  %t15511 = getelementptr %Token, ptr %t15510, i32 0, i32 4
+  %t15512 = load i64, ptr %t15511
+  %t15513 = call ptr @jerry_int_to_string(i64 %t15512)
+  %t15514 = call ptr @jerry_string_concat(ptr %t15509, ptr %t15513)
+  %t15515 = call ptr @jerry_string_new(ptr @.str.1306, i64 20)
+  %t15516 = call ptr @jerry_string_concat(ptr %t15514, ptr %t15515)
+  %t15517 = load ptr, ptr %t.15501
+  %t15518 = getelementptr %Token, ptr %t15517, i32 0, i32 2
+  %t15519 = load ptr, ptr %t15518
+  %t15520 = call ptr @jerry_string_concat(ptr %t15516, ptr %t15519)
+  %t15521 = call ptr @jerry_string_new(ptr @.str.1307, i64 14)
+  %t15522 = call ptr @jerry_string_concat(ptr %t15520, ptr %t15521)
+  call void @jerry_print_string(ptr %t15522)
   call void @jerry_println()
   call void @jerry_exit(i64 1)
   unreachable
@@ -26723,3357 +27787,3357 @@ if.merge.2460:
 
 define ptr @Parser_parse_include_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
 entry:
-  %this.14991 = alloca ptr
-  store ptr %self.arg, ptr %this.14991
-  %l.14992 = alloca i64
-  store i64 %l.arg, ptr %l.14992
-  %c.14993 = alloca i64
-  store i64 %c.arg, ptr %c.14993
-  %t14994 = load ptr, ptr %this.14991
-  %t14995 = call ptr @Parser_advance_jerry(ptr %t14994)
-  %t14996 = getelementptr %TopLevel, ptr null, i32 1
-  %t14997 = ptrtoint ptr %t14996 to i64
-  %t14998 = call ptr @jerry_alloc(i64 %t14997)
-  %t14999 = getelementptr i8, ptr %t14998, i64 -8
-  store ptr @TopLevel_destroy_jerry, ptr %t14999
-  %t15000 = getelementptr %TopLevel, ptr %t14998, i32 0, i32 0
-  store ptr @vtable.TopLevel, ptr %t15000
-  %t15001 = load i64, ptr @TL_INCLUDE
-  %t15002 = load i64, ptr %l.14992
-  %t15003 = load i64, ptr %c.14993
-  call void @TopLevel_new_jerry(ptr %t14998, i64 %t15001, i64 %t15002, i64 %t15003)
-  %tl.15004 = alloca ptr
-  store ptr %t14998, ptr %tl.15004
-  %t15005 = load ptr, ptr %this.14991
-  %t15006 = load i64, ptr @TOK_OP
-  %t15007 = call ptr @jerry_string_new(ptr @.str.1273, i64 1)
-  %t15008 = call i1 @Parser_eat_jerry(ptr %t15005, i64 %t15006, ptr %t15007)
-  call void @jerry_release(ptr %t15007)
-  br i1 %t15008, label %if.then.2461, label %if.else.2462
-if.then.2461:
-  %t15009 = load ptr, ptr %this.14991
-  %t15010 = load i64, ptr @TOK_IDENT
-  %t15011 = call ptr @jerry_string_new(ptr @.str.1274, i64 0)
-  %t15012 = call ptr @Parser_expect_jerry(ptr %t15009, i64 %t15010, ptr %t15011)
-  call void @jerry_release(ptr %t15011)
-  %name.15013 = alloca ptr
-  store ptr %t15012, ptr %name.15013
-  %t15014 = load ptr, ptr %name.15013
-  %t15015 = getelementptr %Token, ptr %t15014, i32 0, i32 2
-  %t15016 = load ptr, ptr %t15015
-  %t15017 = load ptr, ptr %tl.15004
-  %t15018 = getelementptr %TopLevel, ptr %t15017, i32 0, i32 2
-  %t15019 = load ptr, ptr %t15018
-  call void @jerry_retain(ptr %t15016)
-  store ptr %t15016, ptr %t15018
-  call void @jerry_release(ptr %t15019)
-  %t15020 = load ptr, ptr %name.15013
-  call void @jerry_release(ptr %t15020)
-  br label %if.merge.2463
-if.else.2462:
-  %t15021 = load ptr, ptr %this.14991
-  %t15022 = load i64, ptr @TOK_STRING
-  %t15023 = call ptr @jerry_string_new(ptr @.str.1275, i64 0)
-  %t15024 = call ptr @Parser_expect_jerry(ptr %t15021, i64 %t15022, ptr %t15023)
-  call void @jerry_release(ptr %t15023)
-  %path.15025 = alloca ptr
-  store ptr %t15024, ptr %path.15025
-  %t15026 = load ptr, ptr %path.15025
-  %t15027 = getelementptr %Token, ptr %t15026, i32 0, i32 2
-  %t15028 = load ptr, ptr %t15027
-  %t15029 = load ptr, ptr %tl.15004
-  %t15030 = getelementptr %TopLevel, ptr %t15029, i32 0, i32 3
-  %t15031 = load ptr, ptr %t15030
-  call void @jerry_retain(ptr %t15028)
-  store ptr %t15028, ptr %t15030
-  call void @jerry_release(ptr %t15031)
-  %t15032 = load ptr, ptr %path.15025
-  call void @jerry_release(ptr %t15032)
-  br label %if.merge.2463
-if.merge.2463:
-  %t15033 = load ptr, ptr %tl.15004
-  ret ptr %t15033
+  %this.15523 = alloca ptr
+  store ptr %self.arg, ptr %this.15523
+  %l.15524 = alloca i64
+  store i64 %l.arg, ptr %l.15524
+  %c.15525 = alloca i64
+  store i64 %c.arg, ptr %c.15525
+  %t15526 = load ptr, ptr %this.15523
+  %t15527 = call ptr @Parser_advance_jerry(ptr %t15526)
+  %t15528 = getelementptr %TopLevel, ptr null, i32 1
+  %t15529 = ptrtoint ptr %t15528 to i64
+  %t15530 = call ptr @jerry_alloc(i64 %t15529)
+  %t15531 = getelementptr i8, ptr %t15530, i64 -8
+  store ptr @TopLevel_destroy_jerry, ptr %t15531
+  %t15532 = getelementptr %TopLevel, ptr %t15530, i32 0, i32 0
+  store ptr @vtable.TopLevel, ptr %t15532
+  %t15533 = load i64, ptr @TL_INCLUDE
+  %t15534 = load i64, ptr %l.15524
+  %t15535 = load i64, ptr %c.15525
+  call void @TopLevel_new_jerry(ptr %t15530, i64 %t15533, i64 %t15534, i64 %t15535)
+  %tl.15536 = alloca ptr
+  store ptr %t15530, ptr %tl.15536
+  %t15537 = load ptr, ptr %this.15523
+  %t15538 = load i64, ptr @TOK_OP
+  %t15539 = call ptr @jerry_string_new(ptr @.str.1308, i64 1)
+  %t15540 = call i1 @Parser_eat_jerry(ptr %t15537, i64 %t15538, ptr %t15539)
+  call void @jerry_release(ptr %t15539)
+  br i1 %t15540, label %if.then.2614, label %if.else.2615
+if.then.2614:
+  %t15541 = load ptr, ptr %this.15523
+  %t15542 = load i64, ptr @TOK_IDENT
+  %t15543 = call ptr @jerry_string_new(ptr @.str.1309, i64 0)
+  %t15544 = call ptr @Parser_expect_jerry(ptr %t15541, i64 %t15542, ptr %t15543)
+  call void @jerry_release(ptr %t15543)
+  %name.15545 = alloca ptr
+  store ptr %t15544, ptr %name.15545
+  %t15546 = load ptr, ptr %name.15545
+  %t15547 = getelementptr %Token, ptr %t15546, i32 0, i32 2
+  %t15548 = load ptr, ptr %t15547
+  %t15549 = load ptr, ptr %tl.15536
+  %t15550 = getelementptr %TopLevel, ptr %t15549, i32 0, i32 2
+  %t15551 = load ptr, ptr %t15550
+  call void @jerry_retain(ptr %t15548)
+  store ptr %t15548, ptr %t15550
+  call void @jerry_release(ptr %t15551)
+  %t15552 = load ptr, ptr %name.15545
+  call void @jerry_release(ptr %t15552)
+  br label %if.merge.2616
+if.else.2615:
+  %t15553 = load ptr, ptr %this.15523
+  %t15554 = load i64, ptr @TOK_STRING
+  %t15555 = call ptr @jerry_string_new(ptr @.str.1310, i64 0)
+  %t15556 = call ptr @Parser_expect_jerry(ptr %t15553, i64 %t15554, ptr %t15555)
+  call void @jerry_release(ptr %t15555)
+  %path.15557 = alloca ptr
+  store ptr %t15556, ptr %path.15557
+  %t15558 = load ptr, ptr %path.15557
+  %t15559 = getelementptr %Token, ptr %t15558, i32 0, i32 2
+  %t15560 = load ptr, ptr %t15559
+  %t15561 = load ptr, ptr %tl.15536
+  %t15562 = getelementptr %TopLevel, ptr %t15561, i32 0, i32 3
+  %t15563 = load ptr, ptr %t15562
+  call void @jerry_retain(ptr %t15560)
+  store ptr %t15560, ptr %t15562
+  call void @jerry_release(ptr %t15563)
+  %t15564 = load ptr, ptr %path.15557
+  call void @jerry_release(ptr %t15564)
+  br label %if.merge.2616
+if.merge.2616:
+  %t15565 = load ptr, ptr %tl.15536
+  ret ptr %t15565
 }
 
 define ptr @Parser_parse_top_var_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
 entry:
-  %this.15034 = alloca ptr
-  store ptr %self.arg, ptr %this.15034
-  %l.15035 = alloca i64
-  store i64 %l.arg, ptr %l.15035
-  %c.15036 = alloca i64
-  store i64 %c.arg, ptr %c.15036
-  %t15037 = load ptr, ptr %this.15034
-  %t15038 = call ptr @Parser_advance_jerry(ptr %t15037)
-  %t15039 = load ptr, ptr %this.15034
-  %t15040 = load i64, ptr @TOK_IDENT
-  %t15041 = call ptr @jerry_string_new(ptr @.str.1276, i64 0)
-  %t15042 = call ptr @Parser_expect_jerry(ptr %t15039, i64 %t15040, ptr %t15041)
-  call void @jerry_release(ptr %t15041)
-  %name.15043 = alloca ptr
-  store ptr %t15042, ptr %name.15043
-  %t15044 = getelementptr %TopLevel, ptr null, i32 1
-  %t15045 = ptrtoint ptr %t15044 to i64
-  %t15046 = call ptr @jerry_alloc(i64 %t15045)
-  %t15047 = getelementptr i8, ptr %t15046, i64 -8
-  store ptr @TopLevel_destroy_jerry, ptr %t15047
-  %t15048 = getelementptr %TopLevel, ptr %t15046, i32 0, i32 0
-  store ptr @vtable.TopLevel, ptr %t15048
-  %t15049 = load i64, ptr @TL_VAR
-  %t15050 = load i64, ptr %l.15035
-  %t15051 = load i64, ptr %c.15036
-  call void @TopLevel_new_jerry(ptr %t15046, i64 %t15049, i64 %t15050, i64 %t15051)
-  %tl.15052 = alloca ptr
-  store ptr %t15046, ptr %tl.15052
-  %t15053 = load ptr, ptr %name.15043
-  %t15054 = getelementptr %Token, ptr %t15053, i32 0, i32 2
-  %t15055 = load ptr, ptr %t15054
-  %t15056 = load ptr, ptr %tl.15052
-  %t15057 = getelementptr %TopLevel, ptr %t15056, i32 0, i32 6
-  %t15058 = load ptr, ptr %t15057
-  call void @jerry_retain(ptr %t15055)
-  store ptr %t15055, ptr %t15057
-  call void @jerry_release(ptr %t15058)
-  %t15059 = load ptr, ptr %this.15034
-  %t15060 = load i64, ptr @TOK_OP
-  %t15061 = call ptr @jerry_string_new(ptr @.str.1277, i64 1)
-  %t15062 = call i1 @Parser_eat_jerry(ptr %t15059, i64 %t15060, ptr %t15061)
-  call void @jerry_release(ptr %t15061)
-  br i1 %t15062, label %if.then.2464, label %if.else.2465
-if.then.2464:
-  %t15063 = load ptr, ptr %this.15034
-  %t15064 = call ptr @Parser_parse_type_expr_jerry(ptr %t15063)
-  %t15065 = load ptr, ptr %tl.15052
-  %t15066 = getelementptr %TopLevel, ptr %t15065, i32 0, i32 7
-  %t15067 = load ptr, ptr %t15066
-  call void @jerry_retain(ptr %t15064)
-  store ptr %t15064, ptr %t15066
-  call void @jerry_release(ptr %t15067)
-  br label %if.merge.2466
-if.else.2465:
-  br label %if.merge.2466
-if.merge.2466:
-  %t15068 = load ptr, ptr %this.15034
-  %t15069 = load i64, ptr @TOK_OP
-  %t15070 = call ptr @jerry_string_new(ptr @.str.1278, i64 1)
-  %t15071 = call ptr @Parser_expect_jerry(ptr %t15068, i64 %t15069, ptr %t15070)
-  call void @jerry_release(ptr %t15070)
-  %t15072 = load ptr, ptr %this.15034
-  %t15073 = call ptr @Parser_parse_expr_jerry(ptr %t15072)
-  %t15074 = load ptr, ptr %tl.15052
-  %t15075 = getelementptr %TopLevel, ptr %t15074, i32 0, i32 8
-  %t15076 = load ptr, ptr %t15075
-  call void @jerry_retain(ptr %t15073)
-  store ptr %t15073, ptr %t15075
-  call void @jerry_release(ptr %t15076)
-  %t15077 = load ptr, ptr %this.15034
-  %t15078 = load i64, ptr @TOK_OP
-  %t15079 = call ptr @jerry_string_new(ptr @.str.1279, i64 1)
-  %t15080 = call ptr @Parser_expect_jerry(ptr %t15077, i64 %t15078, ptr %t15079)
-  call void @jerry_release(ptr %t15079)
-  %t15081 = load ptr, ptr %tl.15052
-  %t15082 = load ptr, ptr %name.15043
-  call void @jerry_release(ptr %t15082)
-  ret ptr %t15081
+  %this.15566 = alloca ptr
+  store ptr %self.arg, ptr %this.15566
+  %l.15567 = alloca i64
+  store i64 %l.arg, ptr %l.15567
+  %c.15568 = alloca i64
+  store i64 %c.arg, ptr %c.15568
+  %t15569 = load ptr, ptr %this.15566
+  %t15570 = call ptr @Parser_advance_jerry(ptr %t15569)
+  %t15571 = load ptr, ptr %this.15566
+  %t15572 = load i64, ptr @TOK_IDENT
+  %t15573 = call ptr @jerry_string_new(ptr @.str.1311, i64 0)
+  %t15574 = call ptr @Parser_expect_jerry(ptr %t15571, i64 %t15572, ptr %t15573)
+  call void @jerry_release(ptr %t15573)
+  %name.15575 = alloca ptr
+  store ptr %t15574, ptr %name.15575
+  %t15576 = getelementptr %TopLevel, ptr null, i32 1
+  %t15577 = ptrtoint ptr %t15576 to i64
+  %t15578 = call ptr @jerry_alloc(i64 %t15577)
+  %t15579 = getelementptr i8, ptr %t15578, i64 -8
+  store ptr @TopLevel_destroy_jerry, ptr %t15579
+  %t15580 = getelementptr %TopLevel, ptr %t15578, i32 0, i32 0
+  store ptr @vtable.TopLevel, ptr %t15580
+  %t15581 = load i64, ptr @TL_VAR
+  %t15582 = load i64, ptr %l.15567
+  %t15583 = load i64, ptr %c.15568
+  call void @TopLevel_new_jerry(ptr %t15578, i64 %t15581, i64 %t15582, i64 %t15583)
+  %tl.15584 = alloca ptr
+  store ptr %t15578, ptr %tl.15584
+  %t15585 = load ptr, ptr %name.15575
+  %t15586 = getelementptr %Token, ptr %t15585, i32 0, i32 2
+  %t15587 = load ptr, ptr %t15586
+  %t15588 = load ptr, ptr %tl.15584
+  %t15589 = getelementptr %TopLevel, ptr %t15588, i32 0, i32 6
+  %t15590 = load ptr, ptr %t15589
+  call void @jerry_retain(ptr %t15587)
+  store ptr %t15587, ptr %t15589
+  call void @jerry_release(ptr %t15590)
+  %t15591 = load ptr, ptr %this.15566
+  %t15592 = load i64, ptr @TOK_OP
+  %t15593 = call ptr @jerry_string_new(ptr @.str.1312, i64 1)
+  %t15594 = call i1 @Parser_eat_jerry(ptr %t15591, i64 %t15592, ptr %t15593)
+  call void @jerry_release(ptr %t15593)
+  br i1 %t15594, label %if.then.2617, label %if.else.2618
+if.then.2617:
+  %t15595 = load ptr, ptr %this.15566
+  %t15596 = call ptr @Parser_parse_type_expr_jerry(ptr %t15595)
+  %t15597 = load ptr, ptr %tl.15584
+  %t15598 = getelementptr %TopLevel, ptr %t15597, i32 0, i32 7
+  %t15599 = load ptr, ptr %t15598
+  call void @jerry_retain(ptr %t15596)
+  store ptr %t15596, ptr %t15598
+  call void @jerry_release(ptr %t15599)
+  br label %if.merge.2619
+if.else.2618:
+  br label %if.merge.2619
+if.merge.2619:
+  %t15600 = load ptr, ptr %this.15566
+  %t15601 = load i64, ptr @TOK_OP
+  %t15602 = call ptr @jerry_string_new(ptr @.str.1313, i64 1)
+  %t15603 = call ptr @Parser_expect_jerry(ptr %t15600, i64 %t15601, ptr %t15602)
+  call void @jerry_release(ptr %t15602)
+  %t15604 = load ptr, ptr %this.15566
+  %t15605 = call ptr @Parser_parse_expr_jerry(ptr %t15604)
+  %t15606 = load ptr, ptr %tl.15584
+  %t15607 = getelementptr %TopLevel, ptr %t15606, i32 0, i32 8
+  %t15608 = load ptr, ptr %t15607
+  call void @jerry_retain(ptr %t15605)
+  store ptr %t15605, ptr %t15607
+  call void @jerry_release(ptr %t15608)
+  %t15609 = load ptr, ptr %this.15566
+  %t15610 = load i64, ptr @TOK_OP
+  %t15611 = call ptr @jerry_string_new(ptr @.str.1314, i64 1)
+  %t15612 = call ptr @Parser_expect_jerry(ptr %t15609, i64 %t15610, ptr %t15611)
+  call void @jerry_release(ptr %t15611)
+  %t15613 = load ptr, ptr %tl.15584
+  %t15614 = load ptr, ptr %name.15575
+  call void @jerry_release(ptr %t15614)
+  ret ptr %t15613
 }
 
 define ptr @Parser_parse_type_expr_jerry(ptr %self.arg) {
 entry:
-  %this.15083 = alloca ptr
-  store ptr %self.arg, ptr %this.15083
-  %t15084 = load ptr, ptr %this.15083
-  %t15085 = call i64 @Parser_peek_line_jerry(ptr %t15084)
-  %l.15086 = alloca i64
-  store i64 %t15085, ptr %l.15086
-  %t15087 = load ptr, ptr %this.15083
-  %t15088 = call i64 @Parser_peek_col_jerry(ptr %t15087)
-  %c.15089 = alloca i64
-  store i64 %t15088, ptr %c.15089
-  %t15090 = load ptr, ptr %this.15083
-  %t15091 = load i64, ptr @TOK_IDENT
-  %t15092 = call ptr @jerry_string_new(ptr @.str.1280, i64 3)
-  %t15093 = call i1 @Parser_check_jerry(ptr %t15090, i64 %t15091, ptr %t15092)
-  call void @jerry_release(ptr %t15092)
-  br i1 %t15093, label %if.then.2467, label %if.else.2468
-if.then.2467:
-  %t15094 = load ptr, ptr %this.15083
-  %t15095 = call ptr @Parser_advance_jerry(ptr %t15094)
-  %t15096 = load ptr, ptr %this.15083
-  %t15097 = load i64, ptr @TOK_OP
-  %t15098 = call ptr @jerry_string_new(ptr @.str.1281, i64 1)
-  %t15099 = call ptr @Parser_expect_jerry(ptr %t15096, i64 %t15097, ptr %t15098)
-  call void @jerry_release(ptr %t15098)
-  %t15100 = load ptr, ptr %this.15083
-  %t15101 = call ptr @Parser_parse_type_expr_jerry(ptr %t15100)
-  %key.15102 = alloca ptr
-  store ptr %t15101, ptr %key.15102
-  %t15103 = load ptr, ptr %this.15083
-  %t15104 = load i64, ptr @TOK_OP
-  %t15105 = call ptr @jerry_string_new(ptr @.str.1282, i64 1)
-  %t15106 = call ptr @Parser_expect_jerry(ptr %t15103, i64 %t15104, ptr %t15105)
-  call void @jerry_release(ptr %t15105)
-  %t15107 = load ptr, ptr %this.15083
-  %t15108 = call ptr @Parser_parse_type_expr_jerry(ptr %t15107)
-  %val.15109 = alloca ptr
-  store ptr %t15108, ptr %val.15109
-  %t15110 = load ptr, ptr %this.15083
-  %t15111 = load i64, ptr @TOK_OP
-  %t15112 = call ptr @jerry_string_new(ptr @.str.1283, i64 1)
-  %t15113 = call ptr @Parser_expect_jerry(ptr %t15110, i64 %t15111, ptr %t15112)
-  call void @jerry_release(ptr %t15112)
-  %t15114 = load ptr, ptr %key.15102
-  %t15115 = load ptr, ptr %val.15109
-  %t15116 = load i64, ptr %l.15086
-  %t15117 = load i64, ptr %c.15089
-  %t15118 = call ptr @type_map_jerry(ptr %t15114, ptr %t15115, i64 %t15116, i64 %t15117)
-  %t15119 = load ptr, ptr %val.15109
-  call void @jerry_release(ptr %t15119)
-  %t15120 = load ptr, ptr %key.15102
-  call void @jerry_release(ptr %t15120)
-  ret ptr %t15118
-if.else.2468:
-  br label %if.merge.2469
-if.merge.2469:
-  %t15121 = load ptr, ptr %this.15083
-  %t15122 = load i64, ptr @TOK_KEYWORD
-  %t15123 = call ptr @jerry_string_new(ptr @.str.1284, i64 2)
-  %t15124 = call i1 @Parser_check_jerry(ptr %t15121, i64 %t15122, ptr %t15123)
-  call void @jerry_release(ptr %t15123)
-  br i1 %t15124, label %if.then.2470, label %if.else.2471
-if.then.2470:
-  %t15125 = load ptr, ptr %this.15083
-  %t15126 = call ptr @Parser_advance_jerry(ptr %t15125)
-  %t15127 = load ptr, ptr %this.15083
-  %t15128 = load i64, ptr @TOK_OP
-  %t15129 = call ptr @jerry_string_new(ptr @.str.1285, i64 1)
-  %t15130 = call ptr @Parser_expect_jerry(ptr %t15127, i64 %t15128, ptr %t15129)
-  call void @jerry_release(ptr %t15129)
-  %t15131 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %ps.15132 = alloca ptr
-  store ptr %t15131, ptr %ps.15132
-  call void @jerry_array_mark_heap(ptr %t15131)
-  %t15133 = load ptr, ptr %this.15083
-  %t15134 = load i64, ptr @TOK_OP
-  %t15135 = call ptr @jerry_string_new(ptr @.str.1286, i64 1)
-  %t15136 = call i1 @Parser_check_jerry(ptr %t15133, i64 %t15134, ptr %t15135)
-  call void @jerry_release(ptr %t15135)
-  %t15137 = xor i1 %t15136, true
-  br i1 %t15137, label %if.then.2473, label %if.else.2474
-if.then.2473:
-  %t15138 = load ptr, ptr %this.15083
-  %t15139 = call ptr @Parser_parse_type_expr_jerry(ptr %t15138)
-  %first.15140 = alloca ptr
-  store ptr %t15139, ptr %first.15140
-  %t15141 = load ptr, ptr %ps.15132
-  %t15142 = load ptr, ptr %first.15140
-  %t15143.slot = alloca ptr
-  store ptr %t15142, ptr %t15143.slot
-  call void @jerry_array_push(ptr %t15141, ptr %t15143.slot)
-  br label %while.cond.2476
-while.cond.2476:
-  %t15144 = load ptr, ptr %this.15083
-  %t15145 = load i64, ptr @TOK_OP
-  %t15146 = call ptr @jerry_string_new(ptr @.str.1287, i64 1)
-  %t15147 = call i1 @Parser_eat_jerry(ptr %t15144, i64 %t15145, ptr %t15146)
-  call void @jerry_release(ptr %t15146)
-  br i1 %t15147, label %while.body.2477, label %while.end.2478
-while.body.2477:
-  %t15148 = load ptr, ptr %this.15083
-  %t15149 = call ptr @Parser_parse_type_expr_jerry(ptr %t15148)
-  %p.15150 = alloca ptr
-  store ptr %t15149, ptr %p.15150
-  %t15151 = load ptr, ptr %ps.15132
-  %t15152 = load ptr, ptr %p.15150
-  %t15153.slot = alloca ptr
-  store ptr %t15152, ptr %t15153.slot
-  call void @jerry_array_push(ptr %t15151, ptr %t15153.slot)
-  %t15154 = load ptr, ptr %p.15150
-  call void @jerry_release(ptr %t15154)
-  br label %while.cond.2476
-while.end.2478:
-  %t15155 = load ptr, ptr %first.15140
-  call void @jerry_release(ptr %t15155)
-  br label %if.merge.2475
-if.else.2474:
-  br label %if.merge.2475
-if.merge.2475:
-  %t15156 = load ptr, ptr %this.15083
-  %t15157 = load i64, ptr @TOK_OP
-  %t15158 = call ptr @jerry_string_new(ptr @.str.1288, i64 1)
-  %t15159 = call ptr @Parser_expect_jerry(ptr %t15156, i64 %t15157, ptr %t15158)
-  call void @jerry_release(ptr %t15158)
-  %ret.15160 = alloca ptr
-  store ptr null, ptr %ret.15160
-  %t15161 = load ptr, ptr %this.15083
-  %t15162 = load i64, ptr @TOK_OP
-  %t15163 = call ptr @jerry_string_new(ptr @.str.1289, i64 1)
-  %t15164 = call i1 @Parser_eat_jerry(ptr %t15161, i64 %t15162, ptr %t15163)
-  call void @jerry_release(ptr %t15163)
-  br i1 %t15164, label %if.then.2479, label %if.else.2480
-if.then.2479:
-  %t15165 = load ptr, ptr %this.15083
-  %t15166 = call ptr @Parser_parse_type_expr_jerry(ptr %t15165)
-  %t15167 = load ptr, ptr %ret.15160
-  call void @jerry_retain(ptr %t15166)
-  store ptr %t15166, ptr %ret.15160
-  call void @jerry_release(ptr %t15167)
-  br label %if.merge.2481
-if.else.2480:
-  br label %if.merge.2481
-if.merge.2481:
-  %t15168 = load ptr, ptr %ps.15132
-  %t15169 = load ptr, ptr %ret.15160
-  %t15170 = load i64, ptr %l.15086
-  %t15171 = load i64, ptr %c.15089
-  %t15172 = call ptr @type_fn_jerry(ptr %t15168, ptr %t15169, i64 %t15170, i64 %t15171)
-  %t15173 = load ptr, ptr %ret.15160
-  call void @jerry_release(ptr %t15173)
-  %t15174 = load ptr, ptr %ps.15132
-  call void @jerry_release(ptr %t15174)
-  ret ptr %t15172
-if.else.2471:
-  br label %if.merge.2472
-if.merge.2472:
-  %t15175 = load ptr, ptr %this.15083
-  %t15176 = load i64, ptr @TOK_IDENT
-  %t15177 = call ptr @jerry_string_new(ptr @.str.1290, i64 0)
-  %t15178 = call ptr @Parser_expect_jerry(ptr %t15175, i64 %t15176, ptr %t15177)
-  call void @jerry_release(ptr %t15177)
-  %name.15179 = alloca ptr
-  store ptr %t15178, ptr %name.15179
-  %t15180 = load ptr, ptr %name.15179
-  %t15181 = getelementptr %Token, ptr %t15180, i32 0, i32 2
-  %t15182 = load ptr, ptr %t15181
-  %t15183 = load i64, ptr %l.15086
-  %t15184 = load i64, ptr %c.15089
-  %t15185 = call ptr @type_name_jerry(ptr %t15182, i64 %t15183, i64 %t15184)
-  %te.15186 = alloca ptr
-  store ptr %t15185, ptr %te.15186
-  br label %while.cond.2482
-while.cond.2482:
-  %t15187 = load ptr, ptr %this.15083
-  %t15188 = load i64, ptr @TOK_OP
-  %t15189 = call ptr @jerry_string_new(ptr @.str.1291, i64 1)
-  %t15190 = call i1 @Parser_check_jerry(ptr %t15187, i64 %t15188, ptr %t15189)
-  call void @jerry_release(ptr %t15189)
-  br i1 %t15190, label %and.rhs.2486, label %and.false.2485
-and.rhs.2486:
-  %t15191 = load ptr, ptr %this.15083
-  %t15192 = getelementptr %Parser, ptr %t15191, i32 0, i32 2
-  %t15193 = load i64, ptr %t15192
-  %t15194 = add i64 %t15193, 1
-  %t15195 = load ptr, ptr %this.15083
-  %t15196 = getelementptr %Parser, ptr %t15195, i32 0, i32 1
-  %t15197 = load ptr, ptr %t15196
-  %t15198 = call i64 @jerry_array_len(ptr %t15197)
-  %t15199 = icmp slt i64 %t15194, %t15198
-  br label %and.merge.2487
-and.false.2485:
-  br label %and.merge.2487
-and.merge.2487:
-  %t15200 = phi i1 [ %t15199, %and.rhs.2486 ], [ false, %and.false.2485 ]
-  br i1 %t15200, label %while.body.2483, label %while.end.2484
-while.body.2483:
-  %t15201 = load ptr, ptr %this.15083
-  %t15202 = getelementptr %Parser, ptr %t15201, i32 0, i32 1
-  %t15203 = load ptr, ptr %t15202
-  %t15204 = load ptr, ptr %this.15083
-  %t15205 = getelementptr %Parser, ptr %t15204, i32 0, i32 2
-  %t15206 = load i64, ptr %t15205
-  %t15207 = add i64 %t15206, 1
-  %t15208 = call ptr @jerry_array_get(ptr %t15203, i64 %t15207)
-  %t15209 = load ptr, ptr %t15208
-  %next.15210 = alloca ptr
-  store ptr %t15209, ptr %next.15210
-  call void @jerry_retain(ptr %t15209)
-  %t15211 = load ptr, ptr %next.15210
-  %t15212 = getelementptr %Token, ptr %t15211, i32 0, i32 1
-  %t15213 = load i64, ptr %t15212
-  %t15214 = load i64, ptr @TOK_OP
-  %t15215 = icmp eq i64 %t15213, %t15214
-  br i1 %t15215, label %and.rhs.2492, label %and.false.2491
-and.rhs.2492:
-  %t15216 = load ptr, ptr %next.15210
-  %t15217 = getelementptr %Token, ptr %t15216, i32 0, i32 2
-  %t15218 = load ptr, ptr %t15217
-  %t15219 = call ptr @jerry_string_new(ptr @.str.1292, i64 1)
-  %t15220 = call i8 @jerry_string_eq(ptr %t15218, ptr %t15219)
-  %t15221 = icmp ne i8 %t15220, 0
-  br label %and.merge.2493
-and.false.2491:
-  br label %and.merge.2493
-and.merge.2493:
-  %t15222 = phi i1 [ %t15221, %and.rhs.2492 ], [ false, %and.false.2491 ]
-  br i1 %t15222, label %if.then.2488, label %if.else.2489
-if.then.2488:
-  %t15223 = load ptr, ptr %this.15083
-  %t15224 = call ptr @Parser_advance_jerry(ptr %t15223)
-  %t15225 = load ptr, ptr %this.15083
-  %t15226 = call ptr @Parser_advance_jerry(ptr %t15225)
-  %t15227 = load ptr, ptr %te.15186
-  %t15228 = call ptr @type_array_jerry(ptr %t15227)
-  %t15229 = load ptr, ptr %te.15186
-  call void @jerry_retain(ptr %t15228)
-  store ptr %t15228, ptr %te.15186
-  call void @jerry_release(ptr %t15229)
-  br label %if.merge.2490
-if.else.2489:
-  %t15230 = load ptr, ptr %next.15210
-  call void @jerry_release(ptr %t15230)
-  br label %while.end.2484
-if.merge.2490:
-  %t15231 = load ptr, ptr %next.15210
-  call void @jerry_release(ptr %t15231)
-  br label %while.cond.2482
-while.end.2484:
-  %t15232 = load ptr, ptr %te.15186
-  %t15233 = load ptr, ptr %name.15179
-  call void @jerry_release(ptr %t15233)
-  ret ptr %t15232
-}
-
-define ptr @Parser_parse_class_decl_jerry(ptr %self.arg) {
-entry:
-  %this.15234 = alloca ptr
-  store ptr %self.arg, ptr %this.15234
-  %t15235 = load ptr, ptr %this.15234
-  %t15236 = call i64 @Parser_peek_line_jerry(ptr %t15235)
-  %l.15237 = alloca i64
-  store i64 %t15236, ptr %l.15237
-  %t15238 = load ptr, ptr %this.15234
-  %t15239 = call i64 @Parser_peek_col_jerry(ptr %t15238)
-  %c.15240 = alloca i64
-  store i64 %t15239, ptr %c.15240
-  %t15241 = load ptr, ptr %this.15234
-  %t15242 = call ptr @Parser_advance_jerry(ptr %t15241)
-  %t15243 = load ptr, ptr %this.15234
-  %t15244 = load i64, ptr @TOK_IDENT
-  %t15245 = call ptr @jerry_string_new(ptr @.str.1293, i64 0)
-  %t15246 = call ptr @Parser_expect_jerry(ptr %t15243, i64 %t15244, ptr %t15245)
-  call void @jerry_release(ptr %t15245)
-  %name.15247 = alloca ptr
-  store ptr %t15246, ptr %name.15247
-  %t15248 = call ptr @jerry_string_new(ptr @.str.1294, i64 0)
-  %ext.15249 = alloca ptr
-  store ptr %t15248, ptr %ext.15249
-  %t15250 = load ptr, ptr %this.15234
-  %t15251 = load i64, ptr @TOK_KEYWORD
-  %t15252 = call ptr @jerry_string_new(ptr @.str.1295, i64 7)
-  %t15253 = call i1 @Parser_eat_jerry(ptr %t15250, i64 %t15251, ptr %t15252)
-  call void @jerry_release(ptr %t15252)
-  br i1 %t15253, label %if.then.2494, label %if.else.2495
-if.then.2494:
-  %t15254 = load ptr, ptr %this.15234
-  %t15255 = load i64, ptr @TOK_IDENT
-  %t15256 = call ptr @jerry_string_new(ptr @.str.1296, i64 0)
-  %t15257 = call ptr @Parser_expect_jerry(ptr %t15254, i64 %t15255, ptr %t15256)
-  call void @jerry_release(ptr %t15256)
-  %pname.15258 = alloca ptr
-  store ptr %t15257, ptr %pname.15258
-  %t15259 = load ptr, ptr %pname.15258
-  %t15260 = getelementptr %Token, ptr %t15259, i32 0, i32 2
-  %t15261 = load ptr, ptr %t15260
-  %t15262 = load ptr, ptr %ext.15249
-  call void @jerry_retain(ptr %t15261)
-  store ptr %t15261, ptr %ext.15249
-  call void @jerry_release(ptr %t15262)
-  %t15263 = load ptr, ptr %pname.15258
-  call void @jerry_release(ptr %t15263)
-  br label %if.merge.2496
-if.else.2495:
-  br label %if.merge.2496
-if.merge.2496:
-  %t15264 = getelementptr %ClassDecl, ptr null, i32 1
-  %t15265 = ptrtoint ptr %t15264 to i64
-  %t15266 = call ptr @jerry_alloc(i64 %t15265)
-  %t15267 = getelementptr i8, ptr %t15266, i64 -8
-  store ptr @ClassDecl_destroy_jerry, ptr %t15267
-  %t15268 = getelementptr %ClassDecl, ptr %t15266, i32 0, i32 0
-  store ptr @vtable.ClassDecl, ptr %t15268
-  %t15269 = load ptr, ptr %name.15247
-  %t15270 = getelementptr %Token, ptr %t15269, i32 0, i32 2
-  %t15271 = load ptr, ptr %t15270
-  %t15272 = load ptr, ptr %ext.15249
-  %t15273 = load i64, ptr %l.15237
-  %t15274 = load i64, ptr %c.15240
-  call void @ClassDecl_new_jerry(ptr %t15266, ptr %t15271, ptr %t15272, i64 %t15273, i64 %t15274)
-  %cd.15275 = alloca ptr
-  store ptr %t15266, ptr %cd.15275
-  %t15276 = load ptr, ptr %this.15234
-  %t15277 = load i64, ptr @TOK_OP
-  %t15278 = call ptr @jerry_string_new(ptr @.str.1297, i64 1)
-  %t15279 = call ptr @Parser_expect_jerry(ptr %t15276, i64 %t15277, ptr %t15278)
-  call void @jerry_release(ptr %t15278)
-  br label %while.cond.2497
-while.cond.2497:
-  %t15280 = load ptr, ptr %this.15234
-  %t15281 = load i64, ptr @TOK_OP
-  %t15282 = call ptr @jerry_string_new(ptr @.str.1298, i64 1)
-  %t15283 = call i1 @Parser_check_jerry(ptr %t15280, i64 %t15281, ptr %t15282)
-  call void @jerry_release(ptr %t15282)
-  %t15284 = xor i1 %t15283, true
-  br i1 %t15284, label %and.rhs.2501, label %and.false.2500
-and.rhs.2501:
-  %t15285 = load ptr, ptr %this.15234
-  %t15286 = call i64 @Parser_peek_kind_jerry(ptr %t15285)
-  %t15287 = load i64, ptr @TOK_EOF
-  %t15288 = icmp ne i64 %t15286, %t15287
-  br label %and.merge.2502
-and.false.2500:
-  br label %and.merge.2502
-and.merge.2502:
-  %t15289 = phi i1 [ %t15288, %and.rhs.2501 ], [ false, %and.false.2500 ]
-  br i1 %t15289, label %while.body.2498, label %while.end.2499
-while.body.2498:
-  %t15290 = load ptr, ptr %this.15234
-  %t15291 = load i64, ptr @TOK_KEYWORD
-  %t15292 = call ptr @jerry_string_new(ptr @.str.1299, i64 2)
-  %t15293 = call i1 @Parser_check_jerry(ptr %t15290, i64 %t15291, ptr %t15292)
-  call void @jerry_release(ptr %t15292)
-  br i1 %t15293, label %if.then.2503, label %if.else.2504
-if.then.2503:
-  %t15294 = load ptr, ptr %this.15234
-  %t15295 = call ptr @Parser_parse_fn_decl_jerry(ptr %t15294)
-  %md.15296 = alloca ptr
-  store ptr %t15295, ptr %md.15296
-  %t15297 = load ptr, ptr %cd.15275
-  %t15298 = getelementptr %ClassDecl, ptr %t15297, i32 0, i32 4
-  %t15299 = load ptr, ptr %t15298
-  %t15300 = load ptr, ptr %md.15296
-  %t15301.slot = alloca ptr
-  store ptr %t15300, ptr %t15301.slot
-  call void @jerry_array_push(ptr %t15299, ptr %t15301.slot)
-  %t15302 = load ptr, ptr %md.15296
-  call void @jerry_release(ptr %t15302)
-  br label %if.merge.2505
-if.else.2504:
-  %t15303 = load ptr, ptr %this.15234
-  %t15304 = call ptr @Parser_parse_field_decl_jerry(ptr %t15303)
-  %fd.15305 = alloca ptr
-  store ptr %t15304, ptr %fd.15305
-  %t15306 = load ptr, ptr %cd.15275
-  %t15307 = getelementptr %ClassDecl, ptr %t15306, i32 0, i32 3
-  %t15308 = load ptr, ptr %t15307
-  %t15309 = load ptr, ptr %fd.15305
-  %t15310.slot = alloca ptr
-  store ptr %t15309, ptr %t15310.slot
-  call void @jerry_array_push(ptr %t15308, ptr %t15310.slot)
-  %t15311 = load ptr, ptr %fd.15305
-  call void @jerry_release(ptr %t15311)
-  br label %if.merge.2505
-if.merge.2505:
-  br label %while.cond.2497
-while.end.2499:
-  %t15312 = load ptr, ptr %this.15234
-  %t15313 = load i64, ptr @TOK_OP
-  %t15314 = call ptr @jerry_string_new(ptr @.str.1300, i64 1)
-  %t15315 = call ptr @Parser_expect_jerry(ptr %t15312, i64 %t15313, ptr %t15314)
-  call void @jerry_release(ptr %t15314)
-  %t15316 = load ptr, ptr %cd.15275
-  %t15317 = load ptr, ptr %ext.15249
-  call void @jerry_release(ptr %t15317)
-  %t15318 = load ptr, ptr %name.15247
-  call void @jerry_release(ptr %t15318)
-  ret ptr %t15316
-}
-
-define ptr @Parser_parse_field_decl_jerry(ptr %self.arg) {
-entry:
-  %this.15319 = alloca ptr
-  store ptr %self.arg, ptr %this.15319
-  %t15320 = load ptr, ptr %this.15319
-  %t15321 = call i64 @Parser_peek_line_jerry(ptr %t15320)
-  %l.15322 = alloca i64
-  store i64 %t15321, ptr %l.15322
-  %t15323 = load ptr, ptr %this.15319
-  %t15324 = call i64 @Parser_peek_col_jerry(ptr %t15323)
-  %c.15325 = alloca i64
-  store i64 %t15324, ptr %c.15325
-  %t15326 = load ptr, ptr %this.15319
-  %t15327 = load i64, ptr @TOK_IDENT
-  %t15328 = call ptr @jerry_string_new(ptr @.str.1301, i64 0)
-  %t15329 = call ptr @Parser_expect_jerry(ptr %t15326, i64 %t15327, ptr %t15328)
-  call void @jerry_release(ptr %t15328)
-  %name.15330 = alloca ptr
-  store ptr %t15329, ptr %name.15330
-  %t15331 = load ptr, ptr %this.15319
-  %t15332 = load i64, ptr @TOK_OP
-  %t15333 = call ptr @jerry_string_new(ptr @.str.1302, i64 1)
-  %t15334 = call ptr @Parser_expect_jerry(ptr %t15331, i64 %t15332, ptr %t15333)
-  call void @jerry_release(ptr %t15333)
-  %t15335 = load ptr, ptr %this.15319
-  %t15336 = call ptr @Parser_parse_type_expr_jerry(ptr %t15335)
-  %te.15337 = alloca ptr
-  store ptr %t15336, ptr %te.15337
-  %t15338 = load ptr, ptr %this.15319
-  %t15339 = load i64, ptr @TOK_OP
-  %t15340 = call ptr @jerry_string_new(ptr @.str.1303, i64 1)
-  %t15341 = call ptr @Parser_expect_jerry(ptr %t15338, i64 %t15339, ptr %t15340)
-  call void @jerry_release(ptr %t15340)
-  %t15342 = getelementptr %FieldDecl, ptr null, i32 1
-  %t15343 = ptrtoint ptr %t15342 to i64
-  %t15344 = call ptr @jerry_alloc(i64 %t15343)
-  %t15345 = getelementptr i8, ptr %t15344, i64 -8
-  store ptr @FieldDecl_destroy_jerry, ptr %t15345
-  %t15346 = getelementptr %FieldDecl, ptr %t15344, i32 0, i32 0
-  store ptr @vtable.FieldDecl, ptr %t15346
-  %t15347 = load ptr, ptr %name.15330
-  %t15348 = getelementptr %Token, ptr %t15347, i32 0, i32 2
-  %t15349 = load ptr, ptr %t15348
-  %t15350 = load ptr, ptr %te.15337
-  %t15351 = load i64, ptr %l.15322
-  %t15352 = load i64, ptr %c.15325
-  call void @FieldDecl_new_jerry(ptr %t15344, ptr %t15349, ptr %t15350, i64 %t15351, i64 %t15352)
-  %t15353 = load ptr, ptr %te.15337
-  call void @jerry_release(ptr %t15353)
-  %t15354 = load ptr, ptr %name.15330
-  call void @jerry_release(ptr %t15354)
-  ret ptr %t15344
-}
-
-define ptr @Parser_parse_fn_decl_jerry(ptr %self.arg) {
-entry:
-  %this.15355 = alloca ptr
-  store ptr %self.arg, ptr %this.15355
-  %t15356 = load ptr, ptr %this.15355
-  %t15357 = call i64 @Parser_peek_line_jerry(ptr %t15356)
-  %l.15358 = alloca i64
-  store i64 %t15357, ptr %l.15358
-  %t15359 = load ptr, ptr %this.15355
-  %t15360 = call i64 @Parser_peek_col_jerry(ptr %t15359)
-  %c.15361 = alloca i64
-  store i64 %t15360, ptr %c.15361
-  %t15362 = load ptr, ptr %this.15355
-  %t15363 = call ptr @Parser_advance_jerry(ptr %t15362)
-  %t15364 = call ptr @jerry_string_new(ptr @.str.1304, i64 0)
-  %fname.15365 = alloca ptr
-  store ptr %t15364, ptr %fname.15365
-  %t15366 = load ptr, ptr %this.15355
-  %t15367 = call i64 @Parser_peek_kind_jerry(ptr %t15366)
-  %t15368 = load i64, ptr @TOK_IDENT
-  %t15369 = icmp eq i64 %t15367, %t15368
-  br i1 %t15369, label %if.then.2506, label %if.else.2507
-if.then.2506:
-  %t15370 = load ptr, ptr %this.15355
-  %t15371 = call ptr @Parser_advance_jerry(ptr %t15370)
-  %t.15372 = alloca ptr
-  store ptr %t15371, ptr %t.15372
-  %t15373 = load ptr, ptr %t.15372
-  %t15374 = getelementptr %Token, ptr %t15373, i32 0, i32 2
-  %t15375 = load ptr, ptr %t15374
-  %t15376 = load ptr, ptr %fname.15365
-  call void @jerry_retain(ptr %t15375)
-  store ptr %t15375, ptr %fname.15365
-  call void @jerry_release(ptr %t15376)
-  %t15377 = load ptr, ptr %t.15372
-  call void @jerry_release(ptr %t15377)
-  br label %if.merge.2508
-if.else.2507:
-  %t15378 = load ptr, ptr %this.15355
-  %t15379 = call i64 @Parser_peek_kind_jerry(ptr %t15378)
-  %t15380 = load i64, ptr @TOK_KEYWORD
-  %t15381 = icmp eq i64 %t15379, %t15380
-  br i1 %t15381, label %if.then.2509, label %if.else.2510
-if.then.2509:
-  %t15382 = load ptr, ptr %this.15355
-  %t15383 = call ptr @Parser_advance_jerry(ptr %t15382)
-  %t.15384 = alloca ptr
-  store ptr %t15383, ptr %t.15384
-  %t15385 = load ptr, ptr %t.15384
-  %t15386 = getelementptr %Token, ptr %t15385, i32 0, i32 2
-  %t15387 = load ptr, ptr %t15386
-  %t15388 = load ptr, ptr %fname.15365
-  call void @jerry_retain(ptr %t15387)
-  store ptr %t15387, ptr %fname.15365
-  call void @jerry_release(ptr %t15388)
-  %t15389 = load ptr, ptr %t.15384
-  call void @jerry_release(ptr %t15389)
-  br label %if.merge.2511
-if.else.2510:
-  %t15390 = load ptr, ptr %this.15355
-  %t15391 = getelementptr %Parser, ptr %t15390, i32 0, i32 1
-  %t15392 = load ptr, ptr %t15391
-  %t15393 = load ptr, ptr %this.15355
-  %t15394 = getelementptr %Parser, ptr %t15393, i32 0, i32 2
-  %t15395 = load i64, ptr %t15394
-  %t15396 = call ptr @jerry_array_get(ptr %t15392, i64 %t15395)
-  %t15397 = load ptr, ptr %t15396
-  %t.15398 = alloca ptr
-  store ptr %t15397, ptr %t.15398
-  call void @jerry_retain(ptr %t15397)
-  %t15399 = call ptr @jerry_string_new(ptr @.str.1305, i64 15)
-  %t15400 = load ptr, ptr %t.15398
-  %t15401 = getelementptr %Token, ptr %t15400, i32 0, i32 3
-  %t15402 = load i64, ptr %t15401
-  %t15403 = call ptr @jerry_int_to_string(i64 %t15402)
-  %t15404 = call ptr @jerry_string_concat(ptr %t15399, ptr %t15403)
-  %t15405 = call ptr @jerry_string_new(ptr @.str.1306, i64 1)
-  %t15406 = call ptr @jerry_string_concat(ptr %t15404, ptr %t15405)
-  %t15407 = load ptr, ptr %t.15398
-  %t15408 = getelementptr %Token, ptr %t15407, i32 0, i32 4
-  %t15409 = load i64, ptr %t15408
-  %t15410 = call ptr @jerry_int_to_string(i64 %t15409)
-  %t15411 = call ptr @jerry_string_concat(ptr %t15406, ptr %t15410)
-  %t15412 = call ptr @jerry_string_new(ptr @.str.1307, i64 24)
-  %t15413 = call ptr @jerry_string_concat(ptr %t15411, ptr %t15412)
-  call void @jerry_print_string(ptr %t15413)
-  call void @jerry_println()
-  call void @jerry_exit(i64 1)
-  unreachable
-if.merge.2511:
-  br label %if.merge.2508
-if.merge.2508:
-  %t15414 = load ptr, ptr %this.15355
-  %t15415 = load i64, ptr @TOK_OP
-  %t15416 = call ptr @jerry_string_new(ptr @.str.1308, i64 1)
-  %t15417 = call ptr @Parser_expect_jerry(ptr %t15414, i64 %t15415, ptr %t15416)
-  call void @jerry_release(ptr %t15416)
-  %t15418 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %ps.15419 = alloca ptr
-  store ptr %t15418, ptr %ps.15419
-  call void @jerry_array_mark_heap(ptr %t15418)
-  %t15420 = load ptr, ptr %this.15355
-  %t15421 = load i64, ptr @TOK_OP
-  %t15422 = call ptr @jerry_string_new(ptr @.str.1309, i64 1)
-  %t15423 = call i1 @Parser_check_jerry(ptr %t15420, i64 %t15421, ptr %t15422)
-  call void @jerry_release(ptr %t15422)
-  %t15424 = xor i1 %t15423, true
-  br i1 %t15424, label %if.then.2512, label %if.else.2513
-if.then.2512:
-  %t15425 = load ptr, ptr %this.15355
-  %t15426 = call ptr @Parser_parse_param_jerry(ptr %t15425)
-  %p.15427 = alloca ptr
-  store ptr %t15426, ptr %p.15427
-  %t15428 = load ptr, ptr %ps.15419
-  %t15429 = load ptr, ptr %p.15427
-  %t15430.slot = alloca ptr
-  store ptr %t15429, ptr %t15430.slot
-  call void @jerry_array_push(ptr %t15428, ptr %t15430.slot)
-  br label %while.cond.2515
-while.cond.2515:
-  %t15431 = load ptr, ptr %this.15355
-  %t15432 = load i64, ptr @TOK_OP
-  %t15433 = call ptr @jerry_string_new(ptr @.str.1310, i64 1)
-  %t15434 = call i1 @Parser_eat_jerry(ptr %t15431, i64 %t15432, ptr %t15433)
-  call void @jerry_release(ptr %t15433)
-  br i1 %t15434, label %while.body.2516, label %while.end.2517
-while.body.2516:
-  %t15435 = load ptr, ptr %this.15355
-  %t15436 = call ptr @Parser_parse_param_jerry(ptr %t15435)
-  %p2.15437 = alloca ptr
-  store ptr %t15436, ptr %p2.15437
-  %t15438 = load ptr, ptr %ps.15419
-  %t15439 = load ptr, ptr %p2.15437
-  %t15440.slot = alloca ptr
-  store ptr %t15439, ptr %t15440.slot
-  call void @jerry_array_push(ptr %t15438, ptr %t15440.slot)
-  %t15441 = load ptr, ptr %p2.15437
-  call void @jerry_release(ptr %t15441)
-  br label %while.cond.2515
-while.end.2517:
-  %t15442 = load ptr, ptr %p.15427
-  call void @jerry_release(ptr %t15442)
-  br label %if.merge.2514
-if.else.2513:
-  br label %if.merge.2514
-if.merge.2514:
-  %t15443 = load ptr, ptr %this.15355
-  %t15444 = load i64, ptr @TOK_OP
-  %t15445 = call ptr @jerry_string_new(ptr @.str.1311, i64 1)
-  %t15446 = call ptr @Parser_expect_jerry(ptr %t15443, i64 %t15444, ptr %t15445)
-  call void @jerry_release(ptr %t15445)
-  %ret.15447 = alloca ptr
-  store ptr null, ptr %ret.15447
-  %t15448 = load ptr, ptr %this.15355
-  %t15449 = load i64, ptr @TOK_OP
-  %t15450 = call ptr @jerry_string_new(ptr @.str.1312, i64 1)
-  %t15451 = call i1 @Parser_eat_jerry(ptr %t15448, i64 %t15449, ptr %t15450)
-  call void @jerry_release(ptr %t15450)
-  br i1 %t15451, label %if.then.2518, label %if.else.2519
-if.then.2518:
-  %t15452 = load ptr, ptr %this.15355
-  %t15453 = call ptr @Parser_parse_type_expr_jerry(ptr %t15452)
-  %t15454 = load ptr, ptr %ret.15447
-  call void @jerry_retain(ptr %t15453)
-  store ptr %t15453, ptr %ret.15447
-  call void @jerry_release(ptr %t15454)
-  br label %if.merge.2520
-if.else.2519:
-  br label %if.merge.2520
-if.merge.2520:
-  %t15455 = load ptr, ptr %this.15355
-  %t15456 = call ptr @Parser_parse_block_jerry(ptr %t15455)
-  %body.15457 = alloca ptr
-  store ptr %t15456, ptr %body.15457
-  %t15458 = getelementptr %FnDecl, ptr null, i32 1
-  %t15459 = ptrtoint ptr %t15458 to i64
-  %t15460 = call ptr @jerry_alloc(i64 %t15459)
-  %t15461 = getelementptr i8, ptr %t15460, i64 -8
-  store ptr @FnDecl_destroy_jerry, ptr %t15461
-  %t15462 = getelementptr %FnDecl, ptr %t15460, i32 0, i32 0
-  store ptr @vtable.FnDecl, ptr %t15462
-  %t15463 = load ptr, ptr %fname.15365
-  %t15464 = load ptr, ptr %ps.15419
-  %t15465 = load ptr, ptr %ret.15447
-  %t15466 = load ptr, ptr %body.15457
-  %t15467 = load i64, ptr %l.15358
-  %t15468 = load i64, ptr %c.15361
-  call void @FnDecl_new_jerry(ptr %t15460, ptr %t15463, ptr %t15464, ptr %t15465, ptr %t15466, i64 %t15467, i64 %t15468)
-  %t15469 = load ptr, ptr %body.15457
-  call void @jerry_release(ptr %t15469)
-  %t15470 = load ptr, ptr %ret.15447
-  call void @jerry_release(ptr %t15470)
-  %t15471 = load ptr, ptr %ps.15419
-  call void @jerry_release(ptr %t15471)
-  %t15472 = load ptr, ptr %fname.15365
-  call void @jerry_release(ptr %t15472)
-  ret ptr %t15460
-}
-
-define ptr @Parser_parse_param_jerry(ptr %self.arg) {
-entry:
-  %this.15473 = alloca ptr
-  store ptr %self.arg, ptr %this.15473
-  %t15474 = load ptr, ptr %this.15473
-  %t15475 = call i64 @Parser_peek_line_jerry(ptr %t15474)
-  %l.15476 = alloca i64
-  store i64 %t15475, ptr %l.15476
-  %t15477 = load ptr, ptr %this.15473
-  %t15478 = call i64 @Parser_peek_col_jerry(ptr %t15477)
-  %c.15479 = alloca i64
-  store i64 %t15478, ptr %c.15479
-  %t15480 = load ptr, ptr %this.15473
-  %t15481 = load i64, ptr @TOK_IDENT
-  %t15482 = call ptr @jerry_string_new(ptr @.str.1313, i64 0)
-  %t15483 = call ptr @Parser_expect_jerry(ptr %t15480, i64 %t15481, ptr %t15482)
-  call void @jerry_release(ptr %t15482)
-  %name.15484 = alloca ptr
-  store ptr %t15483, ptr %name.15484
-  %t15485 = load ptr, ptr %this.15473
-  %t15486 = load i64, ptr @TOK_OP
-  %t15487 = call ptr @jerry_string_new(ptr @.str.1314, i64 1)
-  %t15488 = call ptr @Parser_expect_jerry(ptr %t15485, i64 %t15486, ptr %t15487)
-  call void @jerry_release(ptr %t15487)
-  %t15489 = load ptr, ptr %this.15473
-  %t15490 = call ptr @Parser_parse_type_expr_jerry(ptr %t15489)
-  %te.15491 = alloca ptr
-  store ptr %t15490, ptr %te.15491
-  %t15492 = getelementptr %Param, ptr null, i32 1
-  %t15493 = ptrtoint ptr %t15492 to i64
-  %t15494 = call ptr @jerry_alloc(i64 %t15493)
-  %t15495 = getelementptr i8, ptr %t15494, i64 -8
-  store ptr @Param_destroy_jerry, ptr %t15495
-  %t15496 = getelementptr %Param, ptr %t15494, i32 0, i32 0
-  store ptr @vtable.Param, ptr %t15496
-  %t15497 = load ptr, ptr %name.15484
-  %t15498 = getelementptr %Token, ptr %t15497, i32 0, i32 2
-  %t15499 = load ptr, ptr %t15498
-  %t15500 = load ptr, ptr %te.15491
-  %t15501 = load i64, ptr %l.15476
-  %t15502 = load i64, ptr %c.15479
-  call void @Param_new_jerry(ptr %t15494, ptr %t15499, ptr %t15500, i64 %t15501, i64 %t15502)
-  %t15503 = load ptr, ptr %te.15491
-  call void @jerry_release(ptr %t15503)
-  %t15504 = load ptr, ptr %name.15484
-  call void @jerry_release(ptr %t15504)
-  ret ptr %t15494
-}
-
-define ptr @Parser_parse_block_jerry(ptr %self.arg) {
-entry:
-  %this.15505 = alloca ptr
-  store ptr %self.arg, ptr %this.15505
-  %t15506 = load ptr, ptr %this.15505
-  %t15507 = call i64 @Parser_peek_line_jerry(ptr %t15506)
-  %l.15508 = alloca i64
-  store i64 %t15507, ptr %l.15508
-  %t15509 = load ptr, ptr %this.15505
-  %t15510 = call i64 @Parser_peek_col_jerry(ptr %t15509)
-  %c.15511 = alloca i64
-  store i64 %t15510, ptr %c.15511
-  %t15512 = load ptr, ptr %this.15505
-  %t15513 = load i64, ptr @TOK_OP
-  %t15514 = call ptr @jerry_string_new(ptr @.str.1315, i64 1)
-  %t15515 = call ptr @Parser_expect_jerry(ptr %t15512, i64 %t15513, ptr %t15514)
-  call void @jerry_release(ptr %t15514)
-  %t15516 = getelementptr %Block, ptr null, i32 1
-  %t15517 = ptrtoint ptr %t15516 to i64
-  %t15518 = call ptr @jerry_alloc(i64 %t15517)
-  %t15519 = getelementptr i8, ptr %t15518, i64 -8
-  store ptr @Block_destroy_jerry, ptr %t15519
-  %t15520 = getelementptr %Block, ptr %t15518, i32 0, i32 0
-  store ptr @vtable.Block, ptr %t15520
-  %t15521 = load i64, ptr %l.15508
-  %t15522 = load i64, ptr %c.15511
-  call void @Block_new_jerry(ptr %t15518, i64 %t15521, i64 %t15522)
-  %blk.15523 = alloca ptr
-  store ptr %t15518, ptr %blk.15523
-  br label %while.cond.2521
-while.cond.2521:
-  %t15524 = load ptr, ptr %this.15505
-  %t15525 = load i64, ptr @TOK_OP
-  %t15526 = call ptr @jerry_string_new(ptr @.str.1316, i64 1)
-  %t15527 = call i1 @Parser_check_jerry(ptr %t15524, i64 %t15525, ptr %t15526)
-  call void @jerry_release(ptr %t15526)
-  %t15528 = xor i1 %t15527, true
-  br i1 %t15528, label %and.rhs.2525, label %and.false.2524
-and.rhs.2525:
-  %t15529 = load ptr, ptr %this.15505
-  %t15530 = call i64 @Parser_peek_kind_jerry(ptr %t15529)
-  %t15531 = load i64, ptr @TOK_EOF
-  %t15532 = icmp ne i64 %t15530, %t15531
-  br label %and.merge.2526
-and.false.2524:
-  br label %and.merge.2526
-and.merge.2526:
-  %t15533 = phi i1 [ %t15532, %and.rhs.2525 ], [ false, %and.false.2524 ]
-  br i1 %t15533, label %while.body.2522, label %while.end.2523
-while.body.2522:
-  %t15534 = load ptr, ptr %this.15505
-  %t15535 = call ptr @Parser_parse_stmt_jerry(ptr %t15534)
-  %st.15536 = alloca ptr
-  store ptr %t15535, ptr %st.15536
-  %t15537 = load ptr, ptr %blk.15523
-  %t15538 = getelementptr %Block, ptr %t15537, i32 0, i32 1
-  %t15539 = load ptr, ptr %t15538
-  %t15540 = load ptr, ptr %st.15536
-  %t15541.slot = alloca ptr
-  store ptr %t15540, ptr %t15541.slot
-  call void @jerry_array_push(ptr %t15539, ptr %t15541.slot)
-  %t15542 = load ptr, ptr %st.15536
-  call void @jerry_release(ptr %t15542)
-  br label %while.cond.2521
-while.end.2523:
-  %t15543 = load ptr, ptr %this.15505
-  %t15544 = load i64, ptr @TOK_OP
-  %t15545 = call ptr @jerry_string_new(ptr @.str.1317, i64 1)
-  %t15546 = call ptr @Parser_expect_jerry(ptr %t15543, i64 %t15544, ptr %t15545)
-  call void @jerry_release(ptr %t15545)
-  %t15547 = load ptr, ptr %blk.15523
-  ret ptr %t15547
-}
-
-define ptr @Parser_parse_stmt_jerry(ptr %self.arg) {
-entry:
-  %this.15548 = alloca ptr
-  store ptr %self.arg, ptr %this.15548
-  %t15549 = load ptr, ptr %this.15548
-  %t15550 = call i64 @Parser_peek_line_jerry(ptr %t15549)
-  %l.15551 = alloca i64
-  store i64 %t15550, ptr %l.15551
-  %t15552 = load ptr, ptr %this.15548
-  %t15553 = call i64 @Parser_peek_col_jerry(ptr %t15552)
-  %c.15554 = alloca i64
-  store i64 %t15553, ptr %c.15554
-  %t15555 = load ptr, ptr %this.15548
-  %t15556 = load i64, ptr @TOK_KEYWORD
-  %t15557 = call ptr @jerry_string_new(ptr @.str.1318, i64 3)
-  %t15558 = call i1 @Parser_check_jerry(ptr %t15555, i64 %t15556, ptr %t15557)
-  call void @jerry_release(ptr %t15557)
-  br i1 %t15558, label %if.then.2527, label %if.else.2528
-if.then.2527:
-  %t15559 = load ptr, ptr %this.15548
-  %t15560 = load i64, ptr %l.15551
-  %t15561 = load i64, ptr %c.15554
-  %t15562 = call ptr @Parser_parse_var_decl_stmt_jerry(ptr %t15559, i64 %t15560, i64 %t15561)
-  ret ptr %t15562
-if.else.2528:
-  br label %if.merge.2529
-if.merge.2529:
-  %t15563 = load ptr, ptr %this.15548
-  %t15564 = load i64, ptr @TOK_KEYWORD
-  %t15565 = call ptr @jerry_string_new(ptr @.str.1319, i64 6)
-  %t15566 = call i1 @Parser_check_jerry(ptr %t15563, i64 %t15564, ptr %t15565)
-  call void @jerry_release(ptr %t15565)
-  br i1 %t15566, label %if.then.2530, label %if.else.2531
-if.then.2530:
-  %t15567 = load ptr, ptr %this.15548
-  %t15568 = load i64, ptr %l.15551
-  %t15569 = load i64, ptr %c.15554
-  %t15570 = call ptr @Parser_parse_return_stmt_jerry(ptr %t15567, i64 %t15568, i64 %t15569)
-  ret ptr %t15570
-if.else.2531:
-  br label %if.merge.2532
-if.merge.2532:
-  %t15571 = load ptr, ptr %this.15548
-  %t15572 = load i64, ptr @TOK_KEYWORD
-  %t15573 = call ptr @jerry_string_new(ptr @.str.1320, i64 2)
-  %t15574 = call i1 @Parser_check_jerry(ptr %t15571, i64 %t15572, ptr %t15573)
-  call void @jerry_release(ptr %t15573)
-  br i1 %t15574, label %if.then.2533, label %if.else.2534
-if.then.2533:
-  %t15575 = load ptr, ptr %this.15548
-  %t15576 = load i64, ptr %l.15551
-  %t15577 = load i64, ptr %c.15554
-  %t15578 = call ptr @Parser_parse_if_stmt_jerry(ptr %t15575, i64 %t15576, i64 %t15577)
-  ret ptr %t15578
-if.else.2534:
-  br label %if.merge.2535
-if.merge.2535:
-  %t15579 = load ptr, ptr %this.15548
-  %t15580 = load i64, ptr @TOK_KEYWORD
-  %t15581 = call ptr @jerry_string_new(ptr @.str.1321, i64 5)
-  %t15582 = call i1 @Parser_check_jerry(ptr %t15579, i64 %t15580, ptr %t15581)
-  call void @jerry_release(ptr %t15581)
-  br i1 %t15582, label %if.then.2536, label %if.else.2537
-if.then.2536:
-  %t15583 = load ptr, ptr %this.15548
-  %t15584 = load i64, ptr %l.15551
-  %t15585 = load i64, ptr %c.15554
-  %t15586 = call ptr @Parser_parse_while_stmt_jerry(ptr %t15583, i64 %t15584, i64 %t15585)
-  ret ptr %t15586
-if.else.2537:
-  br label %if.merge.2538
-if.merge.2538:
-  %t15587 = load ptr, ptr %this.15548
-  %t15588 = load i64, ptr @TOK_KEYWORD
-  %t15589 = call ptr @jerry_string_new(ptr @.str.1322, i64 3)
-  %t15590 = call i1 @Parser_check_jerry(ptr %t15587, i64 %t15588, ptr %t15589)
-  call void @jerry_release(ptr %t15589)
-  br i1 %t15590, label %if.then.2539, label %if.else.2540
-if.then.2539:
-  %t15591 = load ptr, ptr %this.15548
-  %t15592 = load i64, ptr %l.15551
-  %t15593 = load i64, ptr %c.15554
-  %t15594 = call ptr @Parser_parse_for_stmt_jerry(ptr %t15591, i64 %t15592, i64 %t15593)
-  ret ptr %t15594
-if.else.2540:
-  br label %if.merge.2541
-if.merge.2541:
-  %t15595 = load ptr, ptr %this.15548
-  %t15596 = load i64, ptr @TOK_KEYWORD
-  %t15597 = call ptr @jerry_string_new(ptr @.str.1323, i64 5)
-  %t15598 = call i1 @Parser_check_jerry(ptr %t15595, i64 %t15596, ptr %t15597)
-  call void @jerry_release(ptr %t15597)
-  br i1 %t15598, label %if.then.2542, label %if.else.2543
-if.then.2542:
-  %t15599 = load ptr, ptr %this.15548
-  %t15600 = call ptr @Parser_advance_jerry(ptr %t15599)
-  %t15601 = load ptr, ptr %this.15548
-  %t15602 = load i64, ptr @TOK_OP
-  %t15603 = call ptr @jerry_string_new(ptr @.str.1324, i64 1)
-  %t15604 = call ptr @Parser_expect_jerry(ptr %t15601, i64 %t15602, ptr %t15603)
-  call void @jerry_release(ptr %t15603)
-  %t15605 = getelementptr %Stmt, ptr null, i32 1
-  %t15606 = ptrtoint ptr %t15605 to i64
-  %t15607 = call ptr @jerry_alloc(i64 %t15606)
-  %t15608 = getelementptr i8, ptr %t15607, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15608
-  %t15609 = getelementptr %Stmt, ptr %t15607, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15609
-  %t15610 = load i64, ptr @STMT_BREAK
-  %t15611 = load i64, ptr %l.15551
-  %t15612 = load i64, ptr %c.15554
-  call void @Stmt_new_jerry(ptr %t15607, i64 %t15610, i64 %t15611, i64 %t15612)
-  ret ptr %t15607
-if.else.2543:
-  br label %if.merge.2544
-if.merge.2544:
-  %t15613 = load ptr, ptr %this.15548
-  %t15614 = load i64, ptr @TOK_KEYWORD
-  %t15615 = call ptr @jerry_string_new(ptr @.str.1325, i64 8)
-  %t15616 = call i1 @Parser_check_jerry(ptr %t15613, i64 %t15614, ptr %t15615)
-  call void @jerry_release(ptr %t15615)
-  br i1 %t15616, label %if.then.2545, label %if.else.2546
-if.then.2545:
-  %t15617 = load ptr, ptr %this.15548
-  %t15618 = call ptr @Parser_advance_jerry(ptr %t15617)
-  %t15619 = load ptr, ptr %this.15548
-  %t15620 = load i64, ptr @TOK_OP
-  %t15621 = call ptr @jerry_string_new(ptr @.str.1326, i64 1)
-  %t15622 = call ptr @Parser_expect_jerry(ptr %t15619, i64 %t15620, ptr %t15621)
-  call void @jerry_release(ptr %t15621)
-  %t15623 = getelementptr %Stmt, ptr null, i32 1
-  %t15624 = ptrtoint ptr %t15623 to i64
-  %t15625 = call ptr @jerry_alloc(i64 %t15624)
-  %t15626 = getelementptr i8, ptr %t15625, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15626
-  %t15627 = getelementptr %Stmt, ptr %t15625, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15627
-  %t15628 = load i64, ptr @STMT_CONTINUE
-  %t15629 = load i64, ptr %l.15551
-  %t15630 = load i64, ptr %c.15554
-  call void @Stmt_new_jerry(ptr %t15625, i64 %t15628, i64 %t15629, i64 %t15630)
-  ret ptr %t15625
-if.else.2546:
-  br label %if.merge.2547
-if.merge.2547:
-  %t15631 = getelementptr %Stmt, ptr null, i32 1
-  %t15632 = ptrtoint ptr %t15631 to i64
-  %t15633 = call ptr @jerry_alloc(i64 %t15632)
-  %t15634 = getelementptr i8, ptr %t15633, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15634
-  %t15635 = getelementptr %Stmt, ptr %t15633, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15635
-  %t15636 = load i64, ptr @STMT_EXPR
-  %t15637 = load i64, ptr %l.15551
-  %t15638 = load i64, ptr %c.15554
-  call void @Stmt_new_jerry(ptr %t15633, i64 %t15636, i64 %t15637, i64 %t15638)
-  %st.15639 = alloca ptr
-  store ptr %t15633, ptr %st.15639
-  %t15640 = load ptr, ptr %this.15548
-  %t15641 = call ptr @Parser_parse_expr_jerry(ptr %t15640)
-  %t15642 = load ptr, ptr %st.15639
-  %t15643 = getelementptr %Stmt, ptr %t15642, i32 0, i32 17
-  %t15644 = load ptr, ptr %t15643
-  call void @jerry_retain(ptr %t15641)
-  store ptr %t15641, ptr %t15643
+  %this.15615 = alloca ptr
+  store ptr %self.arg, ptr %this.15615
+  %t15616 = load ptr, ptr %this.15615
+  %t15617 = call i64 @Parser_peek_line_jerry(ptr %t15616)
+  %l.15618 = alloca i64
+  store i64 %t15617, ptr %l.15618
+  %t15619 = load ptr, ptr %this.15615
+  %t15620 = call i64 @Parser_peek_col_jerry(ptr %t15619)
+  %c.15621 = alloca i64
+  store i64 %t15620, ptr %c.15621
+  %t15622 = load ptr, ptr %this.15615
+  %t15623 = load i64, ptr @TOK_IDENT
+  %t15624 = call ptr @jerry_string_new(ptr @.str.1315, i64 3)
+  %t15625 = call i1 @Parser_check_jerry(ptr %t15622, i64 %t15623, ptr %t15624)
+  call void @jerry_release(ptr %t15624)
+  br i1 %t15625, label %if.then.2620, label %if.else.2621
+if.then.2620:
+  %t15626 = load ptr, ptr %this.15615
+  %t15627 = call ptr @Parser_advance_jerry(ptr %t15626)
+  %t15628 = load ptr, ptr %this.15615
+  %t15629 = load i64, ptr @TOK_OP
+  %t15630 = call ptr @jerry_string_new(ptr @.str.1316, i64 1)
+  %t15631 = call ptr @Parser_expect_jerry(ptr %t15628, i64 %t15629, ptr %t15630)
+  call void @jerry_release(ptr %t15630)
+  %t15632 = load ptr, ptr %this.15615
+  %t15633 = call ptr @Parser_parse_type_expr_jerry(ptr %t15632)
+  %key.15634 = alloca ptr
+  store ptr %t15633, ptr %key.15634
+  %t15635 = load ptr, ptr %this.15615
+  %t15636 = load i64, ptr @TOK_OP
+  %t15637 = call ptr @jerry_string_new(ptr @.str.1317, i64 1)
+  %t15638 = call ptr @Parser_expect_jerry(ptr %t15635, i64 %t15636, ptr %t15637)
+  call void @jerry_release(ptr %t15637)
+  %t15639 = load ptr, ptr %this.15615
+  %t15640 = call ptr @Parser_parse_type_expr_jerry(ptr %t15639)
+  %val.15641 = alloca ptr
+  store ptr %t15640, ptr %val.15641
+  %t15642 = load ptr, ptr %this.15615
+  %t15643 = load i64, ptr @TOK_OP
+  %t15644 = call ptr @jerry_string_new(ptr @.str.1318, i64 1)
+  %t15645 = call ptr @Parser_expect_jerry(ptr %t15642, i64 %t15643, ptr %t15644)
   call void @jerry_release(ptr %t15644)
-  %t15645 = load ptr, ptr %this.15548
-  %t15646 = load i64, ptr @TOK_OP
-  %t15647 = call ptr @jerry_string_new(ptr @.str.1327, i64 1)
-  %t15648 = call ptr @Parser_expect_jerry(ptr %t15645, i64 %t15646, ptr %t15647)
-  call void @jerry_release(ptr %t15647)
-  %t15649 = load ptr, ptr %st.15639
-  ret ptr %t15649
-}
-
-define ptr @Parser_parse_var_decl_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15650 = alloca ptr
-  store ptr %self.arg, ptr %this.15650
-  %l.15651 = alloca i64
-  store i64 %l.arg, ptr %l.15651
-  %c.15652 = alloca i64
-  store i64 %c.arg, ptr %c.15652
-  %t15653 = load ptr, ptr %this.15650
-  %t15654 = call ptr @Parser_advance_jerry(ptr %t15653)
-  %t15655 = load ptr, ptr %this.15650
-  %t15656 = load i64, ptr @TOK_IDENT
-  %t15657 = call ptr @jerry_string_new(ptr @.str.1328, i64 0)
-  %t15658 = call ptr @Parser_expect_jerry(ptr %t15655, i64 %t15656, ptr %t15657)
-  call void @jerry_release(ptr %t15657)
-  %name.15659 = alloca ptr
-  store ptr %t15658, ptr %name.15659
-  %t15660 = getelementptr %Stmt, ptr null, i32 1
-  %t15661 = ptrtoint ptr %t15660 to i64
-  %t15662 = call ptr @jerry_alloc(i64 %t15661)
-  %t15663 = getelementptr i8, ptr %t15662, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15663
-  %t15664 = getelementptr %Stmt, ptr %t15662, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15664
-  %t15665 = load i64, ptr @STMT_VAR
-  %t15666 = load i64, ptr %l.15651
-  %t15667 = load i64, ptr %c.15652
-  call void @Stmt_new_jerry(ptr %t15662, i64 %t15665, i64 %t15666, i64 %t15667)
-  %st.15668 = alloca ptr
-  store ptr %t15662, ptr %st.15668
-  %t15669 = load ptr, ptr %name.15659
-  %t15670 = getelementptr %Token, ptr %t15669, i32 0, i32 2
-  %t15671 = load ptr, ptr %t15670
-  %t15672 = load ptr, ptr %st.15668
-  %t15673 = getelementptr %Stmt, ptr %t15672, i32 0, i32 2
-  %t15674 = load ptr, ptr %t15673
-  call void @jerry_retain(ptr %t15671)
-  store ptr %t15671, ptr %t15673
-  call void @jerry_release(ptr %t15674)
-  %t15675 = load ptr, ptr %this.15650
-  %t15676 = load i64, ptr @TOK_OP
-  %t15677 = call ptr @jerry_string_new(ptr @.str.1329, i64 1)
-  %t15678 = call i1 @Parser_eat_jerry(ptr %t15675, i64 %t15676, ptr %t15677)
-  call void @jerry_release(ptr %t15677)
-  br i1 %t15678, label %if.then.2548, label %if.else.2549
-if.then.2548:
-  %t15679 = load ptr, ptr %this.15650
-  %t15680 = call ptr @Parser_parse_type_expr_jerry(ptr %t15679)
-  %t15681 = load ptr, ptr %st.15668
-  %t15682 = getelementptr %Stmt, ptr %t15681, i32 0, i32 3
-  %t15683 = load ptr, ptr %t15682
-  call void @jerry_retain(ptr %t15680)
-  store ptr %t15680, ptr %t15682
-  call void @jerry_release(ptr %t15683)
-  br label %if.merge.2550
-if.else.2549:
-  br label %if.merge.2550
-if.merge.2550:
-  %t15684 = load ptr, ptr %this.15650
-  %t15685 = load i64, ptr @TOK_OP
-  %t15686 = call ptr @jerry_string_new(ptr @.str.1330, i64 1)
-  %t15687 = call ptr @Parser_expect_jerry(ptr %t15684, i64 %t15685, ptr %t15686)
-  call void @jerry_release(ptr %t15686)
-  %t15688 = load ptr, ptr %this.15650
-  %t15689 = call ptr @Parser_parse_expr_jerry(ptr %t15688)
-  %t15690 = load ptr, ptr %st.15668
-  %t15691 = getelementptr %Stmt, ptr %t15690, i32 0, i32 4
-  %t15692 = load ptr, ptr %t15691
-  call void @jerry_retain(ptr %t15689)
-  store ptr %t15689, ptr %t15691
-  call void @jerry_release(ptr %t15692)
-  %t15693 = load ptr, ptr %this.15650
-  %t15694 = load i64, ptr @TOK_OP
-  %t15695 = call ptr @jerry_string_new(ptr @.str.1331, i64 1)
-  %t15696 = call ptr @Parser_expect_jerry(ptr %t15693, i64 %t15694, ptr %t15695)
-  call void @jerry_release(ptr %t15695)
-  %t15697 = load ptr, ptr %st.15668
-  %t15698 = load ptr, ptr %name.15659
-  call void @jerry_release(ptr %t15698)
-  ret ptr %t15697
-}
-
-define ptr @Parser_parse_return_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15699 = alloca ptr
-  store ptr %self.arg, ptr %this.15699
-  %l.15700 = alloca i64
-  store i64 %l.arg, ptr %l.15700
-  %c.15701 = alloca i64
-  store i64 %c.arg, ptr %c.15701
-  %t15702 = load ptr, ptr %this.15699
-  %t15703 = call ptr @Parser_advance_jerry(ptr %t15702)
-  %t15704 = getelementptr %Stmt, ptr null, i32 1
-  %t15705 = ptrtoint ptr %t15704 to i64
-  %t15706 = call ptr @jerry_alloc(i64 %t15705)
-  %t15707 = getelementptr i8, ptr %t15706, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15707
-  %t15708 = getelementptr %Stmt, ptr %t15706, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15708
-  %t15709 = load i64, ptr @STMT_RETURN
-  %t15710 = load i64, ptr %l.15700
-  %t15711 = load i64, ptr %c.15701
-  call void @Stmt_new_jerry(ptr %t15706, i64 %t15709, i64 %t15710, i64 %t15711)
-  %st.15712 = alloca ptr
-  store ptr %t15706, ptr %st.15712
-  %t15713 = load ptr, ptr %this.15699
-  %t15714 = load i64, ptr @TOK_OP
-  %t15715 = call ptr @jerry_string_new(ptr @.str.1332, i64 1)
-  %t15716 = call i1 @Parser_check_jerry(ptr %t15713, i64 %t15714, ptr %t15715)
-  call void @jerry_release(ptr %t15715)
-  %t15717 = xor i1 %t15716, true
-  br i1 %t15717, label %if.then.2551, label %if.else.2552
-if.then.2551:
-  %t15718 = load ptr, ptr %this.15699
-  %t15719 = call ptr @Parser_parse_expr_jerry(ptr %t15718)
-  %t15720 = load ptr, ptr %st.15712
-  %t15721 = getelementptr %Stmt, ptr %t15720, i32 0, i32 5
-  %t15722 = load ptr, ptr %t15721
-  call void @jerry_retain(ptr %t15719)
-  store ptr %t15719, ptr %t15721
-  call void @jerry_release(ptr %t15722)
-  br label %if.merge.2553
-if.else.2552:
-  br label %if.merge.2553
-if.merge.2553:
-  %t15723 = load ptr, ptr %this.15699
-  %t15724 = load i64, ptr @TOK_OP
-  %t15725 = call ptr @jerry_string_new(ptr @.str.1333, i64 1)
-  %t15726 = call ptr @Parser_expect_jerry(ptr %t15723, i64 %t15724, ptr %t15725)
-  call void @jerry_release(ptr %t15725)
-  %t15727 = load ptr, ptr %st.15712
-  ret ptr %t15727
-}
-
-define ptr @Parser_parse_if_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15728 = alloca ptr
-  store ptr %self.arg, ptr %this.15728
-  %l.15729 = alloca i64
-  store i64 %l.arg, ptr %l.15729
-  %c.15730 = alloca i64
-  store i64 %c.arg, ptr %c.15730
-  %t15731 = load ptr, ptr %this.15728
-  %t15732 = call ptr @Parser_advance_jerry(ptr %t15731)
-  %t15733 = getelementptr %Stmt, ptr null, i32 1
-  %t15734 = ptrtoint ptr %t15733 to i64
-  %t15735 = call ptr @jerry_alloc(i64 %t15734)
-  %t15736 = getelementptr i8, ptr %t15735, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15736
-  %t15737 = getelementptr %Stmt, ptr %t15735, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15737
-  %t15738 = load i64, ptr @STMT_IF
-  %t15739 = load i64, ptr %l.15729
-  %t15740 = load i64, ptr %c.15730
-  call void @Stmt_new_jerry(ptr %t15735, i64 %t15738, i64 %t15739, i64 %t15740)
-  %st.15741 = alloca ptr
-  store ptr %t15735, ptr %st.15741
-  %t15742 = load ptr, ptr %this.15728
-  %t15743 = call ptr @Parser_parse_expr_jerry(ptr %t15742)
-  %t15744 = load ptr, ptr %st.15741
-  %t15745 = getelementptr %Stmt, ptr %t15744, i32 0, i32 6
-  %t15746 = load ptr, ptr %t15745
-  call void @jerry_retain(ptr %t15743)
-  store ptr %t15743, ptr %t15745
-  call void @jerry_release(ptr %t15746)
-  %t15747 = load ptr, ptr %this.15728
-  %t15748 = call ptr @Parser_parse_block_jerry(ptr %t15747)
-  %t15749 = load ptr, ptr %st.15741
-  %t15750 = getelementptr %Stmt, ptr %t15749, i32 0, i32 7
-  %t15751 = load ptr, ptr %t15750
-  call void @jerry_retain(ptr %t15748)
-  store ptr %t15748, ptr %t15750
-  call void @jerry_release(ptr %t15751)
-  %t15752 = load ptr, ptr %this.15728
-  %t15753 = load i64, ptr @TOK_KEYWORD
-  %t15754 = call ptr @jerry_string_new(ptr @.str.1334, i64 4)
-  %t15755 = call i1 @Parser_eat_jerry(ptr %t15752, i64 %t15753, ptr %t15754)
-  call void @jerry_release(ptr %t15754)
-  br i1 %t15755, label %if.then.2554, label %if.else.2555
-if.then.2554:
-  %t15756 = load ptr, ptr %this.15728
-  %t15757 = load i64, ptr @TOK_KEYWORD
-  %t15758 = call ptr @jerry_string_new(ptr @.str.1335, i64 2)
-  %t15759 = call i1 @Parser_check_jerry(ptr %t15756, i64 %t15757, ptr %t15758)
-  call void @jerry_release(ptr %t15758)
-  br i1 %t15759, label %if.then.2557, label %if.else.2558
-if.then.2557:
-  %t15760 = load ptr, ptr %this.15728
-  %t15761 = call i64 @Parser_peek_line_jerry(ptr %t15760)
-  %elif_l.15762 = alloca i64
-  store i64 %t15761, ptr %elif_l.15762
-  %t15763 = load ptr, ptr %this.15728
-  %t15764 = call i64 @Parser_peek_col_jerry(ptr %t15763)
-  %elif_c.15765 = alloca i64
-  store i64 %t15764, ptr %elif_c.15765
-  %t15766 = load ptr, ptr %this.15728
-  %t15767 = load i64, ptr %elif_l.15762
-  %t15768 = load i64, ptr %elif_c.15765
-  %t15769 = call ptr @Parser_parse_if_stmt_jerry(ptr %t15766, i64 %t15767, i64 %t15768)
-  %t15770 = load ptr, ptr %st.15741
-  %t15771 = getelementptr %Stmt, ptr %t15770, i32 0, i32 9
-  %t15772 = load ptr, ptr %t15771
-  call void @jerry_retain(ptr %t15769)
-  store ptr %t15769, ptr %t15771
-  call void @jerry_release(ptr %t15772)
-  br label %if.merge.2559
-if.else.2558:
-  %t15773 = load ptr, ptr %this.15728
-  %t15774 = call ptr @Parser_parse_block_jerry(ptr %t15773)
-  %t15775 = load ptr, ptr %st.15741
-  %t15776 = getelementptr %Stmt, ptr %t15775, i32 0, i32 8
-  %t15777 = load ptr, ptr %t15776
-  call void @jerry_retain(ptr %t15774)
-  store ptr %t15774, ptr %t15776
-  call void @jerry_release(ptr %t15777)
-  br label %if.merge.2559
-if.merge.2559:
-  br label %if.merge.2556
-if.else.2555:
-  br label %if.merge.2556
-if.merge.2556:
-  %t15778 = load ptr, ptr %st.15741
-  ret ptr %t15778
-}
-
-define ptr @Parser_parse_while_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15779 = alloca ptr
-  store ptr %self.arg, ptr %this.15779
-  %l.15780 = alloca i64
-  store i64 %l.arg, ptr %l.15780
-  %c.15781 = alloca i64
-  store i64 %c.arg, ptr %c.15781
-  %t15782 = load ptr, ptr %this.15779
-  %t15783 = call ptr @Parser_advance_jerry(ptr %t15782)
-  %t15784 = getelementptr %Stmt, ptr null, i32 1
-  %t15785 = ptrtoint ptr %t15784 to i64
-  %t15786 = call ptr @jerry_alloc(i64 %t15785)
-  %t15787 = getelementptr i8, ptr %t15786, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15787
-  %t15788 = getelementptr %Stmt, ptr %t15786, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15788
-  %t15789 = load i64, ptr @STMT_WHILE
-  %t15790 = load i64, ptr %l.15780
-  %t15791 = load i64, ptr %c.15781
-  call void @Stmt_new_jerry(ptr %t15786, i64 %t15789, i64 %t15790, i64 %t15791)
-  %st.15792 = alloca ptr
-  store ptr %t15786, ptr %st.15792
-  %t15793 = load ptr, ptr %this.15779
-  %t15794 = call ptr @Parser_parse_expr_jerry(ptr %t15793)
-  %t15795 = load ptr, ptr %st.15792
-  %t15796 = getelementptr %Stmt, ptr %t15795, i32 0, i32 10
-  %t15797 = load ptr, ptr %t15796
-  call void @jerry_retain(ptr %t15794)
-  store ptr %t15794, ptr %t15796
-  call void @jerry_release(ptr %t15797)
-  %t15798 = load ptr, ptr %this.15779
-  %t15799 = call ptr @Parser_parse_block_jerry(ptr %t15798)
-  %t15800 = load ptr, ptr %st.15792
-  %t15801 = getelementptr %Stmt, ptr %t15800, i32 0, i32 11
-  %t15802 = load ptr, ptr %t15801
-  call void @jerry_retain(ptr %t15799)
-  store ptr %t15799, ptr %t15801
-  call void @jerry_release(ptr %t15802)
-  %t15803 = load ptr, ptr %st.15792
-  ret ptr %t15803
-}
-
-define ptr @Parser_parse_for_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15804 = alloca ptr
-  store ptr %self.arg, ptr %this.15804
-  %l.15805 = alloca i64
-  store i64 %l.arg, ptr %l.15805
-  %c.15806 = alloca i64
-  store i64 %c.arg, ptr %c.15806
-  %t15807 = load ptr, ptr %this.15804
-  %t15808 = call ptr @Parser_advance_jerry(ptr %t15807)
-  %t15809 = load ptr, ptr %this.15804
-  %t15810 = load i64, ptr @TOK_OP
-  %t15811 = call ptr @jerry_string_new(ptr @.str.1336, i64 1)
-  %t15812 = call ptr @Parser_expect_jerry(ptr %t15809, i64 %t15810, ptr %t15811)
-  call void @jerry_release(ptr %t15811)
-  %t15813 = getelementptr %Stmt, ptr null, i32 1
-  %t15814 = ptrtoint ptr %t15813 to i64
-  %t15815 = call ptr @jerry_alloc(i64 %t15814)
-  %t15816 = getelementptr i8, ptr %t15815, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15816
-  %t15817 = getelementptr %Stmt, ptr %t15815, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15817
-  %t15818 = load i64, ptr @STMT_FOR
-  %t15819 = load i64, ptr %l.15805
-  %t15820 = load i64, ptr %c.15806
-  call void @Stmt_new_jerry(ptr %t15815, i64 %t15818, i64 %t15819, i64 %t15820)
-  %st.15821 = alloca ptr
-  store ptr %t15815, ptr %st.15821
-  %t15822 = load ptr, ptr %this.15804
-  %t15823 = load i64, ptr @TOK_OP
-  %t15824 = call ptr @jerry_string_new(ptr @.str.1337, i64 1)
-  %t15825 = call i1 @Parser_check_jerry(ptr %t15822, i64 %t15823, ptr %t15824)
-  call void @jerry_release(ptr %t15824)
-  %t15826 = xor i1 %t15825, true
-  br i1 %t15826, label %if.then.2560, label %if.else.2561
-if.then.2560:
-  %t15827 = load ptr, ptr %this.15804
-  %t15828 = load i64, ptr @TOK_KEYWORD
-  %t15829 = call ptr @jerry_string_new(ptr @.str.1338, i64 3)
-  %t15830 = call i1 @Parser_check_jerry(ptr %t15827, i64 %t15828, ptr %t15829)
-  call void @jerry_release(ptr %t15829)
-  br i1 %t15830, label %if.then.2563, label %if.else.2564
-if.then.2563:
-  %t15831 = load ptr, ptr %this.15804
-  %t15832 = call i64 @Parser_peek_line_jerry(ptr %t15831)
-  %init_l.15833 = alloca i64
-  store i64 %t15832, ptr %init_l.15833
-  %t15834 = load ptr, ptr %this.15804
-  %t15835 = call i64 @Parser_peek_col_jerry(ptr %t15834)
-  %init_c.15836 = alloca i64
-  store i64 %t15835, ptr %init_c.15836
-  %t15837 = load ptr, ptr %this.15804
-  %t15838 = load i64, ptr %init_l.15833
-  %t15839 = load i64, ptr %init_c.15836
-  %t15840 = call ptr @Parser_parse_for_var_decl_jerry(ptr %t15837, i64 %t15838, i64 %t15839)
-  %t15841 = load ptr, ptr %st.15821
-  %t15842 = getelementptr %Stmt, ptr %t15841, i32 0, i32 12
-  %t15843 = load ptr, ptr %t15842
-  call void @jerry_retain(ptr %t15840)
-  store ptr %t15840, ptr %t15842
-  call void @jerry_release(ptr %t15843)
-  br label %if.merge.2565
-if.else.2564:
-  %t15844 = load ptr, ptr %this.15804
-  %t15845 = call ptr @Parser_parse_expr_jerry(ptr %t15844)
-  %t15846 = load ptr, ptr %st.15821
-  %t15847 = getelementptr %Stmt, ptr %t15846, i32 0, i32 13
-  %t15848 = load ptr, ptr %t15847
-  call void @jerry_retain(ptr %t15845)
-  store ptr %t15845, ptr %t15847
-  call void @jerry_release(ptr %t15848)
-  br label %if.merge.2565
-if.merge.2565:
-  br label %if.merge.2562
-if.else.2561:
-  br label %if.merge.2562
-if.merge.2562:
-  %t15849 = load ptr, ptr %this.15804
-  %t15850 = load i64, ptr @TOK_OP
-  %t15851 = call ptr @jerry_string_new(ptr @.str.1339, i64 1)
-  %t15852 = call ptr @Parser_expect_jerry(ptr %t15849, i64 %t15850, ptr %t15851)
-  call void @jerry_release(ptr %t15851)
-  %t15853 = load ptr, ptr %this.15804
-  %t15854 = load i64, ptr @TOK_OP
-  %t15855 = call ptr @jerry_string_new(ptr @.str.1340, i64 1)
-  %t15856 = call i1 @Parser_check_jerry(ptr %t15853, i64 %t15854, ptr %t15855)
-  call void @jerry_release(ptr %t15855)
-  %t15857 = xor i1 %t15856, true
-  br i1 %t15857, label %if.then.2566, label %if.else.2567
-if.then.2566:
-  %t15858 = load ptr, ptr %this.15804
-  %t15859 = call ptr @Parser_parse_expr_jerry(ptr %t15858)
-  %t15860 = load ptr, ptr %st.15821
-  %t15861 = getelementptr %Stmt, ptr %t15860, i32 0, i32 14
-  %t15862 = load ptr, ptr %t15861
-  call void @jerry_retain(ptr %t15859)
-  store ptr %t15859, ptr %t15861
-  call void @jerry_release(ptr %t15862)
-  br label %if.merge.2568
-if.else.2567:
-  br label %if.merge.2568
-if.merge.2568:
-  %t15863 = load ptr, ptr %this.15804
-  %t15864 = load i64, ptr @TOK_OP
-  %t15865 = call ptr @jerry_string_new(ptr @.str.1341, i64 1)
-  %t15866 = call ptr @Parser_expect_jerry(ptr %t15863, i64 %t15864, ptr %t15865)
-  call void @jerry_release(ptr %t15865)
-  %t15867 = load ptr, ptr %this.15804
-  %t15868 = load i64, ptr @TOK_OP
-  %t15869 = call ptr @jerry_string_new(ptr @.str.1342, i64 1)
-  %t15870 = call i1 @Parser_check_jerry(ptr %t15867, i64 %t15868, ptr %t15869)
-  call void @jerry_release(ptr %t15869)
-  %t15871 = xor i1 %t15870, true
-  br i1 %t15871, label %if.then.2569, label %if.else.2570
-if.then.2569:
-  %t15872 = load ptr, ptr %this.15804
-  %t15873 = call ptr @Parser_parse_expr_jerry(ptr %t15872)
-  %t15874 = load ptr, ptr %st.15821
-  %t15875 = getelementptr %Stmt, ptr %t15874, i32 0, i32 15
-  %t15876 = load ptr, ptr %t15875
-  call void @jerry_retain(ptr %t15873)
-  store ptr %t15873, ptr %t15875
-  call void @jerry_release(ptr %t15876)
-  br label %if.merge.2571
-if.else.2570:
-  br label %if.merge.2571
-if.merge.2571:
-  %t15877 = load ptr, ptr %this.15804
-  %t15878 = load i64, ptr @TOK_OP
-  %t15879 = call ptr @jerry_string_new(ptr @.str.1343, i64 1)
-  %t15880 = call ptr @Parser_expect_jerry(ptr %t15877, i64 %t15878, ptr %t15879)
-  call void @jerry_release(ptr %t15879)
-  %t15881 = load ptr, ptr %this.15804
-  %t15882 = call ptr @Parser_parse_block_jerry(ptr %t15881)
-  %t15883 = load ptr, ptr %st.15821
-  %t15884 = getelementptr %Stmt, ptr %t15883, i32 0, i32 16
-  %t15885 = load ptr, ptr %t15884
-  call void @jerry_retain(ptr %t15882)
-  store ptr %t15882, ptr %t15884
-  call void @jerry_release(ptr %t15885)
-  %t15886 = load ptr, ptr %st.15821
-  ret ptr %t15886
-}
-
-define ptr @Parser_parse_for_var_decl_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
-entry:
-  %this.15887 = alloca ptr
-  store ptr %self.arg, ptr %this.15887
-  %l.15888 = alloca i64
-  store i64 %l.arg, ptr %l.15888
-  %c.15889 = alloca i64
-  store i64 %c.arg, ptr %c.15889
-  %t15890 = load ptr, ptr %this.15887
-  %t15891 = call ptr @Parser_advance_jerry(ptr %t15890)
-  %t15892 = load ptr, ptr %this.15887
-  %t15893 = load i64, ptr @TOK_IDENT
-  %t15894 = call ptr @jerry_string_new(ptr @.str.1344, i64 0)
-  %t15895 = call ptr @Parser_expect_jerry(ptr %t15892, i64 %t15893, ptr %t15894)
-  call void @jerry_release(ptr %t15894)
-  %name.15896 = alloca ptr
-  store ptr %t15895, ptr %name.15896
-  %t15897 = getelementptr %Stmt, ptr null, i32 1
-  %t15898 = ptrtoint ptr %t15897 to i64
-  %t15899 = call ptr @jerry_alloc(i64 %t15898)
-  %t15900 = getelementptr i8, ptr %t15899, i64 -8
-  store ptr @Stmt_destroy_jerry, ptr %t15900
-  %t15901 = getelementptr %Stmt, ptr %t15899, i32 0, i32 0
-  store ptr @vtable.Stmt, ptr %t15901
-  %t15902 = load i64, ptr @STMT_VAR
-  %t15903 = load i64, ptr %l.15888
-  %t15904 = load i64, ptr %c.15889
-  call void @Stmt_new_jerry(ptr %t15899, i64 %t15902, i64 %t15903, i64 %t15904)
-  %st.15905 = alloca ptr
-  store ptr %t15899, ptr %st.15905
-  %t15906 = load ptr, ptr %name.15896
-  %t15907 = getelementptr %Token, ptr %t15906, i32 0, i32 2
-  %t15908 = load ptr, ptr %t15907
-  %t15909 = load ptr, ptr %st.15905
-  %t15910 = getelementptr %Stmt, ptr %t15909, i32 0, i32 2
-  %t15911 = load ptr, ptr %t15910
-  call void @jerry_retain(ptr %t15908)
-  store ptr %t15908, ptr %t15910
-  call void @jerry_release(ptr %t15911)
-  %t15912 = load ptr, ptr %this.15887
-  %t15913 = load i64, ptr @TOK_OP
-  %t15914 = call ptr @jerry_string_new(ptr @.str.1345, i64 1)
-  %t15915 = call i1 @Parser_eat_jerry(ptr %t15912, i64 %t15913, ptr %t15914)
-  call void @jerry_release(ptr %t15914)
-  br i1 %t15915, label %if.then.2572, label %if.else.2573
-if.then.2572:
-  %t15916 = load ptr, ptr %this.15887
-  %t15917 = call ptr @Parser_parse_type_expr_jerry(ptr %t15916)
-  %t15918 = load ptr, ptr %st.15905
-  %t15919 = getelementptr %Stmt, ptr %t15918, i32 0, i32 3
-  %t15920 = load ptr, ptr %t15919
-  call void @jerry_retain(ptr %t15917)
-  store ptr %t15917, ptr %t15919
-  call void @jerry_release(ptr %t15920)
-  br label %if.merge.2574
-if.else.2573:
-  br label %if.merge.2574
-if.merge.2574:
-  %t15921 = load ptr, ptr %this.15887
-  %t15922 = load i64, ptr @TOK_OP
-  %t15923 = call ptr @jerry_string_new(ptr @.str.1346, i64 1)
-  %t15924 = call ptr @Parser_expect_jerry(ptr %t15921, i64 %t15922, ptr %t15923)
-  call void @jerry_release(ptr %t15923)
-  %t15925 = load ptr, ptr %this.15887
-  %t15926 = call ptr @Parser_parse_expr_jerry(ptr %t15925)
-  %t15927 = load ptr, ptr %st.15905
-  %t15928 = getelementptr %Stmt, ptr %t15927, i32 0, i32 4
-  %t15929 = load ptr, ptr %t15928
-  call void @jerry_retain(ptr %t15926)
-  store ptr %t15926, ptr %t15928
-  call void @jerry_release(ptr %t15929)
-  %t15930 = load ptr, ptr %st.15905
-  %t15931 = load ptr, ptr %name.15896
-  call void @jerry_release(ptr %t15931)
-  ret ptr %t15930
-}
-
-define ptr @Parser_parse_expr_jerry(ptr %self.arg) {
-entry:
-  %this.15932 = alloca ptr
-  store ptr %self.arg, ptr %this.15932
-  %t15933 = load ptr, ptr %this.15932
-  %t15934 = call ptr @Parser_parse_assign_jerry(ptr %t15933)
-  ret ptr %t15934
-}
-
-define ptr @Parser_parse_assign_jerry(ptr %self.arg) {
-entry:
-  %this.15935 = alloca ptr
-  store ptr %self.arg, ptr %this.15935
-  %t15936 = load ptr, ptr %this.15935
-  %t15937 = call ptr @Parser_parse_or_jerry(ptr %t15936)
-  %left.15938 = alloca ptr
-  store ptr %t15937, ptr %left.15938
-  %t15939 = load ptr, ptr %this.15935
-  %t15940 = load i64, ptr @TOK_OP
-  %t15941 = call ptr @jerry_string_new(ptr @.str.1347, i64 1)
-  %t15942 = call i1 @Parser_eat_jerry(ptr %t15939, i64 %t15940, ptr %t15941)
-  call void @jerry_release(ptr %t15941)
-  br i1 %t15942, label %if.then.2575, label %if.else.2576
-if.then.2575:
-  %t15943 = load ptr, ptr %left.15938
-  %t15944 = getelementptr %Expr, ptr %t15943, i32 0, i32 10
-  %t15945 = load i64, ptr %t15944
-  %l.15946 = alloca i64
-  store i64 %t15945, ptr %l.15946
-  %t15947 = load ptr, ptr %left.15938
-  %t15948 = getelementptr %Expr, ptr %t15947, i32 0, i32 11
-  %t15949 = load i64, ptr %t15948
-  %c.15950 = alloca i64
-  store i64 %t15949, ptr %c.15950
-  %t15951 = load ptr, ptr %this.15935
-  %t15952 = call ptr @Parser_parse_assign_jerry(ptr %t15951)
-  %right.15953 = alloca ptr
-  store ptr %t15952, ptr %right.15953
-  %t15954 = getelementptr %Expr, ptr null, i32 1
-  %t15955 = ptrtoint ptr %t15954 to i64
-  %t15956 = call ptr @jerry_alloc(i64 %t15955)
-  %t15957 = getelementptr i8, ptr %t15956, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t15957
-  %t15958 = getelementptr %Expr, ptr %t15956, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t15958
-  %t15959 = load i64, ptr @EXPR_ASSIGN
-  %t15960 = load i64, ptr %l.15946
-  %t15961 = load i64, ptr %c.15950
-  call void @Expr_new_jerry(ptr %t15956, i64 %t15959, i64 %t15960, i64 %t15961)
-  %e.15962 = alloca ptr
-  store ptr %t15956, ptr %e.15962
-  %t15963 = load ptr, ptr %left.15938
-  %t15964 = load ptr, ptr %e.15962
-  %t15965 = getelementptr %Expr, ptr %t15964, i32 0, i32 3
-  %t15966 = load ptr, ptr %t15965
-  call void @jerry_retain(ptr %t15963)
-  store ptr %t15963, ptr %t15965
-  call void @jerry_release(ptr %t15966)
-  %t15967 = load ptr, ptr %right.15953
-  %t15968 = load ptr, ptr %e.15962
-  %t15969 = getelementptr %Expr, ptr %t15968, i32 0, i32 4
-  %t15970 = load ptr, ptr %t15969
-  call void @jerry_retain(ptr %t15967)
-  store ptr %t15967, ptr %t15969
-  call void @jerry_release(ptr %t15970)
-  %t15971 = load ptr, ptr %e.15962
-  %t15972 = load ptr, ptr %right.15953
-  call void @jerry_release(ptr %t15972)
-  %t15973 = load ptr, ptr %left.15938
-  call void @jerry_release(ptr %t15973)
-  ret ptr %t15971
-if.else.2576:
-  br label %if.merge.2577
-if.merge.2577:
-  %t15974 = load ptr, ptr %left.15938
-  ret ptr %t15974
-}
-
-define ptr @Parser_parse_or_jerry(ptr %self.arg) {
-entry:
-  %this.15975 = alloca ptr
-  store ptr %self.arg, ptr %this.15975
-  %t15976 = load ptr, ptr %this.15975
-  %t15977 = call ptr @Parser_parse_and_jerry(ptr %t15976)
-  %left.15978 = alloca ptr
-  store ptr %t15977, ptr %left.15978
-  br label %while.cond.2578
-while.cond.2578:
-  %t15979 = load ptr, ptr %this.15975
-  %t15980 = load i64, ptr @TOK_OP
-  %t15981 = call ptr @jerry_string_new(ptr @.str.1348, i64 2)
-  %t15982 = call i1 @Parser_check_jerry(ptr %t15979, i64 %t15980, ptr %t15981)
-  call void @jerry_release(ptr %t15981)
-  br i1 %t15982, label %while.body.2579, label %while.end.2580
-while.body.2579:
-  %t15983 = load ptr, ptr %left.15978
-  %t15984 = getelementptr %Expr, ptr %t15983, i32 0, i32 10
-  %t15985 = load i64, ptr %t15984
-  %l.15986 = alloca i64
-  store i64 %t15985, ptr %l.15986
-  %t15987 = load ptr, ptr %left.15978
-  %t15988 = getelementptr %Expr, ptr %t15987, i32 0, i32 11
-  %t15989 = load i64, ptr %t15988
-  %c.15990 = alloca i64
-  store i64 %t15989, ptr %c.15990
-  %t15991 = load ptr, ptr %this.15975
-  %t15992 = call ptr @Parser_advance_jerry(ptr %t15991)
-  %t15993 = load ptr, ptr %this.15975
-  %t15994 = call ptr @Parser_parse_and_jerry(ptr %t15993)
-  %right.15995 = alloca ptr
-  store ptr %t15994, ptr %right.15995
-  %t15996 = getelementptr %Expr, ptr null, i32 1
-  %t15997 = ptrtoint ptr %t15996 to i64
-  %t15998 = call ptr @jerry_alloc(i64 %t15997)
-  %t15999 = getelementptr i8, ptr %t15998, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t15999
-  %t16000 = getelementptr %Expr, ptr %t15998, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16000
-  %t16001 = load i64, ptr @EXPR_BINARY
-  %t16002 = load i64, ptr %l.15986
-  %t16003 = load i64, ptr %c.15990
-  call void @Expr_new_jerry(ptr %t15998, i64 %t16001, i64 %t16002, i64 %t16003)
-  %e.16004 = alloca ptr
-  store ptr %t15998, ptr %e.16004
-  %t16005 = call ptr @jerry_string_new(ptr @.str.1349, i64 2)
-  %t16006 = load ptr, ptr %e.16004
-  %t16007 = getelementptr %Expr, ptr %t16006, i32 0, i32 2
-  %t16008 = load ptr, ptr %t16007
-  call void @jerry_retain(ptr %t16005)
-  store ptr %t16005, ptr %t16007
-  call void @jerry_release(ptr %t16008)
-  %t16009 = load ptr, ptr %left.15978
-  %t16010 = load ptr, ptr %e.16004
-  %t16011 = getelementptr %Expr, ptr %t16010, i32 0, i32 3
-  %t16012 = load ptr, ptr %t16011
-  call void @jerry_retain(ptr %t16009)
-  store ptr %t16009, ptr %t16011
-  call void @jerry_release(ptr %t16012)
-  %t16013 = load ptr, ptr %right.15995
-  %t16014 = load ptr, ptr %e.16004
-  %t16015 = getelementptr %Expr, ptr %t16014, i32 0, i32 4
-  %t16016 = load ptr, ptr %t16015
-  call void @jerry_retain(ptr %t16013)
-  store ptr %t16013, ptr %t16015
-  call void @jerry_release(ptr %t16016)
-  %t16017 = load ptr, ptr %e.16004
-  %t16018 = load ptr, ptr %left.15978
-  call void @jerry_retain(ptr %t16017)
-  store ptr %t16017, ptr %left.15978
-  call void @jerry_release(ptr %t16018)
-  %t16019 = load ptr, ptr %e.16004
-  call void @jerry_release(ptr %t16019)
-  %t16020 = load ptr, ptr %right.15995
-  call void @jerry_release(ptr %t16020)
-  br label %while.cond.2578
-while.end.2580:
-  %t16021 = load ptr, ptr %left.15978
-  ret ptr %t16021
-}
-
-define ptr @Parser_parse_and_jerry(ptr %self.arg) {
-entry:
-  %this.16022 = alloca ptr
-  store ptr %self.arg, ptr %this.16022
-  %t16023 = load ptr, ptr %this.16022
-  %t16024 = call ptr @Parser_parse_eq_jerry(ptr %t16023)
-  %left.16025 = alloca ptr
-  store ptr %t16024, ptr %left.16025
-  br label %while.cond.2581
-while.cond.2581:
-  %t16026 = load ptr, ptr %this.16022
-  %t16027 = load i64, ptr @TOK_OP
-  %t16028 = call ptr @jerry_string_new(ptr @.str.1350, i64 2)
-  %t16029 = call i1 @Parser_check_jerry(ptr %t16026, i64 %t16027, ptr %t16028)
-  call void @jerry_release(ptr %t16028)
-  br i1 %t16029, label %while.body.2582, label %while.end.2583
-while.body.2582:
-  %t16030 = load ptr, ptr %left.16025
-  %t16031 = getelementptr %Expr, ptr %t16030, i32 0, i32 10
-  %t16032 = load i64, ptr %t16031
-  %l.16033 = alloca i64
-  store i64 %t16032, ptr %l.16033
-  %t16034 = load ptr, ptr %left.16025
-  %t16035 = getelementptr %Expr, ptr %t16034, i32 0, i32 11
-  %t16036 = load i64, ptr %t16035
-  %c.16037 = alloca i64
-  store i64 %t16036, ptr %c.16037
-  %t16038 = load ptr, ptr %this.16022
-  %t16039 = call ptr @Parser_advance_jerry(ptr %t16038)
-  %t16040 = load ptr, ptr %this.16022
-  %t16041 = call ptr @Parser_parse_eq_jerry(ptr %t16040)
-  %right.16042 = alloca ptr
-  store ptr %t16041, ptr %right.16042
-  %t16043 = getelementptr %Expr, ptr null, i32 1
-  %t16044 = ptrtoint ptr %t16043 to i64
-  %t16045 = call ptr @jerry_alloc(i64 %t16044)
-  %t16046 = getelementptr i8, ptr %t16045, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16046
-  %t16047 = getelementptr %Expr, ptr %t16045, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16047
-  %t16048 = load i64, ptr @EXPR_BINARY
-  %t16049 = load i64, ptr %l.16033
-  %t16050 = load i64, ptr %c.16037
-  call void @Expr_new_jerry(ptr %t16045, i64 %t16048, i64 %t16049, i64 %t16050)
-  %e.16051 = alloca ptr
-  store ptr %t16045, ptr %e.16051
-  %t16052 = call ptr @jerry_string_new(ptr @.str.1351, i64 2)
-  %t16053 = load ptr, ptr %e.16051
-  %t16054 = getelementptr %Expr, ptr %t16053, i32 0, i32 2
-  %t16055 = load ptr, ptr %t16054
-  call void @jerry_retain(ptr %t16052)
-  store ptr %t16052, ptr %t16054
-  call void @jerry_release(ptr %t16055)
-  %t16056 = load ptr, ptr %left.16025
-  %t16057 = load ptr, ptr %e.16051
-  %t16058 = getelementptr %Expr, ptr %t16057, i32 0, i32 3
-  %t16059 = load ptr, ptr %t16058
-  call void @jerry_retain(ptr %t16056)
-  store ptr %t16056, ptr %t16058
-  call void @jerry_release(ptr %t16059)
-  %t16060 = load ptr, ptr %right.16042
-  %t16061 = load ptr, ptr %e.16051
-  %t16062 = getelementptr %Expr, ptr %t16061, i32 0, i32 4
-  %t16063 = load ptr, ptr %t16062
-  call void @jerry_retain(ptr %t16060)
-  store ptr %t16060, ptr %t16062
-  call void @jerry_release(ptr %t16063)
-  %t16064 = load ptr, ptr %e.16051
-  %t16065 = load ptr, ptr %left.16025
-  call void @jerry_retain(ptr %t16064)
-  store ptr %t16064, ptr %left.16025
-  call void @jerry_release(ptr %t16065)
-  %t16066 = load ptr, ptr %e.16051
-  call void @jerry_release(ptr %t16066)
-  %t16067 = load ptr, ptr %right.16042
-  call void @jerry_release(ptr %t16067)
-  br label %while.cond.2581
-while.end.2583:
-  %t16068 = load ptr, ptr %left.16025
-  ret ptr %t16068
-}
-
-define ptr @Parser_parse_eq_jerry(ptr %self.arg) {
-entry:
-  %this.16069 = alloca ptr
-  store ptr %self.arg, ptr %this.16069
-  %t16070 = load ptr, ptr %this.16069
-  %t16071 = call ptr @Parser_parse_cmp_jerry(ptr %t16070)
-  %left.16072 = alloca ptr
-  store ptr %t16071, ptr %left.16072
-  br label %while.cond.2584
-while.cond.2584:
-  %t16073 = load ptr, ptr %this.16069
-  %t16074 = load i64, ptr @TOK_OP
-  %t16075 = call ptr @jerry_string_new(ptr @.str.1352, i64 2)
-  %t16076 = call i1 @Parser_check_jerry(ptr %t16073, i64 %t16074, ptr %t16075)
-  call void @jerry_release(ptr %t16075)
-  br i1 %t16076, label %or.true.2587, label %or.rhs.2588
-or.rhs.2588:
-  %t16077 = load ptr, ptr %this.16069
-  %t16078 = load i64, ptr @TOK_OP
-  %t16079 = call ptr @jerry_string_new(ptr @.str.1353, i64 2)
-  %t16080 = call i1 @Parser_check_jerry(ptr %t16077, i64 %t16078, ptr %t16079)
-  call void @jerry_release(ptr %t16079)
-  br label %or.merge.2589
-or.true.2587:
-  br label %or.merge.2589
-or.merge.2589:
-  %t16081 = phi i1 [ true, %or.true.2587 ], [ %t16080, %or.rhs.2588 ]
-  br i1 %t16081, label %while.body.2585, label %while.end.2586
-while.body.2585:
-  %t16082 = load ptr, ptr %left.16072
-  %t16083 = getelementptr %Expr, ptr %t16082, i32 0, i32 10
-  %t16084 = load i64, ptr %t16083
-  %l.16085 = alloca i64
-  store i64 %t16084, ptr %l.16085
-  %t16086 = load ptr, ptr %left.16072
-  %t16087 = getelementptr %Expr, ptr %t16086, i32 0, i32 11
-  %t16088 = load i64, ptr %t16087
-  %c.16089 = alloca i64
-  store i64 %t16088, ptr %c.16089
-  %t16090 = load ptr, ptr %this.16069
-  %t16091 = call ptr @Parser_advance_jerry(ptr %t16090)
-  %op.16092 = alloca ptr
-  store ptr %t16091, ptr %op.16092
-  %t16093 = load ptr, ptr %this.16069
-  %t16094 = call ptr @Parser_parse_cmp_jerry(ptr %t16093)
-  %right.16095 = alloca ptr
-  store ptr %t16094, ptr %right.16095
-  %t16096 = getelementptr %Expr, ptr null, i32 1
-  %t16097 = ptrtoint ptr %t16096 to i64
-  %t16098 = call ptr @jerry_alloc(i64 %t16097)
-  %t16099 = getelementptr i8, ptr %t16098, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16099
-  %t16100 = getelementptr %Expr, ptr %t16098, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16100
-  %t16101 = load i64, ptr @EXPR_BINARY
-  %t16102 = load i64, ptr %l.16085
-  %t16103 = load i64, ptr %c.16089
-  call void @Expr_new_jerry(ptr %t16098, i64 %t16101, i64 %t16102, i64 %t16103)
-  %e.16104 = alloca ptr
-  store ptr %t16098, ptr %e.16104
-  %t16105 = load ptr, ptr %op.16092
-  %t16106 = getelementptr %Token, ptr %t16105, i32 0, i32 2
-  %t16107 = load ptr, ptr %t16106
-  %t16108 = load ptr, ptr %e.16104
-  %t16109 = getelementptr %Expr, ptr %t16108, i32 0, i32 2
-  %t16110 = load ptr, ptr %t16109
-  call void @jerry_retain(ptr %t16107)
-  store ptr %t16107, ptr %t16109
-  call void @jerry_release(ptr %t16110)
-  %t16111 = load ptr, ptr %left.16072
-  %t16112 = load ptr, ptr %e.16104
-  %t16113 = getelementptr %Expr, ptr %t16112, i32 0, i32 3
-  %t16114 = load ptr, ptr %t16113
-  call void @jerry_retain(ptr %t16111)
-  store ptr %t16111, ptr %t16113
-  call void @jerry_release(ptr %t16114)
-  %t16115 = load ptr, ptr %right.16095
-  %t16116 = load ptr, ptr %e.16104
-  %t16117 = getelementptr %Expr, ptr %t16116, i32 0, i32 4
-  %t16118 = load ptr, ptr %t16117
-  call void @jerry_retain(ptr %t16115)
-  store ptr %t16115, ptr %t16117
-  call void @jerry_release(ptr %t16118)
-  %t16119 = load ptr, ptr %e.16104
-  %t16120 = load ptr, ptr %left.16072
-  call void @jerry_retain(ptr %t16119)
-  store ptr %t16119, ptr %left.16072
-  call void @jerry_release(ptr %t16120)
-  %t16121 = load ptr, ptr %e.16104
-  call void @jerry_release(ptr %t16121)
-  %t16122 = load ptr, ptr %right.16095
-  call void @jerry_release(ptr %t16122)
-  %t16123 = load ptr, ptr %op.16092
-  call void @jerry_release(ptr %t16123)
-  br label %while.cond.2584
-while.end.2586:
-  %t16124 = load ptr, ptr %left.16072
-  ret ptr %t16124
-}
-
-define ptr @Parser_parse_cmp_jerry(ptr %self.arg) {
-entry:
-  %this.16125 = alloca ptr
-  store ptr %self.arg, ptr %this.16125
-  %t16126 = load ptr, ptr %this.16125
-  %t16127 = call ptr @Parser_parse_add_jerry(ptr %t16126)
-  %left.16128 = alloca ptr
-  store ptr %t16127, ptr %left.16128
-  br label %while.cond.2590
-while.cond.2590:
-  %t16129 = load ptr, ptr %this.16125
-  %t16130 = load i64, ptr @TOK_OP
-  %t16131 = call ptr @jerry_string_new(ptr @.str.1354, i64 1)
-  %t16132 = call i1 @Parser_check_jerry(ptr %t16129, i64 %t16130, ptr %t16131)
-  call void @jerry_release(ptr %t16131)
-  br i1 %t16132, label %or.true.2593, label %or.rhs.2594
-or.rhs.2594:
-  %t16133 = load ptr, ptr %this.16125
-  %t16134 = load i64, ptr @TOK_OP
-  %t16135 = call ptr @jerry_string_new(ptr @.str.1355, i64 1)
-  %t16136 = call i1 @Parser_check_jerry(ptr %t16133, i64 %t16134, ptr %t16135)
-  call void @jerry_release(ptr %t16135)
-  br label %or.merge.2595
-or.true.2593:
-  br label %or.merge.2595
-or.merge.2595:
-  %t16137 = phi i1 [ true, %or.true.2593 ], [ %t16136, %or.rhs.2594 ]
-  br i1 %t16137, label %or.true.2596, label %or.rhs.2597
-or.rhs.2597:
-  %t16138 = load ptr, ptr %this.16125
-  %t16139 = load i64, ptr @TOK_OP
-  %t16140 = call ptr @jerry_string_new(ptr @.str.1356, i64 2)
-  %t16141 = call i1 @Parser_check_jerry(ptr %t16138, i64 %t16139, ptr %t16140)
-  call void @jerry_release(ptr %t16140)
-  br label %or.merge.2598
-or.true.2596:
-  br label %or.merge.2598
-or.merge.2598:
-  %t16142 = phi i1 [ true, %or.true.2596 ], [ %t16141, %or.rhs.2597 ]
-  br i1 %t16142, label %or.true.2599, label %or.rhs.2600
-or.rhs.2600:
-  %t16143 = load ptr, ptr %this.16125
-  %t16144 = load i64, ptr @TOK_OP
-  %t16145 = call ptr @jerry_string_new(ptr @.str.1357, i64 2)
-  %t16146 = call i1 @Parser_check_jerry(ptr %t16143, i64 %t16144, ptr %t16145)
-  call void @jerry_release(ptr %t16145)
-  br label %or.merge.2601
-or.true.2599:
-  br label %or.merge.2601
-or.merge.2601:
-  %t16147 = phi i1 [ true, %or.true.2599 ], [ %t16146, %or.rhs.2600 ]
-  br i1 %t16147, label %while.body.2591, label %while.end.2592
-while.body.2591:
-  %t16148 = load ptr, ptr %left.16128
-  %t16149 = getelementptr %Expr, ptr %t16148, i32 0, i32 10
-  %t16150 = load i64, ptr %t16149
-  %l.16151 = alloca i64
-  store i64 %t16150, ptr %l.16151
-  %t16152 = load ptr, ptr %left.16128
-  %t16153 = getelementptr %Expr, ptr %t16152, i32 0, i32 11
-  %t16154 = load i64, ptr %t16153
-  %c.16155 = alloca i64
-  store i64 %t16154, ptr %c.16155
-  %t16156 = load ptr, ptr %this.16125
-  %t16157 = call ptr @Parser_advance_jerry(ptr %t16156)
-  %op.16158 = alloca ptr
-  store ptr %t16157, ptr %op.16158
-  %t16159 = load ptr, ptr %this.16125
-  %t16160 = call ptr @Parser_parse_add_jerry(ptr %t16159)
-  %right.16161 = alloca ptr
-  store ptr %t16160, ptr %right.16161
-  %t16162 = getelementptr %Expr, ptr null, i32 1
-  %t16163 = ptrtoint ptr %t16162 to i64
-  %t16164 = call ptr @jerry_alloc(i64 %t16163)
-  %t16165 = getelementptr i8, ptr %t16164, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16165
-  %t16166 = getelementptr %Expr, ptr %t16164, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16166
-  %t16167 = load i64, ptr @EXPR_BINARY
-  %t16168 = load i64, ptr %l.16151
-  %t16169 = load i64, ptr %c.16155
-  call void @Expr_new_jerry(ptr %t16164, i64 %t16167, i64 %t16168, i64 %t16169)
-  %e.16170 = alloca ptr
-  store ptr %t16164, ptr %e.16170
-  %t16171 = load ptr, ptr %op.16158
-  %t16172 = getelementptr %Token, ptr %t16171, i32 0, i32 2
-  %t16173 = load ptr, ptr %t16172
-  %t16174 = load ptr, ptr %e.16170
-  %t16175 = getelementptr %Expr, ptr %t16174, i32 0, i32 2
-  %t16176 = load ptr, ptr %t16175
-  call void @jerry_retain(ptr %t16173)
-  store ptr %t16173, ptr %t16175
-  call void @jerry_release(ptr %t16176)
-  %t16177 = load ptr, ptr %left.16128
-  %t16178 = load ptr, ptr %e.16170
-  %t16179 = getelementptr %Expr, ptr %t16178, i32 0, i32 3
-  %t16180 = load ptr, ptr %t16179
-  call void @jerry_retain(ptr %t16177)
-  store ptr %t16177, ptr %t16179
-  call void @jerry_release(ptr %t16180)
-  %t16181 = load ptr, ptr %right.16161
-  %t16182 = load ptr, ptr %e.16170
-  %t16183 = getelementptr %Expr, ptr %t16182, i32 0, i32 4
-  %t16184 = load ptr, ptr %t16183
-  call void @jerry_retain(ptr %t16181)
-  store ptr %t16181, ptr %t16183
-  call void @jerry_release(ptr %t16184)
-  %t16185 = load ptr, ptr %e.16170
-  %t16186 = load ptr, ptr %left.16128
-  call void @jerry_retain(ptr %t16185)
-  store ptr %t16185, ptr %left.16128
-  call void @jerry_release(ptr %t16186)
-  %t16187 = load ptr, ptr %e.16170
-  call void @jerry_release(ptr %t16187)
-  %t16188 = load ptr, ptr %right.16161
-  call void @jerry_release(ptr %t16188)
-  %t16189 = load ptr, ptr %op.16158
-  call void @jerry_release(ptr %t16189)
-  br label %while.cond.2590
-while.end.2592:
-  %t16190 = load ptr, ptr %left.16128
-  ret ptr %t16190
-}
-
-define ptr @Parser_parse_add_jerry(ptr %self.arg) {
-entry:
-  %this.16191 = alloca ptr
-  store ptr %self.arg, ptr %this.16191
-  %t16192 = load ptr, ptr %this.16191
-  %t16193 = call ptr @Parser_parse_mul_jerry(ptr %t16192)
-  %left.16194 = alloca ptr
-  store ptr %t16193, ptr %left.16194
-  br label %while.cond.2602
-while.cond.2602:
-  %t16195 = load ptr, ptr %this.16191
-  %t16196 = load i64, ptr @TOK_OP
-  %t16197 = call ptr @jerry_string_new(ptr @.str.1358, i64 1)
-  %t16198 = call i1 @Parser_check_jerry(ptr %t16195, i64 %t16196, ptr %t16197)
-  call void @jerry_release(ptr %t16197)
-  br i1 %t16198, label %or.true.2605, label %or.rhs.2606
-or.rhs.2606:
-  %t16199 = load ptr, ptr %this.16191
-  %t16200 = load i64, ptr @TOK_OP
-  %t16201 = call ptr @jerry_string_new(ptr @.str.1359, i64 1)
-  %t16202 = call i1 @Parser_check_jerry(ptr %t16199, i64 %t16200, ptr %t16201)
-  call void @jerry_release(ptr %t16201)
-  br label %or.merge.2607
-or.true.2605:
-  br label %or.merge.2607
-or.merge.2607:
-  %t16203 = phi i1 [ true, %or.true.2605 ], [ %t16202, %or.rhs.2606 ]
-  br i1 %t16203, label %while.body.2603, label %while.end.2604
-while.body.2603:
-  %t16204 = load ptr, ptr %left.16194
-  %t16205 = getelementptr %Expr, ptr %t16204, i32 0, i32 10
-  %t16206 = load i64, ptr %t16205
-  %l.16207 = alloca i64
-  store i64 %t16206, ptr %l.16207
-  %t16208 = load ptr, ptr %left.16194
-  %t16209 = getelementptr %Expr, ptr %t16208, i32 0, i32 11
-  %t16210 = load i64, ptr %t16209
-  %c.16211 = alloca i64
-  store i64 %t16210, ptr %c.16211
-  %t16212 = load ptr, ptr %this.16191
-  %t16213 = call ptr @Parser_advance_jerry(ptr %t16212)
-  %op.16214 = alloca ptr
-  store ptr %t16213, ptr %op.16214
-  %t16215 = load ptr, ptr %this.16191
-  %t16216 = call ptr @Parser_parse_mul_jerry(ptr %t16215)
-  %right.16217 = alloca ptr
-  store ptr %t16216, ptr %right.16217
-  %t16218 = getelementptr %Expr, ptr null, i32 1
-  %t16219 = ptrtoint ptr %t16218 to i64
-  %t16220 = call ptr @jerry_alloc(i64 %t16219)
-  %t16221 = getelementptr i8, ptr %t16220, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16221
-  %t16222 = getelementptr %Expr, ptr %t16220, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16222
-  %t16223 = load i64, ptr @EXPR_BINARY
-  %t16224 = load i64, ptr %l.16207
-  %t16225 = load i64, ptr %c.16211
-  call void @Expr_new_jerry(ptr %t16220, i64 %t16223, i64 %t16224, i64 %t16225)
-  %e.16226 = alloca ptr
-  store ptr %t16220, ptr %e.16226
-  %t16227 = load ptr, ptr %op.16214
-  %t16228 = getelementptr %Token, ptr %t16227, i32 0, i32 2
-  %t16229 = load ptr, ptr %t16228
-  %t16230 = load ptr, ptr %e.16226
-  %t16231 = getelementptr %Expr, ptr %t16230, i32 0, i32 2
-  %t16232 = load ptr, ptr %t16231
-  call void @jerry_retain(ptr %t16229)
-  store ptr %t16229, ptr %t16231
-  call void @jerry_release(ptr %t16232)
-  %t16233 = load ptr, ptr %left.16194
-  %t16234 = load ptr, ptr %e.16226
-  %t16235 = getelementptr %Expr, ptr %t16234, i32 0, i32 3
-  %t16236 = load ptr, ptr %t16235
-  call void @jerry_retain(ptr %t16233)
-  store ptr %t16233, ptr %t16235
-  call void @jerry_release(ptr %t16236)
-  %t16237 = load ptr, ptr %right.16217
-  %t16238 = load ptr, ptr %e.16226
-  %t16239 = getelementptr %Expr, ptr %t16238, i32 0, i32 4
-  %t16240 = load ptr, ptr %t16239
-  call void @jerry_retain(ptr %t16237)
-  store ptr %t16237, ptr %t16239
-  call void @jerry_release(ptr %t16240)
-  %t16241 = load ptr, ptr %e.16226
-  %t16242 = load ptr, ptr %left.16194
-  call void @jerry_retain(ptr %t16241)
-  store ptr %t16241, ptr %left.16194
-  call void @jerry_release(ptr %t16242)
-  %t16243 = load ptr, ptr %e.16226
-  call void @jerry_release(ptr %t16243)
-  %t16244 = load ptr, ptr %right.16217
-  call void @jerry_release(ptr %t16244)
-  %t16245 = load ptr, ptr %op.16214
-  call void @jerry_release(ptr %t16245)
-  br label %while.cond.2602
-while.end.2604:
-  %t16246 = load ptr, ptr %left.16194
-  ret ptr %t16246
-}
-
-define ptr @Parser_parse_mul_jerry(ptr %self.arg) {
-entry:
-  %this.16247 = alloca ptr
-  store ptr %self.arg, ptr %this.16247
-  %t16248 = load ptr, ptr %this.16247
-  %t16249 = call ptr @Parser_parse_unary_jerry(ptr %t16248)
-  %left.16250 = alloca ptr
-  store ptr %t16249, ptr %left.16250
-  br label %while.cond.2608
-while.cond.2608:
-  %t16251 = load ptr, ptr %this.16247
-  %t16252 = load i64, ptr @TOK_OP
-  %t16253 = call ptr @jerry_string_new(ptr @.str.1360, i64 1)
-  %t16254 = call i1 @Parser_check_jerry(ptr %t16251, i64 %t16252, ptr %t16253)
-  call void @jerry_release(ptr %t16253)
-  br i1 %t16254, label %or.true.2611, label %or.rhs.2612
-or.rhs.2612:
-  %t16255 = load ptr, ptr %this.16247
-  %t16256 = load i64, ptr @TOK_OP
-  %t16257 = call ptr @jerry_string_new(ptr @.str.1361, i64 1)
-  %t16258 = call i1 @Parser_check_jerry(ptr %t16255, i64 %t16256, ptr %t16257)
-  call void @jerry_release(ptr %t16257)
-  br label %or.merge.2613
-or.true.2611:
-  br label %or.merge.2613
-or.merge.2613:
-  %t16259 = phi i1 [ true, %or.true.2611 ], [ %t16258, %or.rhs.2612 ]
-  br i1 %t16259, label %or.true.2614, label %or.rhs.2615
-or.rhs.2615:
-  %t16260 = load ptr, ptr %this.16247
-  %t16261 = load i64, ptr @TOK_OP
-  %t16262 = call ptr @jerry_string_new(ptr @.str.1362, i64 1)
-  %t16263 = call i1 @Parser_check_jerry(ptr %t16260, i64 %t16261, ptr %t16262)
-  call void @jerry_release(ptr %t16262)
-  br label %or.merge.2616
-or.true.2614:
-  br label %or.merge.2616
-or.merge.2616:
-  %t16264 = phi i1 [ true, %or.true.2614 ], [ %t16263, %or.rhs.2615 ]
-  br i1 %t16264, label %while.body.2609, label %while.end.2610
-while.body.2609:
-  %t16265 = load ptr, ptr %left.16250
-  %t16266 = getelementptr %Expr, ptr %t16265, i32 0, i32 10
-  %t16267 = load i64, ptr %t16266
-  %l.16268 = alloca i64
-  store i64 %t16267, ptr %l.16268
-  %t16269 = load ptr, ptr %left.16250
-  %t16270 = getelementptr %Expr, ptr %t16269, i32 0, i32 11
-  %t16271 = load i64, ptr %t16270
-  %c.16272 = alloca i64
-  store i64 %t16271, ptr %c.16272
-  %t16273 = load ptr, ptr %this.16247
-  %t16274 = call ptr @Parser_advance_jerry(ptr %t16273)
-  %op.16275 = alloca ptr
-  store ptr %t16274, ptr %op.16275
-  %t16276 = load ptr, ptr %this.16247
-  %t16277 = call ptr @Parser_parse_unary_jerry(ptr %t16276)
-  %right.16278 = alloca ptr
-  store ptr %t16277, ptr %right.16278
-  %t16279 = getelementptr %Expr, ptr null, i32 1
-  %t16280 = ptrtoint ptr %t16279 to i64
-  %t16281 = call ptr @jerry_alloc(i64 %t16280)
-  %t16282 = getelementptr i8, ptr %t16281, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16282
-  %t16283 = getelementptr %Expr, ptr %t16281, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16283
-  %t16284 = load i64, ptr @EXPR_BINARY
-  %t16285 = load i64, ptr %l.16268
-  %t16286 = load i64, ptr %c.16272
-  call void @Expr_new_jerry(ptr %t16281, i64 %t16284, i64 %t16285, i64 %t16286)
-  %e.16287 = alloca ptr
-  store ptr %t16281, ptr %e.16287
-  %t16288 = load ptr, ptr %op.16275
-  %t16289 = getelementptr %Token, ptr %t16288, i32 0, i32 2
-  %t16290 = load ptr, ptr %t16289
-  %t16291 = load ptr, ptr %e.16287
-  %t16292 = getelementptr %Expr, ptr %t16291, i32 0, i32 2
-  %t16293 = load ptr, ptr %t16292
-  call void @jerry_retain(ptr %t16290)
-  store ptr %t16290, ptr %t16292
-  call void @jerry_release(ptr %t16293)
-  %t16294 = load ptr, ptr %left.16250
-  %t16295 = load ptr, ptr %e.16287
-  %t16296 = getelementptr %Expr, ptr %t16295, i32 0, i32 3
-  %t16297 = load ptr, ptr %t16296
-  call void @jerry_retain(ptr %t16294)
-  store ptr %t16294, ptr %t16296
-  call void @jerry_release(ptr %t16297)
-  %t16298 = load ptr, ptr %right.16278
-  %t16299 = load ptr, ptr %e.16287
-  %t16300 = getelementptr %Expr, ptr %t16299, i32 0, i32 4
-  %t16301 = load ptr, ptr %t16300
-  call void @jerry_retain(ptr %t16298)
-  store ptr %t16298, ptr %t16300
-  call void @jerry_release(ptr %t16301)
-  %t16302 = load ptr, ptr %e.16287
-  %t16303 = load ptr, ptr %left.16250
-  call void @jerry_retain(ptr %t16302)
-  store ptr %t16302, ptr %left.16250
-  call void @jerry_release(ptr %t16303)
-  %t16304 = load ptr, ptr %e.16287
-  call void @jerry_release(ptr %t16304)
-  %t16305 = load ptr, ptr %right.16278
-  call void @jerry_release(ptr %t16305)
-  %t16306 = load ptr, ptr %op.16275
-  call void @jerry_release(ptr %t16306)
-  br label %while.cond.2608
-while.end.2610:
-  %t16307 = load ptr, ptr %left.16250
-  ret ptr %t16307
-}
-
-define ptr @Parser_parse_unary_jerry(ptr %self.arg) {
-entry:
-  %this.16308 = alloca ptr
-  store ptr %self.arg, ptr %this.16308
-  %t16309 = load ptr, ptr %this.16308
-  %t16310 = call i64 @Parser_peek_line_jerry(ptr %t16309)
-  %l.16311 = alloca i64
-  store i64 %t16310, ptr %l.16311
-  %t16312 = load ptr, ptr %this.16308
-  %t16313 = call i64 @Parser_peek_col_jerry(ptr %t16312)
-  %c.16314 = alloca i64
-  store i64 %t16313, ptr %c.16314
-  %t16315 = load ptr, ptr %this.16308
-  %t16316 = load i64, ptr @TOK_OP
-  %t16317 = call ptr @jerry_string_new(ptr @.str.1363, i64 1)
-  %t16318 = call i1 @Parser_check_jerry(ptr %t16315, i64 %t16316, ptr %t16317)
-  call void @jerry_release(ptr %t16317)
-  br i1 %t16318, label %or.true.2620, label %or.rhs.2621
-or.rhs.2621:
-  %t16319 = load ptr, ptr %this.16308
-  %t16320 = load i64, ptr @TOK_OP
-  %t16321 = call ptr @jerry_string_new(ptr @.str.1364, i64 1)
-  %t16322 = call i1 @Parser_check_jerry(ptr %t16319, i64 %t16320, ptr %t16321)
-  call void @jerry_release(ptr %t16321)
-  br label %or.merge.2622
-or.true.2620:
-  br label %or.merge.2622
-or.merge.2622:
-  %t16323 = phi i1 [ true, %or.true.2620 ], [ %t16322, %or.rhs.2621 ]
-  br i1 %t16323, label %if.then.2617, label %if.else.2618
-if.then.2617:
-  %t16324 = load ptr, ptr %this.16308
-  %t16325 = call ptr @Parser_advance_jerry(ptr %t16324)
-  %op.16326 = alloca ptr
-  store ptr %t16325, ptr %op.16326
-  %t16327 = load ptr, ptr %this.16308
-  %t16328 = call ptr @Parser_parse_unary_jerry(ptr %t16327)
-  %operand.16329 = alloca ptr
-  store ptr %t16328, ptr %operand.16329
-  %t16330 = getelementptr %Expr, ptr null, i32 1
-  %t16331 = ptrtoint ptr %t16330 to i64
-  %t16332 = call ptr @jerry_alloc(i64 %t16331)
-  %t16333 = getelementptr i8, ptr %t16332, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16333
-  %t16334 = getelementptr %Expr, ptr %t16332, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16334
-  %t16335 = load i64, ptr @EXPR_UNARY
-  %t16336 = load i64, ptr %l.16311
-  %t16337 = load i64, ptr %c.16314
-  call void @Expr_new_jerry(ptr %t16332, i64 %t16335, i64 %t16336, i64 %t16337)
-  %e.16338 = alloca ptr
-  store ptr %t16332, ptr %e.16338
-  %t16339 = load ptr, ptr %op.16326
-  %t16340 = getelementptr %Token, ptr %t16339, i32 0, i32 2
-  %t16341 = load ptr, ptr %t16340
-  %t16342 = load ptr, ptr %e.16338
-  %t16343 = getelementptr %Expr, ptr %t16342, i32 0, i32 2
-  %t16344 = load ptr, ptr %t16343
-  call void @jerry_retain(ptr %t16341)
-  store ptr %t16341, ptr %t16343
-  call void @jerry_release(ptr %t16344)
-  %t16345 = load ptr, ptr %operand.16329
-  %t16346 = load ptr, ptr %e.16338
-  %t16347 = getelementptr %Expr, ptr %t16346, i32 0, i32 3
-  %t16348 = load ptr, ptr %t16347
-  call void @jerry_retain(ptr %t16345)
-  store ptr %t16345, ptr %t16347
-  call void @jerry_release(ptr %t16348)
-  %t16349 = load ptr, ptr %e.16338
-  %t16350 = load ptr, ptr %operand.16329
-  call void @jerry_release(ptr %t16350)
-  %t16351 = load ptr, ptr %op.16326
-  call void @jerry_release(ptr %t16351)
-  ret ptr %t16349
-if.else.2618:
-  br label %if.merge.2619
-if.merge.2619:
-  %t16352 = load ptr, ptr %this.16308
-  %t16353 = call ptr @Parser_parse_postfix_jerry(ptr %t16352)
-  ret ptr %t16353
-}
-
-define ptr @Parser_parse_postfix_jerry(ptr %self.arg) {
-entry:
-  %this.16354 = alloca ptr
-  store ptr %self.arg, ptr %this.16354
-  %t16355 = load ptr, ptr %this.16354
-  %t16356 = call ptr @Parser_parse_primary_jerry(ptr %t16355)
-  %base.16357 = alloca ptr
-  store ptr %t16356, ptr %base.16357
-  br label %while.cond.2623
-while.cond.2623:
-  br i1 true, label %while.body.2624, label %while.end.2625
-while.body.2624:
-  %t16358 = load ptr, ptr %this.16354
-  %t16359 = load i64, ptr @TOK_OP
-  %t16360 = call ptr @jerry_string_new(ptr @.str.1365, i64 1)
-  %t16361 = call i1 @Parser_check_jerry(ptr %t16358, i64 %t16359, ptr %t16360)
-  call void @jerry_release(ptr %t16360)
-  br i1 %t16361, label %if.then.2626, label %if.else.2627
+  %t15646 = load ptr, ptr %key.15634
+  %t15647 = load ptr, ptr %val.15641
+  %t15648 = load i64, ptr %l.15618
+  %t15649 = load i64, ptr %c.15621
+  %t15650 = call ptr @type_map_jerry(ptr %t15646, ptr %t15647, i64 %t15648, i64 %t15649)
+  %t15651 = load ptr, ptr %val.15641
+  call void @jerry_release(ptr %t15651)
+  %t15652 = load ptr, ptr %key.15634
+  call void @jerry_release(ptr %t15652)
+  ret ptr %t15650
+if.else.2621:
+  br label %if.merge.2622
+if.merge.2622:
+  %t15653 = load ptr, ptr %this.15615
+  %t15654 = load i64, ptr @TOK_KEYWORD
+  %t15655 = call ptr @jerry_string_new(ptr @.str.1319, i64 2)
+  %t15656 = call i1 @Parser_check_jerry(ptr %t15653, i64 %t15654, ptr %t15655)
+  call void @jerry_release(ptr %t15655)
+  br i1 %t15656, label %if.then.2623, label %if.else.2624
+if.then.2623:
+  %t15657 = load ptr, ptr %this.15615
+  %t15658 = call ptr @Parser_advance_jerry(ptr %t15657)
+  %t15659 = load ptr, ptr %this.15615
+  %t15660 = load i64, ptr @TOK_OP
+  %t15661 = call ptr @jerry_string_new(ptr @.str.1320, i64 1)
+  %t15662 = call ptr @Parser_expect_jerry(ptr %t15659, i64 %t15660, ptr %t15661)
+  call void @jerry_release(ptr %t15661)
+  %t15663 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %ps.15664 = alloca ptr
+  store ptr %t15663, ptr %ps.15664
+  call void @jerry_array_mark_heap(ptr %t15663)
+  %t15665 = load ptr, ptr %this.15615
+  %t15666 = load i64, ptr @TOK_OP
+  %t15667 = call ptr @jerry_string_new(ptr @.str.1321, i64 1)
+  %t15668 = call i1 @Parser_check_jerry(ptr %t15665, i64 %t15666, ptr %t15667)
+  call void @jerry_release(ptr %t15667)
+  %t15669 = xor i1 %t15668, true
+  br i1 %t15669, label %if.then.2626, label %if.else.2627
 if.then.2626:
-  %t16362 = load ptr, ptr %base.16357
-  %t16363 = getelementptr %Expr, ptr %t16362, i32 0, i32 10
-  %t16364 = load i64, ptr %t16363
-  %l.16365 = alloca i64
-  store i64 %t16364, ptr %l.16365
-  %t16366 = load ptr, ptr %base.16357
-  %t16367 = getelementptr %Expr, ptr %t16366, i32 0, i32 11
-  %t16368 = load i64, ptr %t16367
-  %c.16369 = alloca i64
-  store i64 %t16368, ptr %c.16369
-  %t16370 = load ptr, ptr %this.16354
-  %t16371 = call ptr @Parser_advance_jerry(ptr %t16370)
-  %t16372 = load ptr, ptr %this.16354
-  %t16373 = load i64, ptr @TOK_IDENT
-  %t16374 = call ptr @jerry_string_new(ptr @.str.1366, i64 0)
-  %t16375 = call ptr @Parser_expect_jerry(ptr %t16372, i64 %t16373, ptr %t16374)
-  call void @jerry_release(ptr %t16374)
-  %field.16376 = alloca ptr
-  store ptr %t16375, ptr %field.16376
-  %t16377 = getelementptr %Expr, ptr null, i32 1
-  %t16378 = ptrtoint ptr %t16377 to i64
-  %t16379 = call ptr @jerry_alloc(i64 %t16378)
-  %t16380 = getelementptr i8, ptr %t16379, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16380
-  %t16381 = getelementptr %Expr, ptr %t16379, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16381
-  %t16382 = load i64, ptr @EXPR_FIELD
-  %t16383 = load i64, ptr %l.16365
-  %t16384 = load i64, ptr %c.16369
-  call void @Expr_new_jerry(ptr %t16379, i64 %t16382, i64 %t16383, i64 %t16384)
-  %e.16385 = alloca ptr
-  store ptr %t16379, ptr %e.16385
-  %t16386 = load ptr, ptr %base.16357
-  %t16387 = load ptr, ptr %e.16385
-  %t16388 = getelementptr %Expr, ptr %t16387, i32 0, i32 3
-  %t16389 = load ptr, ptr %t16388
-  call void @jerry_retain(ptr %t16386)
-  store ptr %t16386, ptr %t16388
-  call void @jerry_release(ptr %t16389)
-  %t16390 = load ptr, ptr %field.16376
-  %t16391 = getelementptr %Token, ptr %t16390, i32 0, i32 2
-  %t16392 = load ptr, ptr %t16391
-  %t16393 = load ptr, ptr %e.16385
-  %t16394 = getelementptr %Expr, ptr %t16393, i32 0, i32 2
-  %t16395 = load ptr, ptr %t16394
-  call void @jerry_retain(ptr %t16392)
-  store ptr %t16392, ptr %t16394
-  call void @jerry_release(ptr %t16395)
-  %t16396 = load ptr, ptr %e.16385
-  %t16397 = load ptr, ptr %base.16357
-  call void @jerry_retain(ptr %t16396)
-  store ptr %t16396, ptr %base.16357
-  call void @jerry_release(ptr %t16397)
-  %t16398 = load ptr, ptr %e.16385
-  call void @jerry_release(ptr %t16398)
-  %t16399 = load ptr, ptr %field.16376
-  call void @jerry_release(ptr %t16399)
+  %t15670 = load ptr, ptr %this.15615
+  %t15671 = call ptr @Parser_parse_type_expr_jerry(ptr %t15670)
+  %first.15672 = alloca ptr
+  store ptr %t15671, ptr %first.15672
+  %t15673 = load ptr, ptr %ps.15664
+  %t15674 = load ptr, ptr %first.15672
+  %t15675.slot = alloca ptr
+  store ptr %t15674, ptr %t15675.slot
+  call void @jerry_array_push(ptr %t15673, ptr %t15675.slot)
+  br label %while.cond.2629
+while.cond.2629:
+  %t15676 = load ptr, ptr %this.15615
+  %t15677 = load i64, ptr @TOK_OP
+  %t15678 = call ptr @jerry_string_new(ptr @.str.1322, i64 1)
+  %t15679 = call i1 @Parser_eat_jerry(ptr %t15676, i64 %t15677, ptr %t15678)
+  call void @jerry_release(ptr %t15678)
+  br i1 %t15679, label %while.body.2630, label %while.end.2631
+while.body.2630:
+  %t15680 = load ptr, ptr %this.15615
+  %t15681 = call ptr @Parser_parse_type_expr_jerry(ptr %t15680)
+  %p.15682 = alloca ptr
+  store ptr %t15681, ptr %p.15682
+  %t15683 = load ptr, ptr %ps.15664
+  %t15684 = load ptr, ptr %p.15682
+  %t15685.slot = alloca ptr
+  store ptr %t15684, ptr %t15685.slot
+  call void @jerry_array_push(ptr %t15683, ptr %t15685.slot)
+  %t15686 = load ptr, ptr %p.15682
+  call void @jerry_release(ptr %t15686)
+  br label %while.cond.2629
+while.end.2631:
+  %t15687 = load ptr, ptr %first.15672
+  call void @jerry_release(ptr %t15687)
   br label %if.merge.2628
 if.else.2627:
-  %t16400 = load ptr, ptr %this.16354
-  %t16401 = load i64, ptr @TOK_OP
-  %t16402 = call ptr @jerry_string_new(ptr @.str.1367, i64 1)
-  %t16403 = call i1 @Parser_check_jerry(ptr %t16400, i64 %t16401, ptr %t16402)
-  call void @jerry_release(ptr %t16402)
-  br i1 %t16403, label %if.then.2629, label %if.else.2630
-if.then.2629:
-  %t16404 = load ptr, ptr %base.16357
-  %t16405 = getelementptr %Expr, ptr %t16404, i32 0, i32 10
-  %t16406 = load i64, ptr %t16405
-  %l.16407 = alloca i64
-  store i64 %t16406, ptr %l.16407
-  %t16408 = load ptr, ptr %base.16357
-  %t16409 = getelementptr %Expr, ptr %t16408, i32 0, i32 11
-  %t16410 = load i64, ptr %t16409
-  %c.16411 = alloca i64
-  store i64 %t16410, ptr %c.16411
-  %t16412 = load ptr, ptr %this.16354
-  %t16413 = call ptr @Parser_advance_jerry(ptr %t16412)
-  %t16414 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %call_args.16415 = alloca ptr
-  store ptr %t16414, ptr %call_args.16415
-  call void @jerry_array_mark_heap(ptr %t16414)
-  %t16416 = load ptr, ptr %this.16354
-  %t16417 = load i64, ptr @TOK_OP
-  %t16418 = call ptr @jerry_string_new(ptr @.str.1368, i64 1)
-  %t16419 = call i1 @Parser_check_jerry(ptr %t16416, i64 %t16417, ptr %t16418)
-  call void @jerry_release(ptr %t16418)
-  %t16420 = xor i1 %t16419, true
-  br i1 %t16420, label %if.then.2632, label %if.else.2633
+  br label %if.merge.2628
+if.merge.2628:
+  %t15688 = load ptr, ptr %this.15615
+  %t15689 = load i64, ptr @TOK_OP
+  %t15690 = call ptr @jerry_string_new(ptr @.str.1323, i64 1)
+  %t15691 = call ptr @Parser_expect_jerry(ptr %t15688, i64 %t15689, ptr %t15690)
+  call void @jerry_release(ptr %t15690)
+  %ret.15692 = alloca ptr
+  store ptr null, ptr %ret.15692
+  %t15693 = load ptr, ptr %this.15615
+  %t15694 = load i64, ptr @TOK_OP
+  %t15695 = call ptr @jerry_string_new(ptr @.str.1324, i64 1)
+  %t15696 = call i1 @Parser_eat_jerry(ptr %t15693, i64 %t15694, ptr %t15695)
+  call void @jerry_release(ptr %t15695)
+  br i1 %t15696, label %if.then.2632, label %if.else.2633
 if.then.2632:
-  %t16421 = load ptr, ptr %this.16354
-  %t16422 = call ptr @Parser_parse_expr_jerry(ptr %t16421)
-  %a.16423 = alloca ptr
-  store ptr %t16422, ptr %a.16423
-  %t16424 = load ptr, ptr %call_args.16415
-  %t16425 = load ptr, ptr %a.16423
-  %t16426.slot = alloca ptr
-  store ptr %t16425, ptr %t16426.slot
-  call void @jerry_array_push(ptr %t16424, ptr %t16426.slot)
-  br label %while.cond.2635
-while.cond.2635:
-  %t16427 = load ptr, ptr %this.16354
-  %t16428 = load i64, ptr @TOK_OP
-  %t16429 = call ptr @jerry_string_new(ptr @.str.1369, i64 1)
-  %t16430 = call i1 @Parser_eat_jerry(ptr %t16427, i64 %t16428, ptr %t16429)
-  call void @jerry_release(ptr %t16429)
-  br i1 %t16430, label %while.body.2636, label %while.end.2637
-while.body.2636:
-  %t16431 = load ptr, ptr %this.16354
-  %t16432 = call ptr @Parser_parse_expr_jerry(ptr %t16431)
-  %a2.16433 = alloca ptr
-  store ptr %t16432, ptr %a2.16433
-  %t16434 = load ptr, ptr %call_args.16415
-  %t16435 = load ptr, ptr %a2.16433
-  %t16436.slot = alloca ptr
-  store ptr %t16435, ptr %t16436.slot
-  call void @jerry_array_push(ptr %t16434, ptr %t16436.slot)
-  %t16437 = load ptr, ptr %a2.16433
-  call void @jerry_release(ptr %t16437)
-  br label %while.cond.2635
-while.end.2637:
-  %t16438 = load ptr, ptr %a.16423
-  call void @jerry_release(ptr %t16438)
+  %t15697 = load ptr, ptr %this.15615
+  %t15698 = call ptr @Parser_parse_type_expr_jerry(ptr %t15697)
+  %t15699 = load ptr, ptr %ret.15692
+  call void @jerry_retain(ptr %t15698)
+  store ptr %t15698, ptr %ret.15692
+  call void @jerry_release(ptr %t15699)
   br label %if.merge.2634
 if.else.2633:
   br label %if.merge.2634
 if.merge.2634:
-  %t16439 = load ptr, ptr %this.16354
-  %t16440 = load i64, ptr @TOK_OP
-  %t16441 = call ptr @jerry_string_new(ptr @.str.1370, i64 1)
-  %t16442 = call ptr @Parser_expect_jerry(ptr %t16439, i64 %t16440, ptr %t16441)
-  call void @jerry_release(ptr %t16441)
-  %t16443 = getelementptr %Expr, ptr null, i32 1
-  %t16444 = ptrtoint ptr %t16443 to i64
-  %t16445 = call ptr @jerry_alloc(i64 %t16444)
-  %t16446 = getelementptr i8, ptr %t16445, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16446
-  %t16447 = getelementptr %Expr, ptr %t16445, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16447
-  %t16448 = load i64, ptr @EXPR_CALL
-  %t16449 = load i64, ptr %l.16407
-  %t16450 = load i64, ptr %c.16411
-  call void @Expr_new_jerry(ptr %t16445, i64 %t16448, i64 %t16449, i64 %t16450)
-  %e.16451 = alloca ptr
-  store ptr %t16445, ptr %e.16451
-  %t16452 = load ptr, ptr %base.16357
-  %t16453 = load ptr, ptr %e.16451
-  %t16454 = getelementptr %Expr, ptr %t16453, i32 0, i32 3
-  %t16455 = load ptr, ptr %t16454
-  call void @jerry_retain(ptr %t16452)
-  store ptr %t16452, ptr %t16454
-  call void @jerry_release(ptr %t16455)
-  %t16456 = load ptr, ptr %call_args.16415
-  %t16457 = load ptr, ptr %e.16451
-  %t16458 = getelementptr %Expr, ptr %t16457, i32 0, i32 5
-  %t16459 = load ptr, ptr %t16458
-  call void @jerry_retain(ptr %t16456)
-  store ptr %t16456, ptr %t16458
-  call void @jerry_release(ptr %t16459)
-  %t16460 = load ptr, ptr %e.16451
-  %t16461 = load ptr, ptr %base.16357
-  call void @jerry_retain(ptr %t16460)
-  store ptr %t16460, ptr %base.16357
-  call void @jerry_release(ptr %t16461)
-  %t16462 = load ptr, ptr %e.16451
-  call void @jerry_release(ptr %t16462)
-  %t16463 = load ptr, ptr %call_args.16415
-  call void @jerry_release(ptr %t16463)
-  br label %if.merge.2631
-if.else.2630:
-  %t16464 = load ptr, ptr %this.16354
-  %t16465 = load i64, ptr @TOK_OP
-  %t16466 = call ptr @jerry_string_new(ptr @.str.1371, i64 1)
-  %t16467 = call i1 @Parser_check_jerry(ptr %t16464, i64 %t16465, ptr %t16466)
-  call void @jerry_release(ptr %t16466)
-  br i1 %t16467, label %if.then.2638, label %if.else.2639
-if.then.2638:
-  %t16468 = load ptr, ptr %base.16357
-  %t16469 = getelementptr %Expr, ptr %t16468, i32 0, i32 10
-  %t16470 = load i64, ptr %t16469
-  %l.16471 = alloca i64
-  store i64 %t16470, ptr %l.16471
-  %t16472 = load ptr, ptr %base.16357
-  %t16473 = getelementptr %Expr, ptr %t16472, i32 0, i32 11
-  %t16474 = load i64, ptr %t16473
-  %c.16475 = alloca i64
-  store i64 %t16474, ptr %c.16475
-  %t16476 = load ptr, ptr %this.16354
-  %t16477 = call ptr @Parser_advance_jerry(ptr %t16476)
-  %t16478 = load ptr, ptr %this.16354
-  %t16479 = call ptr @Parser_parse_expr_jerry(ptr %t16478)
-  %idx.16480 = alloca ptr
-  store ptr %t16479, ptr %idx.16480
-  %t16481 = load ptr, ptr %this.16354
-  %t16482 = load i64, ptr @TOK_OP
-  %t16483 = call ptr @jerry_string_new(ptr @.str.1372, i64 1)
-  %t16484 = call ptr @Parser_expect_jerry(ptr %t16481, i64 %t16482, ptr %t16483)
-  call void @jerry_release(ptr %t16483)
-  %t16485 = getelementptr %Expr, ptr null, i32 1
-  %t16486 = ptrtoint ptr %t16485 to i64
-  %t16487 = call ptr @jerry_alloc(i64 %t16486)
-  %t16488 = getelementptr i8, ptr %t16487, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16488
-  %t16489 = getelementptr %Expr, ptr %t16487, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16489
-  %t16490 = load i64, ptr @EXPR_INDEX
-  %t16491 = load i64, ptr %l.16471
-  %t16492 = load i64, ptr %c.16475
-  call void @Expr_new_jerry(ptr %t16487, i64 %t16490, i64 %t16491, i64 %t16492)
-  %e.16493 = alloca ptr
-  store ptr %t16487, ptr %e.16493
-  %t16494 = load ptr, ptr %base.16357
-  %t16495 = load ptr, ptr %e.16493
-  %t16496 = getelementptr %Expr, ptr %t16495, i32 0, i32 3
-  %t16497 = load ptr, ptr %t16496
-  call void @jerry_retain(ptr %t16494)
-  store ptr %t16494, ptr %t16496
-  call void @jerry_release(ptr %t16497)
-  %t16498 = load ptr, ptr %idx.16480
-  %t16499 = load ptr, ptr %e.16493
-  %t16500 = getelementptr %Expr, ptr %t16499, i32 0, i32 4
-  %t16501 = load ptr, ptr %t16500
-  call void @jerry_retain(ptr %t16498)
-  store ptr %t16498, ptr %t16500
-  call void @jerry_release(ptr %t16501)
-  %t16502 = load ptr, ptr %e.16493
-  %t16503 = load ptr, ptr %base.16357
-  call void @jerry_retain(ptr %t16502)
-  store ptr %t16502, ptr %base.16357
-  call void @jerry_release(ptr %t16503)
-  %t16504 = load ptr, ptr %e.16493
-  call void @jerry_release(ptr %t16504)
-  %t16505 = load ptr, ptr %idx.16480
-  call void @jerry_release(ptr %t16505)
-  br label %if.merge.2640
-if.else.2639:
-  %t16506 = load ptr, ptr %this.16354
-  %t16507 = load i64, ptr @TOK_OP
-  %t16508 = call ptr @jerry_string_new(ptr @.str.1373, i64 2)
-  %t16509 = call i1 @Parser_check_jerry(ptr %t16506, i64 %t16507, ptr %t16508)
-  call void @jerry_release(ptr %t16508)
-  br i1 %t16509, label %if.then.2641, label %if.else.2642
+  %t15700 = load ptr, ptr %ps.15664
+  %t15701 = load ptr, ptr %ret.15692
+  %t15702 = load i64, ptr %l.15618
+  %t15703 = load i64, ptr %c.15621
+  %t15704 = call ptr @type_fn_jerry(ptr %t15700, ptr %t15701, i64 %t15702, i64 %t15703)
+  %t15705 = load ptr, ptr %ret.15692
+  call void @jerry_release(ptr %t15705)
+  %t15706 = load ptr, ptr %ps.15664
+  call void @jerry_release(ptr %t15706)
+  ret ptr %t15704
+if.else.2624:
+  br label %if.merge.2625
+if.merge.2625:
+  %t15707 = load ptr, ptr %this.15615
+  %t15708 = load i64, ptr @TOK_IDENT
+  %t15709 = call ptr @jerry_string_new(ptr @.str.1325, i64 0)
+  %t15710 = call ptr @Parser_expect_jerry(ptr %t15707, i64 %t15708, ptr %t15709)
+  call void @jerry_release(ptr %t15709)
+  %name.15711 = alloca ptr
+  store ptr %t15710, ptr %name.15711
+  %t15712 = load ptr, ptr %name.15711
+  %t15713 = getelementptr %Token, ptr %t15712, i32 0, i32 2
+  %t15714 = load ptr, ptr %t15713
+  %t15715 = load i64, ptr %l.15618
+  %t15716 = load i64, ptr %c.15621
+  %t15717 = call ptr @type_name_jerry(ptr %t15714, i64 %t15715, i64 %t15716)
+  %te.15718 = alloca ptr
+  store ptr %t15717, ptr %te.15718
+  br label %while.cond.2635
+while.cond.2635:
+  %t15719 = load ptr, ptr %this.15615
+  %t15720 = load i64, ptr @TOK_OP
+  %t15721 = call ptr @jerry_string_new(ptr @.str.1326, i64 1)
+  %t15722 = call i1 @Parser_check_jerry(ptr %t15719, i64 %t15720, ptr %t15721)
+  call void @jerry_release(ptr %t15721)
+  br i1 %t15722, label %and.rhs.2639, label %and.false.2638
+and.rhs.2639:
+  %t15723 = load ptr, ptr %this.15615
+  %t15724 = getelementptr %Parser, ptr %t15723, i32 0, i32 2
+  %t15725 = load i64, ptr %t15724
+  %t15726 = add i64 %t15725, 1
+  %t15727 = load ptr, ptr %this.15615
+  %t15728 = getelementptr %Parser, ptr %t15727, i32 0, i32 1
+  %t15729 = load ptr, ptr %t15728
+  %t15730 = call i64 @jerry_array_len(ptr %t15729)
+  %t15731 = icmp slt i64 %t15726, %t15730
+  br label %and.merge.2640
+and.false.2638:
+  br label %and.merge.2640
+and.merge.2640:
+  %t15732 = phi i1 [ %t15731, %and.rhs.2639 ], [ false, %and.false.2638 ]
+  br i1 %t15732, label %while.body.2636, label %while.end.2637
+while.body.2636:
+  %t15733 = load ptr, ptr %this.15615
+  %t15734 = getelementptr %Parser, ptr %t15733, i32 0, i32 1
+  %t15735 = load ptr, ptr %t15734
+  %t15736 = load ptr, ptr %this.15615
+  %t15737 = getelementptr %Parser, ptr %t15736, i32 0, i32 2
+  %t15738 = load i64, ptr %t15737
+  %t15739 = add i64 %t15738, 1
+  %t15740 = call ptr @jerry_array_get(ptr %t15735, i64 %t15739)
+  %t15741 = load ptr, ptr %t15740
+  %next.15742 = alloca ptr
+  store ptr %t15741, ptr %next.15742
+  call void @jerry_retain(ptr %t15741)
+  %t15743 = load ptr, ptr %next.15742
+  %t15744 = getelementptr %Token, ptr %t15743, i32 0, i32 1
+  %t15745 = load i64, ptr %t15744
+  %t15746 = load i64, ptr @TOK_OP
+  %t15747 = icmp eq i64 %t15745, %t15746
+  br i1 %t15747, label %and.rhs.2645, label %and.false.2644
+and.rhs.2645:
+  %t15748 = load ptr, ptr %next.15742
+  %t15749 = getelementptr %Token, ptr %t15748, i32 0, i32 2
+  %t15750 = load ptr, ptr %t15749
+  %t15751 = call ptr @jerry_string_new(ptr @.str.1327, i64 1)
+  %t15752 = call i8 @jerry_string_eq(ptr %t15750, ptr %t15751)
+  %t15753 = icmp ne i8 %t15752, 0
+  br label %and.merge.2646
+and.false.2644:
+  br label %and.merge.2646
+and.merge.2646:
+  %t15754 = phi i1 [ %t15753, %and.rhs.2645 ], [ false, %and.false.2644 ]
+  br i1 %t15754, label %if.then.2641, label %if.else.2642
 if.then.2641:
-  %t16510 = load ptr, ptr %base.16357
-  %t16511 = getelementptr %Expr, ptr %t16510, i32 0, i32 10
-  %t16512 = load i64, ptr %t16511
-  %l.16513 = alloca i64
-  store i64 %t16512, ptr %l.16513
-  %t16514 = load ptr, ptr %base.16357
-  %t16515 = getelementptr %Expr, ptr %t16514, i32 0, i32 11
-  %t16516 = load i64, ptr %t16515
-  %c.16517 = alloca i64
-  store i64 %t16516, ptr %c.16517
-  %t16518 = load ptr, ptr %this.16354
-  %t16519 = call ptr @Parser_advance_jerry(ptr %t16518)
-  %t16520 = getelementptr %Expr, ptr null, i32 1
-  %t16521 = ptrtoint ptr %t16520 to i64
-  %t16522 = call ptr @jerry_alloc(i64 %t16521)
-  %t16523 = getelementptr i8, ptr %t16522, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16523
-  %t16524 = getelementptr %Expr, ptr %t16522, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16524
-  %t16525 = load i64, ptr @EXPR_INC
-  %t16526 = load i64, ptr %l.16513
-  %t16527 = load i64, ptr %c.16517
-  call void @Expr_new_jerry(ptr %t16522, i64 %t16525, i64 %t16526, i64 %t16527)
-  %e.16528 = alloca ptr
-  store ptr %t16522, ptr %e.16528
-  %t16529 = load ptr, ptr %base.16357
-  %t16530 = load ptr, ptr %e.16528
-  %t16531 = getelementptr %Expr, ptr %t16530, i32 0, i32 3
-  %t16532 = load ptr, ptr %t16531
-  call void @jerry_retain(ptr %t16529)
-  store ptr %t16529, ptr %t16531
-  call void @jerry_release(ptr %t16532)
-  %t16533 = load ptr, ptr %e.16528
-  %t16534 = load ptr, ptr %base.16357
-  call void @jerry_retain(ptr %t16533)
-  store ptr %t16533, ptr %base.16357
-  call void @jerry_release(ptr %t16534)
-  %t16535 = load ptr, ptr %e.16528
-  call void @jerry_release(ptr %t16535)
+  %t15755 = load ptr, ptr %this.15615
+  %t15756 = call ptr @Parser_advance_jerry(ptr %t15755)
+  %t15757 = load ptr, ptr %this.15615
+  %t15758 = call ptr @Parser_advance_jerry(ptr %t15757)
+  %t15759 = load ptr, ptr %te.15718
+  %t15760 = call ptr @type_array_jerry(ptr %t15759)
+  %t15761 = load ptr, ptr %te.15718
+  call void @jerry_retain(ptr %t15760)
+  store ptr %t15760, ptr %te.15718
+  call void @jerry_release(ptr %t15761)
   br label %if.merge.2643
 if.else.2642:
-  %t16536 = load ptr, ptr %this.16354
-  %t16537 = load i64, ptr @TOK_OP
-  %t16538 = call ptr @jerry_string_new(ptr @.str.1374, i64 2)
-  %t16539 = call i1 @Parser_check_jerry(ptr %t16536, i64 %t16537, ptr %t16538)
-  call void @jerry_release(ptr %t16538)
-  br i1 %t16539, label %if.then.2644, label %if.else.2645
-if.then.2644:
-  %t16540 = load ptr, ptr %base.16357
-  %t16541 = getelementptr %Expr, ptr %t16540, i32 0, i32 10
-  %t16542 = load i64, ptr %t16541
-  %l.16543 = alloca i64
-  store i64 %t16542, ptr %l.16543
-  %t16544 = load ptr, ptr %base.16357
-  %t16545 = getelementptr %Expr, ptr %t16544, i32 0, i32 11
-  %t16546 = load i64, ptr %t16545
-  %c.16547 = alloca i64
-  store i64 %t16546, ptr %c.16547
-  %t16548 = load ptr, ptr %this.16354
-  %t16549 = call ptr @Parser_advance_jerry(ptr %t16548)
-  %t16550 = getelementptr %Expr, ptr null, i32 1
-  %t16551 = ptrtoint ptr %t16550 to i64
-  %t16552 = call ptr @jerry_alloc(i64 %t16551)
-  %t16553 = getelementptr i8, ptr %t16552, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16553
-  %t16554 = getelementptr %Expr, ptr %t16552, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16554
-  %t16555 = load i64, ptr @EXPR_DEC
-  %t16556 = load i64, ptr %l.16543
-  %t16557 = load i64, ptr %c.16547
-  call void @Expr_new_jerry(ptr %t16552, i64 %t16555, i64 %t16556, i64 %t16557)
-  %e.16558 = alloca ptr
-  store ptr %t16552, ptr %e.16558
-  %t16559 = load ptr, ptr %base.16357
-  %t16560 = load ptr, ptr %e.16558
-  %t16561 = getelementptr %Expr, ptr %t16560, i32 0, i32 3
-  %t16562 = load ptr, ptr %t16561
-  call void @jerry_retain(ptr %t16559)
-  store ptr %t16559, ptr %t16561
-  call void @jerry_release(ptr %t16562)
-  %t16563 = load ptr, ptr %e.16558
-  %t16564 = load ptr, ptr %base.16357
-  call void @jerry_retain(ptr %t16563)
-  store ptr %t16563, ptr %base.16357
-  call void @jerry_release(ptr %t16564)
-  %t16565 = load ptr, ptr %e.16558
-  call void @jerry_release(ptr %t16565)
-  br label %if.merge.2646
-if.else.2645:
-  br label %while.end.2625
-if.merge.2646:
-  br label %if.merge.2643
+  %t15762 = load ptr, ptr %next.15742
+  call void @jerry_release(ptr %t15762)
+  br label %while.end.2637
 if.merge.2643:
-  br label %if.merge.2640
-if.merge.2640:
-  br label %if.merge.2631
-if.merge.2631:
-  br label %if.merge.2628
-if.merge.2628:
-  br label %while.cond.2623
-while.end.2625:
-  %t16566 = load ptr, ptr %base.16357
-  ret ptr %t16566
+  %t15763 = load ptr, ptr %next.15742
+  call void @jerry_release(ptr %t15763)
+  br label %while.cond.2635
+while.end.2637:
+  %t15764 = load ptr, ptr %te.15718
+  %t15765 = load ptr, ptr %name.15711
+  call void @jerry_release(ptr %t15765)
+  ret ptr %t15764
 }
 
-define ptr @Parser_parse_primary_jerry(ptr %self.arg) {
+define ptr @Parser_parse_class_decl_jerry(ptr %self.arg) {
 entry:
-  %this.16567 = alloca ptr
-  store ptr %self.arg, ptr %this.16567
-  %t16568 = load ptr, ptr %this.16567
-  %t16569 = call i64 @Parser_peek_line_jerry(ptr %t16568)
-  %l.16570 = alloca i64
-  store i64 %t16569, ptr %l.16570
-  %t16571 = load ptr, ptr %this.16567
-  %t16572 = call i64 @Parser_peek_col_jerry(ptr %t16571)
-  %c.16573 = alloca i64
-  store i64 %t16572, ptr %c.16573
-  %t16574 = load ptr, ptr %this.16567
-  %t16575 = call i64 @Parser_peek_kind_jerry(ptr %t16574)
-  %t16576 = load i64, ptr @TOK_INT
-  %t16577 = icmp eq i64 %t16575, %t16576
-  br i1 %t16577, label %if.then.2647, label %if.else.2648
+  %this.15766 = alloca ptr
+  store ptr %self.arg, ptr %this.15766
+  %t15767 = load ptr, ptr %this.15766
+  %t15768 = call i64 @Parser_peek_line_jerry(ptr %t15767)
+  %l.15769 = alloca i64
+  store i64 %t15768, ptr %l.15769
+  %t15770 = load ptr, ptr %this.15766
+  %t15771 = call i64 @Parser_peek_col_jerry(ptr %t15770)
+  %c.15772 = alloca i64
+  store i64 %t15771, ptr %c.15772
+  %t15773 = load ptr, ptr %this.15766
+  %t15774 = call ptr @Parser_advance_jerry(ptr %t15773)
+  %t15775 = load ptr, ptr %this.15766
+  %t15776 = load i64, ptr @TOK_IDENT
+  %t15777 = call ptr @jerry_string_new(ptr @.str.1328, i64 0)
+  %t15778 = call ptr @Parser_expect_jerry(ptr %t15775, i64 %t15776, ptr %t15777)
+  call void @jerry_release(ptr %t15777)
+  %name.15779 = alloca ptr
+  store ptr %t15778, ptr %name.15779
+  %t15780 = call ptr @jerry_string_new(ptr @.str.1329, i64 0)
+  %ext.15781 = alloca ptr
+  store ptr %t15780, ptr %ext.15781
+  %t15782 = load ptr, ptr %this.15766
+  %t15783 = load i64, ptr @TOK_KEYWORD
+  %t15784 = call ptr @jerry_string_new(ptr @.str.1330, i64 7)
+  %t15785 = call i1 @Parser_eat_jerry(ptr %t15782, i64 %t15783, ptr %t15784)
+  call void @jerry_release(ptr %t15784)
+  br i1 %t15785, label %if.then.2647, label %if.else.2648
 if.then.2647:
-  %t16578 = load ptr, ptr %this.16567
-  %t16579 = call ptr @Parser_advance_jerry(ptr %t16578)
-  %t.16580 = alloca ptr
-  store ptr %t16579, ptr %t.16580
-  %t16581 = getelementptr %Expr, ptr null, i32 1
-  %t16582 = ptrtoint ptr %t16581 to i64
-  %t16583 = call ptr @jerry_alloc(i64 %t16582)
-  %t16584 = getelementptr i8, ptr %t16583, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16584
-  %t16585 = getelementptr %Expr, ptr %t16583, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16585
-  %t16586 = load i64, ptr @EXPR_INT
-  %t16587 = load i64, ptr %l.16570
-  %t16588 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16583, i64 %t16586, i64 %t16587, i64 %t16588)
-  %e.16589 = alloca ptr
-  store ptr %t16583, ptr %e.16589
-  %t16590 = load ptr, ptr %t.16580
-  %t16591 = getelementptr %Token, ptr %t16590, i32 0, i32 2
-  %t16592 = load ptr, ptr %t16591
-  %t16593 = load ptr, ptr %e.16589
-  %t16594 = getelementptr %Expr, ptr %t16593, i32 0, i32 2
+  %t15786 = load ptr, ptr %this.15766
+  %t15787 = load i64, ptr @TOK_IDENT
+  %t15788 = call ptr @jerry_string_new(ptr @.str.1331, i64 0)
+  %t15789 = call ptr @Parser_expect_jerry(ptr %t15786, i64 %t15787, ptr %t15788)
+  call void @jerry_release(ptr %t15788)
+  %pname.15790 = alloca ptr
+  store ptr %t15789, ptr %pname.15790
+  %t15791 = load ptr, ptr %pname.15790
+  %t15792 = getelementptr %Token, ptr %t15791, i32 0, i32 2
+  %t15793 = load ptr, ptr %t15792
+  %t15794 = load ptr, ptr %ext.15781
+  call void @jerry_retain(ptr %t15793)
+  store ptr %t15793, ptr %ext.15781
+  call void @jerry_release(ptr %t15794)
+  %t15795 = load ptr, ptr %pname.15790
+  call void @jerry_release(ptr %t15795)
+  br label %if.merge.2649
+if.else.2648:
+  br label %if.merge.2649
+if.merge.2649:
+  %t15796 = getelementptr %ClassDecl, ptr null, i32 1
+  %t15797 = ptrtoint ptr %t15796 to i64
+  %t15798 = call ptr @jerry_alloc(i64 %t15797)
+  %t15799 = getelementptr i8, ptr %t15798, i64 -8
+  store ptr @ClassDecl_destroy_jerry, ptr %t15799
+  %t15800 = getelementptr %ClassDecl, ptr %t15798, i32 0, i32 0
+  store ptr @vtable.ClassDecl, ptr %t15800
+  %t15801 = load ptr, ptr %name.15779
+  %t15802 = getelementptr %Token, ptr %t15801, i32 0, i32 2
+  %t15803 = load ptr, ptr %t15802
+  %t15804 = load ptr, ptr %ext.15781
+  %t15805 = load i64, ptr %l.15769
+  %t15806 = load i64, ptr %c.15772
+  call void @ClassDecl_new_jerry(ptr %t15798, ptr %t15803, ptr %t15804, i64 %t15805, i64 %t15806)
+  %cd.15807 = alloca ptr
+  store ptr %t15798, ptr %cd.15807
+  %t15808 = load ptr, ptr %this.15766
+  %t15809 = load i64, ptr @TOK_OP
+  %t15810 = call ptr @jerry_string_new(ptr @.str.1332, i64 1)
+  %t15811 = call ptr @Parser_expect_jerry(ptr %t15808, i64 %t15809, ptr %t15810)
+  call void @jerry_release(ptr %t15810)
+  br label %while.cond.2650
+while.cond.2650:
+  %t15812 = load ptr, ptr %this.15766
+  %t15813 = load i64, ptr @TOK_OP
+  %t15814 = call ptr @jerry_string_new(ptr @.str.1333, i64 1)
+  %t15815 = call i1 @Parser_check_jerry(ptr %t15812, i64 %t15813, ptr %t15814)
+  call void @jerry_release(ptr %t15814)
+  %t15816 = xor i1 %t15815, true
+  br i1 %t15816, label %and.rhs.2654, label %and.false.2653
+and.rhs.2654:
+  %t15817 = load ptr, ptr %this.15766
+  %t15818 = call i64 @Parser_peek_kind_jerry(ptr %t15817)
+  %t15819 = load i64, ptr @TOK_EOF
+  %t15820 = icmp ne i64 %t15818, %t15819
+  br label %and.merge.2655
+and.false.2653:
+  br label %and.merge.2655
+and.merge.2655:
+  %t15821 = phi i1 [ %t15820, %and.rhs.2654 ], [ false, %and.false.2653 ]
+  br i1 %t15821, label %while.body.2651, label %while.end.2652
+while.body.2651:
+  %t15822 = load ptr, ptr %this.15766
+  %t15823 = load i64, ptr @TOK_KEYWORD
+  %t15824 = call ptr @jerry_string_new(ptr @.str.1334, i64 2)
+  %t15825 = call i1 @Parser_check_jerry(ptr %t15822, i64 %t15823, ptr %t15824)
+  call void @jerry_release(ptr %t15824)
+  br i1 %t15825, label %if.then.2656, label %if.else.2657
+if.then.2656:
+  %t15826 = load ptr, ptr %this.15766
+  %t15827 = call ptr @Parser_parse_fn_decl_jerry(ptr %t15826)
+  %md.15828 = alloca ptr
+  store ptr %t15827, ptr %md.15828
+  %t15829 = load ptr, ptr %cd.15807
+  %t15830 = getelementptr %ClassDecl, ptr %t15829, i32 0, i32 4
+  %t15831 = load ptr, ptr %t15830
+  %t15832 = load ptr, ptr %md.15828
+  %t15833.slot = alloca ptr
+  store ptr %t15832, ptr %t15833.slot
+  call void @jerry_array_push(ptr %t15831, ptr %t15833.slot)
+  %t15834 = load ptr, ptr %md.15828
+  call void @jerry_release(ptr %t15834)
+  br label %if.merge.2658
+if.else.2657:
+  %t15835 = load ptr, ptr %this.15766
+  %t15836 = call ptr @Parser_parse_field_decl_jerry(ptr %t15835)
+  %fd.15837 = alloca ptr
+  store ptr %t15836, ptr %fd.15837
+  %t15838 = load ptr, ptr %cd.15807
+  %t15839 = getelementptr %ClassDecl, ptr %t15838, i32 0, i32 3
+  %t15840 = load ptr, ptr %t15839
+  %t15841 = load ptr, ptr %fd.15837
+  %t15842.slot = alloca ptr
+  store ptr %t15841, ptr %t15842.slot
+  call void @jerry_array_push(ptr %t15840, ptr %t15842.slot)
+  %t15843 = load ptr, ptr %fd.15837
+  call void @jerry_release(ptr %t15843)
+  br label %if.merge.2658
+if.merge.2658:
+  br label %while.cond.2650
+while.end.2652:
+  %t15844 = load ptr, ptr %this.15766
+  %t15845 = load i64, ptr @TOK_OP
+  %t15846 = call ptr @jerry_string_new(ptr @.str.1335, i64 1)
+  %t15847 = call ptr @Parser_expect_jerry(ptr %t15844, i64 %t15845, ptr %t15846)
+  call void @jerry_release(ptr %t15846)
+  %t15848 = load ptr, ptr %cd.15807
+  %t15849 = load ptr, ptr %ext.15781
+  call void @jerry_release(ptr %t15849)
+  %t15850 = load ptr, ptr %name.15779
+  call void @jerry_release(ptr %t15850)
+  ret ptr %t15848
+}
+
+define ptr @Parser_parse_field_decl_jerry(ptr %self.arg) {
+entry:
+  %this.15851 = alloca ptr
+  store ptr %self.arg, ptr %this.15851
+  %t15852 = load ptr, ptr %this.15851
+  %t15853 = call i64 @Parser_peek_line_jerry(ptr %t15852)
+  %l.15854 = alloca i64
+  store i64 %t15853, ptr %l.15854
+  %t15855 = load ptr, ptr %this.15851
+  %t15856 = call i64 @Parser_peek_col_jerry(ptr %t15855)
+  %c.15857 = alloca i64
+  store i64 %t15856, ptr %c.15857
+  %t15858 = load ptr, ptr %this.15851
+  %t15859 = load i64, ptr @TOK_IDENT
+  %t15860 = call ptr @jerry_string_new(ptr @.str.1336, i64 0)
+  %t15861 = call ptr @Parser_expect_jerry(ptr %t15858, i64 %t15859, ptr %t15860)
+  call void @jerry_release(ptr %t15860)
+  %name.15862 = alloca ptr
+  store ptr %t15861, ptr %name.15862
+  %t15863 = load ptr, ptr %this.15851
+  %t15864 = load i64, ptr @TOK_OP
+  %t15865 = call ptr @jerry_string_new(ptr @.str.1337, i64 1)
+  %t15866 = call ptr @Parser_expect_jerry(ptr %t15863, i64 %t15864, ptr %t15865)
+  call void @jerry_release(ptr %t15865)
+  %t15867 = load ptr, ptr %this.15851
+  %t15868 = call ptr @Parser_parse_type_expr_jerry(ptr %t15867)
+  %te.15869 = alloca ptr
+  store ptr %t15868, ptr %te.15869
+  %t15870 = load ptr, ptr %this.15851
+  %t15871 = load i64, ptr @TOK_OP
+  %t15872 = call ptr @jerry_string_new(ptr @.str.1338, i64 1)
+  %t15873 = call ptr @Parser_expect_jerry(ptr %t15870, i64 %t15871, ptr %t15872)
+  call void @jerry_release(ptr %t15872)
+  %t15874 = getelementptr %FieldDecl, ptr null, i32 1
+  %t15875 = ptrtoint ptr %t15874 to i64
+  %t15876 = call ptr @jerry_alloc(i64 %t15875)
+  %t15877 = getelementptr i8, ptr %t15876, i64 -8
+  store ptr @FieldDecl_destroy_jerry, ptr %t15877
+  %t15878 = getelementptr %FieldDecl, ptr %t15876, i32 0, i32 0
+  store ptr @vtable.FieldDecl, ptr %t15878
+  %t15879 = load ptr, ptr %name.15862
+  %t15880 = getelementptr %Token, ptr %t15879, i32 0, i32 2
+  %t15881 = load ptr, ptr %t15880
+  %t15882 = load ptr, ptr %te.15869
+  %t15883 = load i64, ptr %l.15854
+  %t15884 = load i64, ptr %c.15857
+  call void @FieldDecl_new_jerry(ptr %t15876, ptr %t15881, ptr %t15882, i64 %t15883, i64 %t15884)
+  %t15885 = load ptr, ptr %te.15869
+  call void @jerry_release(ptr %t15885)
+  %t15886 = load ptr, ptr %name.15862
+  call void @jerry_release(ptr %t15886)
+  ret ptr %t15876
+}
+
+define ptr @Parser_parse_fn_decl_jerry(ptr %self.arg) {
+entry:
+  %this.15887 = alloca ptr
+  store ptr %self.arg, ptr %this.15887
+  %t15888 = load ptr, ptr %this.15887
+  %t15889 = call i64 @Parser_peek_line_jerry(ptr %t15888)
+  %l.15890 = alloca i64
+  store i64 %t15889, ptr %l.15890
+  %t15891 = load ptr, ptr %this.15887
+  %t15892 = call i64 @Parser_peek_col_jerry(ptr %t15891)
+  %c.15893 = alloca i64
+  store i64 %t15892, ptr %c.15893
+  %t15894 = load ptr, ptr %this.15887
+  %t15895 = call ptr @Parser_advance_jerry(ptr %t15894)
+  %t15896 = call ptr @jerry_string_new(ptr @.str.1339, i64 0)
+  %fname.15897 = alloca ptr
+  store ptr %t15896, ptr %fname.15897
+  %t15898 = load ptr, ptr %this.15887
+  %t15899 = call i64 @Parser_peek_kind_jerry(ptr %t15898)
+  %t15900 = load i64, ptr @TOK_IDENT
+  %t15901 = icmp eq i64 %t15899, %t15900
+  br i1 %t15901, label %if.then.2659, label %if.else.2660
+if.then.2659:
+  %t15902 = load ptr, ptr %this.15887
+  %t15903 = call ptr @Parser_advance_jerry(ptr %t15902)
+  %t.15904 = alloca ptr
+  store ptr %t15903, ptr %t.15904
+  %t15905 = load ptr, ptr %t.15904
+  %t15906 = getelementptr %Token, ptr %t15905, i32 0, i32 2
+  %t15907 = load ptr, ptr %t15906
+  %t15908 = load ptr, ptr %fname.15897
+  call void @jerry_retain(ptr %t15907)
+  store ptr %t15907, ptr %fname.15897
+  call void @jerry_release(ptr %t15908)
+  %t15909 = load ptr, ptr %t.15904
+  call void @jerry_release(ptr %t15909)
+  br label %if.merge.2661
+if.else.2660:
+  %t15910 = load ptr, ptr %this.15887
+  %t15911 = call i64 @Parser_peek_kind_jerry(ptr %t15910)
+  %t15912 = load i64, ptr @TOK_KEYWORD
+  %t15913 = icmp eq i64 %t15911, %t15912
+  br i1 %t15913, label %if.then.2662, label %if.else.2663
+if.then.2662:
+  %t15914 = load ptr, ptr %this.15887
+  %t15915 = call ptr @Parser_advance_jerry(ptr %t15914)
+  %t.15916 = alloca ptr
+  store ptr %t15915, ptr %t.15916
+  %t15917 = load ptr, ptr %t.15916
+  %t15918 = getelementptr %Token, ptr %t15917, i32 0, i32 2
+  %t15919 = load ptr, ptr %t15918
+  %t15920 = load ptr, ptr %fname.15897
+  call void @jerry_retain(ptr %t15919)
+  store ptr %t15919, ptr %fname.15897
+  call void @jerry_release(ptr %t15920)
+  %t15921 = load ptr, ptr %t.15916
+  call void @jerry_release(ptr %t15921)
+  br label %if.merge.2664
+if.else.2663:
+  %t15922 = load ptr, ptr %this.15887
+  %t15923 = getelementptr %Parser, ptr %t15922, i32 0, i32 1
+  %t15924 = load ptr, ptr %t15923
+  %t15925 = load ptr, ptr %this.15887
+  %t15926 = getelementptr %Parser, ptr %t15925, i32 0, i32 2
+  %t15927 = load i64, ptr %t15926
+  %t15928 = call ptr @jerry_array_get(ptr %t15924, i64 %t15927)
+  %t15929 = load ptr, ptr %t15928
+  %t.15930 = alloca ptr
+  store ptr %t15929, ptr %t.15930
+  call void @jerry_retain(ptr %t15929)
+  %t15931 = call ptr @jerry_string_new(ptr @.str.1340, i64 15)
+  %t15932 = load ptr, ptr %t.15930
+  %t15933 = getelementptr %Token, ptr %t15932, i32 0, i32 3
+  %t15934 = load i64, ptr %t15933
+  %t15935 = call ptr @jerry_int_to_string(i64 %t15934)
+  %t15936 = call ptr @jerry_string_concat(ptr %t15931, ptr %t15935)
+  %t15937 = call ptr @jerry_string_new(ptr @.str.1341, i64 1)
+  %t15938 = call ptr @jerry_string_concat(ptr %t15936, ptr %t15937)
+  %t15939 = load ptr, ptr %t.15930
+  %t15940 = getelementptr %Token, ptr %t15939, i32 0, i32 4
+  %t15941 = load i64, ptr %t15940
+  %t15942 = call ptr @jerry_int_to_string(i64 %t15941)
+  %t15943 = call ptr @jerry_string_concat(ptr %t15938, ptr %t15942)
+  %t15944 = call ptr @jerry_string_new(ptr @.str.1342, i64 24)
+  %t15945 = call ptr @jerry_string_concat(ptr %t15943, ptr %t15944)
+  call void @jerry_print_string(ptr %t15945)
+  call void @jerry_println()
+  call void @jerry_exit(i64 1)
+  unreachable
+if.merge.2664:
+  br label %if.merge.2661
+if.merge.2661:
+  %t15946 = load ptr, ptr %this.15887
+  %t15947 = load i64, ptr @TOK_OP
+  %t15948 = call ptr @jerry_string_new(ptr @.str.1343, i64 1)
+  %t15949 = call ptr @Parser_expect_jerry(ptr %t15946, i64 %t15947, ptr %t15948)
+  call void @jerry_release(ptr %t15948)
+  %t15950 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %ps.15951 = alloca ptr
+  store ptr %t15950, ptr %ps.15951
+  call void @jerry_array_mark_heap(ptr %t15950)
+  %t15952 = load ptr, ptr %this.15887
+  %t15953 = load i64, ptr @TOK_OP
+  %t15954 = call ptr @jerry_string_new(ptr @.str.1344, i64 1)
+  %t15955 = call i1 @Parser_check_jerry(ptr %t15952, i64 %t15953, ptr %t15954)
+  call void @jerry_release(ptr %t15954)
+  %t15956 = xor i1 %t15955, true
+  br i1 %t15956, label %if.then.2665, label %if.else.2666
+if.then.2665:
+  %t15957 = load ptr, ptr %this.15887
+  %t15958 = call ptr @Parser_parse_param_jerry(ptr %t15957)
+  %p.15959 = alloca ptr
+  store ptr %t15958, ptr %p.15959
+  %t15960 = load ptr, ptr %ps.15951
+  %t15961 = load ptr, ptr %p.15959
+  %t15962.slot = alloca ptr
+  store ptr %t15961, ptr %t15962.slot
+  call void @jerry_array_push(ptr %t15960, ptr %t15962.slot)
+  br label %while.cond.2668
+while.cond.2668:
+  %t15963 = load ptr, ptr %this.15887
+  %t15964 = load i64, ptr @TOK_OP
+  %t15965 = call ptr @jerry_string_new(ptr @.str.1345, i64 1)
+  %t15966 = call i1 @Parser_eat_jerry(ptr %t15963, i64 %t15964, ptr %t15965)
+  call void @jerry_release(ptr %t15965)
+  br i1 %t15966, label %while.body.2669, label %while.end.2670
+while.body.2669:
+  %t15967 = load ptr, ptr %this.15887
+  %t15968 = call ptr @Parser_parse_param_jerry(ptr %t15967)
+  %p2.15969 = alloca ptr
+  store ptr %t15968, ptr %p2.15969
+  %t15970 = load ptr, ptr %ps.15951
+  %t15971 = load ptr, ptr %p2.15969
+  %t15972.slot = alloca ptr
+  store ptr %t15971, ptr %t15972.slot
+  call void @jerry_array_push(ptr %t15970, ptr %t15972.slot)
+  %t15973 = load ptr, ptr %p2.15969
+  call void @jerry_release(ptr %t15973)
+  br label %while.cond.2668
+while.end.2670:
+  %t15974 = load ptr, ptr %p.15959
+  call void @jerry_release(ptr %t15974)
+  br label %if.merge.2667
+if.else.2666:
+  br label %if.merge.2667
+if.merge.2667:
+  %t15975 = load ptr, ptr %this.15887
+  %t15976 = load i64, ptr @TOK_OP
+  %t15977 = call ptr @jerry_string_new(ptr @.str.1346, i64 1)
+  %t15978 = call ptr @Parser_expect_jerry(ptr %t15975, i64 %t15976, ptr %t15977)
+  call void @jerry_release(ptr %t15977)
+  %ret.15979 = alloca ptr
+  store ptr null, ptr %ret.15979
+  %t15980 = load ptr, ptr %this.15887
+  %t15981 = load i64, ptr @TOK_OP
+  %t15982 = call ptr @jerry_string_new(ptr @.str.1347, i64 1)
+  %t15983 = call i1 @Parser_eat_jerry(ptr %t15980, i64 %t15981, ptr %t15982)
+  call void @jerry_release(ptr %t15982)
+  br i1 %t15983, label %if.then.2671, label %if.else.2672
+if.then.2671:
+  %t15984 = load ptr, ptr %this.15887
+  %t15985 = call ptr @Parser_parse_type_expr_jerry(ptr %t15984)
+  %t15986 = load ptr, ptr %ret.15979
+  call void @jerry_retain(ptr %t15985)
+  store ptr %t15985, ptr %ret.15979
+  call void @jerry_release(ptr %t15986)
+  br label %if.merge.2673
+if.else.2672:
+  br label %if.merge.2673
+if.merge.2673:
+  %t15987 = load ptr, ptr %this.15887
+  %t15988 = call ptr @Parser_parse_block_jerry(ptr %t15987)
+  %body.15989 = alloca ptr
+  store ptr %t15988, ptr %body.15989
+  %t15990 = getelementptr %FnDecl, ptr null, i32 1
+  %t15991 = ptrtoint ptr %t15990 to i64
+  %t15992 = call ptr @jerry_alloc(i64 %t15991)
+  %t15993 = getelementptr i8, ptr %t15992, i64 -8
+  store ptr @FnDecl_destroy_jerry, ptr %t15993
+  %t15994 = getelementptr %FnDecl, ptr %t15992, i32 0, i32 0
+  store ptr @vtable.FnDecl, ptr %t15994
+  %t15995 = load ptr, ptr %fname.15897
+  %t15996 = load ptr, ptr %ps.15951
+  %t15997 = load ptr, ptr %ret.15979
+  %t15998 = load ptr, ptr %body.15989
+  %t15999 = load i64, ptr %l.15890
+  %t16000 = load i64, ptr %c.15893
+  call void @FnDecl_new_jerry(ptr %t15992, ptr %t15995, ptr %t15996, ptr %t15997, ptr %t15998, i64 %t15999, i64 %t16000)
+  %t16001 = load ptr, ptr %body.15989
+  call void @jerry_release(ptr %t16001)
+  %t16002 = load ptr, ptr %ret.15979
+  call void @jerry_release(ptr %t16002)
+  %t16003 = load ptr, ptr %ps.15951
+  call void @jerry_release(ptr %t16003)
+  %t16004 = load ptr, ptr %fname.15897
+  call void @jerry_release(ptr %t16004)
+  ret ptr %t15992
+}
+
+define ptr @Parser_parse_param_jerry(ptr %self.arg) {
+entry:
+  %this.16005 = alloca ptr
+  store ptr %self.arg, ptr %this.16005
+  %t16006 = load ptr, ptr %this.16005
+  %t16007 = call i64 @Parser_peek_line_jerry(ptr %t16006)
+  %l.16008 = alloca i64
+  store i64 %t16007, ptr %l.16008
+  %t16009 = load ptr, ptr %this.16005
+  %t16010 = call i64 @Parser_peek_col_jerry(ptr %t16009)
+  %c.16011 = alloca i64
+  store i64 %t16010, ptr %c.16011
+  %t16012 = load ptr, ptr %this.16005
+  %t16013 = load i64, ptr @TOK_IDENT
+  %t16014 = call ptr @jerry_string_new(ptr @.str.1348, i64 0)
+  %t16015 = call ptr @Parser_expect_jerry(ptr %t16012, i64 %t16013, ptr %t16014)
+  call void @jerry_release(ptr %t16014)
+  %name.16016 = alloca ptr
+  store ptr %t16015, ptr %name.16016
+  %t16017 = load ptr, ptr %this.16005
+  %t16018 = load i64, ptr @TOK_OP
+  %t16019 = call ptr @jerry_string_new(ptr @.str.1349, i64 1)
+  %t16020 = call ptr @Parser_expect_jerry(ptr %t16017, i64 %t16018, ptr %t16019)
+  call void @jerry_release(ptr %t16019)
+  %t16021 = load ptr, ptr %this.16005
+  %t16022 = call ptr @Parser_parse_type_expr_jerry(ptr %t16021)
+  %te.16023 = alloca ptr
+  store ptr %t16022, ptr %te.16023
+  %t16024 = getelementptr %Param, ptr null, i32 1
+  %t16025 = ptrtoint ptr %t16024 to i64
+  %t16026 = call ptr @jerry_alloc(i64 %t16025)
+  %t16027 = getelementptr i8, ptr %t16026, i64 -8
+  store ptr @Param_destroy_jerry, ptr %t16027
+  %t16028 = getelementptr %Param, ptr %t16026, i32 0, i32 0
+  store ptr @vtable.Param, ptr %t16028
+  %t16029 = load ptr, ptr %name.16016
+  %t16030 = getelementptr %Token, ptr %t16029, i32 0, i32 2
+  %t16031 = load ptr, ptr %t16030
+  %t16032 = load ptr, ptr %te.16023
+  %t16033 = load i64, ptr %l.16008
+  %t16034 = load i64, ptr %c.16011
+  call void @Param_new_jerry(ptr %t16026, ptr %t16031, ptr %t16032, i64 %t16033, i64 %t16034)
+  %t16035 = load ptr, ptr %te.16023
+  call void @jerry_release(ptr %t16035)
+  %t16036 = load ptr, ptr %name.16016
+  call void @jerry_release(ptr %t16036)
+  ret ptr %t16026
+}
+
+define ptr @Parser_parse_block_jerry(ptr %self.arg) {
+entry:
+  %this.16037 = alloca ptr
+  store ptr %self.arg, ptr %this.16037
+  %t16038 = load ptr, ptr %this.16037
+  %t16039 = call i64 @Parser_peek_line_jerry(ptr %t16038)
+  %l.16040 = alloca i64
+  store i64 %t16039, ptr %l.16040
+  %t16041 = load ptr, ptr %this.16037
+  %t16042 = call i64 @Parser_peek_col_jerry(ptr %t16041)
+  %c.16043 = alloca i64
+  store i64 %t16042, ptr %c.16043
+  %t16044 = load ptr, ptr %this.16037
+  %t16045 = load i64, ptr @TOK_OP
+  %t16046 = call ptr @jerry_string_new(ptr @.str.1350, i64 1)
+  %t16047 = call ptr @Parser_expect_jerry(ptr %t16044, i64 %t16045, ptr %t16046)
+  call void @jerry_release(ptr %t16046)
+  %t16048 = getelementptr %Block, ptr null, i32 1
+  %t16049 = ptrtoint ptr %t16048 to i64
+  %t16050 = call ptr @jerry_alloc(i64 %t16049)
+  %t16051 = getelementptr i8, ptr %t16050, i64 -8
+  store ptr @Block_destroy_jerry, ptr %t16051
+  %t16052 = getelementptr %Block, ptr %t16050, i32 0, i32 0
+  store ptr @vtable.Block, ptr %t16052
+  %t16053 = load i64, ptr %l.16040
+  %t16054 = load i64, ptr %c.16043
+  call void @Block_new_jerry(ptr %t16050, i64 %t16053, i64 %t16054)
+  %blk.16055 = alloca ptr
+  store ptr %t16050, ptr %blk.16055
+  br label %while.cond.2674
+while.cond.2674:
+  %t16056 = load ptr, ptr %this.16037
+  %t16057 = load i64, ptr @TOK_OP
+  %t16058 = call ptr @jerry_string_new(ptr @.str.1351, i64 1)
+  %t16059 = call i1 @Parser_check_jerry(ptr %t16056, i64 %t16057, ptr %t16058)
+  call void @jerry_release(ptr %t16058)
+  %t16060 = xor i1 %t16059, true
+  br i1 %t16060, label %and.rhs.2678, label %and.false.2677
+and.rhs.2678:
+  %t16061 = load ptr, ptr %this.16037
+  %t16062 = call i64 @Parser_peek_kind_jerry(ptr %t16061)
+  %t16063 = load i64, ptr @TOK_EOF
+  %t16064 = icmp ne i64 %t16062, %t16063
+  br label %and.merge.2679
+and.false.2677:
+  br label %and.merge.2679
+and.merge.2679:
+  %t16065 = phi i1 [ %t16064, %and.rhs.2678 ], [ false, %and.false.2677 ]
+  br i1 %t16065, label %while.body.2675, label %while.end.2676
+while.body.2675:
+  %t16066 = load ptr, ptr %this.16037
+  %t16067 = call ptr @Parser_parse_stmt_jerry(ptr %t16066)
+  %st.16068 = alloca ptr
+  store ptr %t16067, ptr %st.16068
+  %t16069 = load ptr, ptr %blk.16055
+  %t16070 = getelementptr %Block, ptr %t16069, i32 0, i32 1
+  %t16071 = load ptr, ptr %t16070
+  %t16072 = load ptr, ptr %st.16068
+  %t16073.slot = alloca ptr
+  store ptr %t16072, ptr %t16073.slot
+  call void @jerry_array_push(ptr %t16071, ptr %t16073.slot)
+  %t16074 = load ptr, ptr %st.16068
+  call void @jerry_release(ptr %t16074)
+  br label %while.cond.2674
+while.end.2676:
+  %t16075 = load ptr, ptr %this.16037
+  %t16076 = load i64, ptr @TOK_OP
+  %t16077 = call ptr @jerry_string_new(ptr @.str.1352, i64 1)
+  %t16078 = call ptr @Parser_expect_jerry(ptr %t16075, i64 %t16076, ptr %t16077)
+  call void @jerry_release(ptr %t16077)
+  %t16079 = load ptr, ptr %blk.16055
+  ret ptr %t16079
+}
+
+define ptr @Parser_parse_stmt_jerry(ptr %self.arg) {
+entry:
+  %this.16080 = alloca ptr
+  store ptr %self.arg, ptr %this.16080
+  %t16081 = load ptr, ptr %this.16080
+  %t16082 = call i64 @Parser_peek_line_jerry(ptr %t16081)
+  %l.16083 = alloca i64
+  store i64 %t16082, ptr %l.16083
+  %t16084 = load ptr, ptr %this.16080
+  %t16085 = call i64 @Parser_peek_col_jerry(ptr %t16084)
+  %c.16086 = alloca i64
+  store i64 %t16085, ptr %c.16086
+  %t16087 = load ptr, ptr %this.16080
+  %t16088 = load i64, ptr @TOK_KEYWORD
+  %t16089 = call ptr @jerry_string_new(ptr @.str.1353, i64 3)
+  %t16090 = call i1 @Parser_check_jerry(ptr %t16087, i64 %t16088, ptr %t16089)
+  call void @jerry_release(ptr %t16089)
+  br i1 %t16090, label %if.then.2680, label %if.else.2681
+if.then.2680:
+  %t16091 = load ptr, ptr %this.16080
+  %t16092 = load i64, ptr %l.16083
+  %t16093 = load i64, ptr %c.16086
+  %t16094 = call ptr @Parser_parse_var_decl_stmt_jerry(ptr %t16091, i64 %t16092, i64 %t16093)
+  ret ptr %t16094
+if.else.2681:
+  br label %if.merge.2682
+if.merge.2682:
+  %t16095 = load ptr, ptr %this.16080
+  %t16096 = load i64, ptr @TOK_KEYWORD
+  %t16097 = call ptr @jerry_string_new(ptr @.str.1354, i64 6)
+  %t16098 = call i1 @Parser_check_jerry(ptr %t16095, i64 %t16096, ptr %t16097)
+  call void @jerry_release(ptr %t16097)
+  br i1 %t16098, label %if.then.2683, label %if.else.2684
+if.then.2683:
+  %t16099 = load ptr, ptr %this.16080
+  %t16100 = load i64, ptr %l.16083
+  %t16101 = load i64, ptr %c.16086
+  %t16102 = call ptr @Parser_parse_return_stmt_jerry(ptr %t16099, i64 %t16100, i64 %t16101)
+  ret ptr %t16102
+if.else.2684:
+  br label %if.merge.2685
+if.merge.2685:
+  %t16103 = load ptr, ptr %this.16080
+  %t16104 = load i64, ptr @TOK_KEYWORD
+  %t16105 = call ptr @jerry_string_new(ptr @.str.1355, i64 2)
+  %t16106 = call i1 @Parser_check_jerry(ptr %t16103, i64 %t16104, ptr %t16105)
+  call void @jerry_release(ptr %t16105)
+  br i1 %t16106, label %if.then.2686, label %if.else.2687
+if.then.2686:
+  %t16107 = load ptr, ptr %this.16080
+  %t16108 = load i64, ptr %l.16083
+  %t16109 = load i64, ptr %c.16086
+  %t16110 = call ptr @Parser_parse_if_stmt_jerry(ptr %t16107, i64 %t16108, i64 %t16109)
+  ret ptr %t16110
+if.else.2687:
+  br label %if.merge.2688
+if.merge.2688:
+  %t16111 = load ptr, ptr %this.16080
+  %t16112 = load i64, ptr @TOK_KEYWORD
+  %t16113 = call ptr @jerry_string_new(ptr @.str.1356, i64 5)
+  %t16114 = call i1 @Parser_check_jerry(ptr %t16111, i64 %t16112, ptr %t16113)
+  call void @jerry_release(ptr %t16113)
+  br i1 %t16114, label %if.then.2689, label %if.else.2690
+if.then.2689:
+  %t16115 = load ptr, ptr %this.16080
+  %t16116 = load i64, ptr %l.16083
+  %t16117 = load i64, ptr %c.16086
+  %t16118 = call ptr @Parser_parse_while_stmt_jerry(ptr %t16115, i64 %t16116, i64 %t16117)
+  ret ptr %t16118
+if.else.2690:
+  br label %if.merge.2691
+if.merge.2691:
+  %t16119 = load ptr, ptr %this.16080
+  %t16120 = load i64, ptr @TOK_KEYWORD
+  %t16121 = call ptr @jerry_string_new(ptr @.str.1357, i64 3)
+  %t16122 = call i1 @Parser_check_jerry(ptr %t16119, i64 %t16120, ptr %t16121)
+  call void @jerry_release(ptr %t16121)
+  br i1 %t16122, label %if.then.2692, label %if.else.2693
+if.then.2692:
+  %t16123 = load ptr, ptr %this.16080
+  %t16124 = load i64, ptr %l.16083
+  %t16125 = load i64, ptr %c.16086
+  %t16126 = call ptr @Parser_parse_for_stmt_jerry(ptr %t16123, i64 %t16124, i64 %t16125)
+  ret ptr %t16126
+if.else.2693:
+  br label %if.merge.2694
+if.merge.2694:
+  %t16127 = load ptr, ptr %this.16080
+  %t16128 = load i64, ptr @TOK_KEYWORD
+  %t16129 = call ptr @jerry_string_new(ptr @.str.1358, i64 5)
+  %t16130 = call i1 @Parser_check_jerry(ptr %t16127, i64 %t16128, ptr %t16129)
+  call void @jerry_release(ptr %t16129)
+  br i1 %t16130, label %if.then.2695, label %if.else.2696
+if.then.2695:
+  %t16131 = load ptr, ptr %this.16080
+  %t16132 = call ptr @Parser_advance_jerry(ptr %t16131)
+  %t16133 = load ptr, ptr %this.16080
+  %t16134 = load i64, ptr @TOK_OP
+  %t16135 = call ptr @jerry_string_new(ptr @.str.1359, i64 1)
+  %t16136 = call ptr @Parser_expect_jerry(ptr %t16133, i64 %t16134, ptr %t16135)
+  call void @jerry_release(ptr %t16135)
+  %t16137 = getelementptr %Stmt, ptr null, i32 1
+  %t16138 = ptrtoint ptr %t16137 to i64
+  %t16139 = call ptr @jerry_alloc(i64 %t16138)
+  %t16140 = getelementptr i8, ptr %t16139, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16140
+  %t16141 = getelementptr %Stmt, ptr %t16139, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16141
+  %t16142 = load i64, ptr @STMT_BREAK
+  %t16143 = load i64, ptr %l.16083
+  %t16144 = load i64, ptr %c.16086
+  call void @Stmt_new_jerry(ptr %t16139, i64 %t16142, i64 %t16143, i64 %t16144)
+  ret ptr %t16139
+if.else.2696:
+  br label %if.merge.2697
+if.merge.2697:
+  %t16145 = load ptr, ptr %this.16080
+  %t16146 = load i64, ptr @TOK_KEYWORD
+  %t16147 = call ptr @jerry_string_new(ptr @.str.1360, i64 8)
+  %t16148 = call i1 @Parser_check_jerry(ptr %t16145, i64 %t16146, ptr %t16147)
+  call void @jerry_release(ptr %t16147)
+  br i1 %t16148, label %if.then.2698, label %if.else.2699
+if.then.2698:
+  %t16149 = load ptr, ptr %this.16080
+  %t16150 = call ptr @Parser_advance_jerry(ptr %t16149)
+  %t16151 = load ptr, ptr %this.16080
+  %t16152 = load i64, ptr @TOK_OP
+  %t16153 = call ptr @jerry_string_new(ptr @.str.1361, i64 1)
+  %t16154 = call ptr @Parser_expect_jerry(ptr %t16151, i64 %t16152, ptr %t16153)
+  call void @jerry_release(ptr %t16153)
+  %t16155 = getelementptr %Stmt, ptr null, i32 1
+  %t16156 = ptrtoint ptr %t16155 to i64
+  %t16157 = call ptr @jerry_alloc(i64 %t16156)
+  %t16158 = getelementptr i8, ptr %t16157, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16158
+  %t16159 = getelementptr %Stmt, ptr %t16157, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16159
+  %t16160 = load i64, ptr @STMT_CONTINUE
+  %t16161 = load i64, ptr %l.16083
+  %t16162 = load i64, ptr %c.16086
+  call void @Stmt_new_jerry(ptr %t16157, i64 %t16160, i64 %t16161, i64 %t16162)
+  ret ptr %t16157
+if.else.2699:
+  br label %if.merge.2700
+if.merge.2700:
+  %t16163 = getelementptr %Stmt, ptr null, i32 1
+  %t16164 = ptrtoint ptr %t16163 to i64
+  %t16165 = call ptr @jerry_alloc(i64 %t16164)
+  %t16166 = getelementptr i8, ptr %t16165, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16166
+  %t16167 = getelementptr %Stmt, ptr %t16165, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16167
+  %t16168 = load i64, ptr @STMT_EXPR
+  %t16169 = load i64, ptr %l.16083
+  %t16170 = load i64, ptr %c.16086
+  call void @Stmt_new_jerry(ptr %t16165, i64 %t16168, i64 %t16169, i64 %t16170)
+  %st.16171 = alloca ptr
+  store ptr %t16165, ptr %st.16171
+  %t16172 = load ptr, ptr %this.16080
+  %t16173 = call ptr @Parser_parse_expr_jerry(ptr %t16172)
+  %t16174 = load ptr, ptr %st.16171
+  %t16175 = getelementptr %Stmt, ptr %t16174, i32 0, i32 17
+  %t16176 = load ptr, ptr %t16175
+  call void @jerry_retain(ptr %t16173)
+  store ptr %t16173, ptr %t16175
+  call void @jerry_release(ptr %t16176)
+  %t16177 = load ptr, ptr %this.16080
+  %t16178 = load i64, ptr @TOK_OP
+  %t16179 = call ptr @jerry_string_new(ptr @.str.1362, i64 1)
+  %t16180 = call ptr @Parser_expect_jerry(ptr %t16177, i64 %t16178, ptr %t16179)
+  call void @jerry_release(ptr %t16179)
+  %t16181 = load ptr, ptr %st.16171
+  ret ptr %t16181
+}
+
+define ptr @Parser_parse_var_decl_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16182 = alloca ptr
+  store ptr %self.arg, ptr %this.16182
+  %l.16183 = alloca i64
+  store i64 %l.arg, ptr %l.16183
+  %c.16184 = alloca i64
+  store i64 %c.arg, ptr %c.16184
+  %t16185 = load ptr, ptr %this.16182
+  %t16186 = call ptr @Parser_advance_jerry(ptr %t16185)
+  %t16187 = load ptr, ptr %this.16182
+  %t16188 = load i64, ptr @TOK_IDENT
+  %t16189 = call ptr @jerry_string_new(ptr @.str.1363, i64 0)
+  %t16190 = call ptr @Parser_expect_jerry(ptr %t16187, i64 %t16188, ptr %t16189)
+  call void @jerry_release(ptr %t16189)
+  %name.16191 = alloca ptr
+  store ptr %t16190, ptr %name.16191
+  %t16192 = getelementptr %Stmt, ptr null, i32 1
+  %t16193 = ptrtoint ptr %t16192 to i64
+  %t16194 = call ptr @jerry_alloc(i64 %t16193)
+  %t16195 = getelementptr i8, ptr %t16194, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16195
+  %t16196 = getelementptr %Stmt, ptr %t16194, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16196
+  %t16197 = load i64, ptr @STMT_VAR
+  %t16198 = load i64, ptr %l.16183
+  %t16199 = load i64, ptr %c.16184
+  call void @Stmt_new_jerry(ptr %t16194, i64 %t16197, i64 %t16198, i64 %t16199)
+  %st.16200 = alloca ptr
+  store ptr %t16194, ptr %st.16200
+  %t16201 = load ptr, ptr %name.16191
+  %t16202 = getelementptr %Token, ptr %t16201, i32 0, i32 2
+  %t16203 = load ptr, ptr %t16202
+  %t16204 = load ptr, ptr %st.16200
+  %t16205 = getelementptr %Stmt, ptr %t16204, i32 0, i32 2
+  %t16206 = load ptr, ptr %t16205
+  call void @jerry_retain(ptr %t16203)
+  store ptr %t16203, ptr %t16205
+  call void @jerry_release(ptr %t16206)
+  %t16207 = load ptr, ptr %this.16182
+  %t16208 = load i64, ptr @TOK_OP
+  %t16209 = call ptr @jerry_string_new(ptr @.str.1364, i64 1)
+  %t16210 = call i1 @Parser_eat_jerry(ptr %t16207, i64 %t16208, ptr %t16209)
+  call void @jerry_release(ptr %t16209)
+  br i1 %t16210, label %if.then.2701, label %if.else.2702
+if.then.2701:
+  %t16211 = load ptr, ptr %this.16182
+  %t16212 = call ptr @Parser_parse_type_expr_jerry(ptr %t16211)
+  %t16213 = load ptr, ptr %st.16200
+  %t16214 = getelementptr %Stmt, ptr %t16213, i32 0, i32 3
+  %t16215 = load ptr, ptr %t16214
+  call void @jerry_retain(ptr %t16212)
+  store ptr %t16212, ptr %t16214
+  call void @jerry_release(ptr %t16215)
+  br label %if.merge.2703
+if.else.2702:
+  br label %if.merge.2703
+if.merge.2703:
+  %t16216 = load ptr, ptr %this.16182
+  %t16217 = load i64, ptr @TOK_OP
+  %t16218 = call ptr @jerry_string_new(ptr @.str.1365, i64 1)
+  %t16219 = call ptr @Parser_expect_jerry(ptr %t16216, i64 %t16217, ptr %t16218)
+  call void @jerry_release(ptr %t16218)
+  %t16220 = load ptr, ptr %this.16182
+  %t16221 = call ptr @Parser_parse_expr_jerry(ptr %t16220)
+  %t16222 = load ptr, ptr %st.16200
+  %t16223 = getelementptr %Stmt, ptr %t16222, i32 0, i32 4
+  %t16224 = load ptr, ptr %t16223
+  call void @jerry_retain(ptr %t16221)
+  store ptr %t16221, ptr %t16223
+  call void @jerry_release(ptr %t16224)
+  %t16225 = load ptr, ptr %this.16182
+  %t16226 = load i64, ptr @TOK_OP
+  %t16227 = call ptr @jerry_string_new(ptr @.str.1366, i64 1)
+  %t16228 = call ptr @Parser_expect_jerry(ptr %t16225, i64 %t16226, ptr %t16227)
+  call void @jerry_release(ptr %t16227)
+  %t16229 = load ptr, ptr %st.16200
+  %t16230 = load ptr, ptr %name.16191
+  call void @jerry_release(ptr %t16230)
+  ret ptr %t16229
+}
+
+define ptr @Parser_parse_return_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16231 = alloca ptr
+  store ptr %self.arg, ptr %this.16231
+  %l.16232 = alloca i64
+  store i64 %l.arg, ptr %l.16232
+  %c.16233 = alloca i64
+  store i64 %c.arg, ptr %c.16233
+  %t16234 = load ptr, ptr %this.16231
+  %t16235 = call ptr @Parser_advance_jerry(ptr %t16234)
+  %t16236 = getelementptr %Stmt, ptr null, i32 1
+  %t16237 = ptrtoint ptr %t16236 to i64
+  %t16238 = call ptr @jerry_alloc(i64 %t16237)
+  %t16239 = getelementptr i8, ptr %t16238, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16239
+  %t16240 = getelementptr %Stmt, ptr %t16238, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16240
+  %t16241 = load i64, ptr @STMT_RETURN
+  %t16242 = load i64, ptr %l.16232
+  %t16243 = load i64, ptr %c.16233
+  call void @Stmt_new_jerry(ptr %t16238, i64 %t16241, i64 %t16242, i64 %t16243)
+  %st.16244 = alloca ptr
+  store ptr %t16238, ptr %st.16244
+  %t16245 = load ptr, ptr %this.16231
+  %t16246 = load i64, ptr @TOK_OP
+  %t16247 = call ptr @jerry_string_new(ptr @.str.1367, i64 1)
+  %t16248 = call i1 @Parser_check_jerry(ptr %t16245, i64 %t16246, ptr %t16247)
+  call void @jerry_release(ptr %t16247)
+  %t16249 = xor i1 %t16248, true
+  br i1 %t16249, label %if.then.2704, label %if.else.2705
+if.then.2704:
+  %t16250 = load ptr, ptr %this.16231
+  %t16251 = call ptr @Parser_parse_expr_jerry(ptr %t16250)
+  %t16252 = load ptr, ptr %st.16244
+  %t16253 = getelementptr %Stmt, ptr %t16252, i32 0, i32 5
+  %t16254 = load ptr, ptr %t16253
+  call void @jerry_retain(ptr %t16251)
+  store ptr %t16251, ptr %t16253
+  call void @jerry_release(ptr %t16254)
+  br label %if.merge.2706
+if.else.2705:
+  br label %if.merge.2706
+if.merge.2706:
+  %t16255 = load ptr, ptr %this.16231
+  %t16256 = load i64, ptr @TOK_OP
+  %t16257 = call ptr @jerry_string_new(ptr @.str.1368, i64 1)
+  %t16258 = call ptr @Parser_expect_jerry(ptr %t16255, i64 %t16256, ptr %t16257)
+  call void @jerry_release(ptr %t16257)
+  %t16259 = load ptr, ptr %st.16244
+  ret ptr %t16259
+}
+
+define ptr @Parser_parse_if_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16260 = alloca ptr
+  store ptr %self.arg, ptr %this.16260
+  %l.16261 = alloca i64
+  store i64 %l.arg, ptr %l.16261
+  %c.16262 = alloca i64
+  store i64 %c.arg, ptr %c.16262
+  %t16263 = load ptr, ptr %this.16260
+  %t16264 = call ptr @Parser_advance_jerry(ptr %t16263)
+  %t16265 = getelementptr %Stmt, ptr null, i32 1
+  %t16266 = ptrtoint ptr %t16265 to i64
+  %t16267 = call ptr @jerry_alloc(i64 %t16266)
+  %t16268 = getelementptr i8, ptr %t16267, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16268
+  %t16269 = getelementptr %Stmt, ptr %t16267, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16269
+  %t16270 = load i64, ptr @STMT_IF
+  %t16271 = load i64, ptr %l.16261
+  %t16272 = load i64, ptr %c.16262
+  call void @Stmt_new_jerry(ptr %t16267, i64 %t16270, i64 %t16271, i64 %t16272)
+  %st.16273 = alloca ptr
+  store ptr %t16267, ptr %st.16273
+  %t16274 = load ptr, ptr %this.16260
+  %t16275 = call ptr @Parser_parse_expr_jerry(ptr %t16274)
+  %t16276 = load ptr, ptr %st.16273
+  %t16277 = getelementptr %Stmt, ptr %t16276, i32 0, i32 6
+  %t16278 = load ptr, ptr %t16277
+  call void @jerry_retain(ptr %t16275)
+  store ptr %t16275, ptr %t16277
+  call void @jerry_release(ptr %t16278)
+  %t16279 = load ptr, ptr %this.16260
+  %t16280 = call ptr @Parser_parse_block_jerry(ptr %t16279)
+  %t16281 = load ptr, ptr %st.16273
+  %t16282 = getelementptr %Stmt, ptr %t16281, i32 0, i32 7
+  %t16283 = load ptr, ptr %t16282
+  call void @jerry_retain(ptr %t16280)
+  store ptr %t16280, ptr %t16282
+  call void @jerry_release(ptr %t16283)
+  %t16284 = load ptr, ptr %this.16260
+  %t16285 = load i64, ptr @TOK_KEYWORD
+  %t16286 = call ptr @jerry_string_new(ptr @.str.1369, i64 4)
+  %t16287 = call i1 @Parser_eat_jerry(ptr %t16284, i64 %t16285, ptr %t16286)
+  call void @jerry_release(ptr %t16286)
+  br i1 %t16287, label %if.then.2707, label %if.else.2708
+if.then.2707:
+  %t16288 = load ptr, ptr %this.16260
+  %t16289 = load i64, ptr @TOK_KEYWORD
+  %t16290 = call ptr @jerry_string_new(ptr @.str.1370, i64 2)
+  %t16291 = call i1 @Parser_check_jerry(ptr %t16288, i64 %t16289, ptr %t16290)
+  call void @jerry_release(ptr %t16290)
+  br i1 %t16291, label %if.then.2710, label %if.else.2711
+if.then.2710:
+  %t16292 = load ptr, ptr %this.16260
+  %t16293 = call i64 @Parser_peek_line_jerry(ptr %t16292)
+  %elif_l.16294 = alloca i64
+  store i64 %t16293, ptr %elif_l.16294
+  %t16295 = load ptr, ptr %this.16260
+  %t16296 = call i64 @Parser_peek_col_jerry(ptr %t16295)
+  %elif_c.16297 = alloca i64
+  store i64 %t16296, ptr %elif_c.16297
+  %t16298 = load ptr, ptr %this.16260
+  %t16299 = load i64, ptr %elif_l.16294
+  %t16300 = load i64, ptr %elif_c.16297
+  %t16301 = call ptr @Parser_parse_if_stmt_jerry(ptr %t16298, i64 %t16299, i64 %t16300)
+  %t16302 = load ptr, ptr %st.16273
+  %t16303 = getelementptr %Stmt, ptr %t16302, i32 0, i32 9
+  %t16304 = load ptr, ptr %t16303
+  call void @jerry_retain(ptr %t16301)
+  store ptr %t16301, ptr %t16303
+  call void @jerry_release(ptr %t16304)
+  br label %if.merge.2712
+if.else.2711:
+  %t16305 = load ptr, ptr %this.16260
+  %t16306 = call ptr @Parser_parse_block_jerry(ptr %t16305)
+  %t16307 = load ptr, ptr %st.16273
+  %t16308 = getelementptr %Stmt, ptr %t16307, i32 0, i32 8
+  %t16309 = load ptr, ptr %t16308
+  call void @jerry_retain(ptr %t16306)
+  store ptr %t16306, ptr %t16308
+  call void @jerry_release(ptr %t16309)
+  br label %if.merge.2712
+if.merge.2712:
+  br label %if.merge.2709
+if.else.2708:
+  br label %if.merge.2709
+if.merge.2709:
+  %t16310 = load ptr, ptr %st.16273
+  ret ptr %t16310
+}
+
+define ptr @Parser_parse_while_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16311 = alloca ptr
+  store ptr %self.arg, ptr %this.16311
+  %l.16312 = alloca i64
+  store i64 %l.arg, ptr %l.16312
+  %c.16313 = alloca i64
+  store i64 %c.arg, ptr %c.16313
+  %t16314 = load ptr, ptr %this.16311
+  %t16315 = call ptr @Parser_advance_jerry(ptr %t16314)
+  %t16316 = getelementptr %Stmt, ptr null, i32 1
+  %t16317 = ptrtoint ptr %t16316 to i64
+  %t16318 = call ptr @jerry_alloc(i64 %t16317)
+  %t16319 = getelementptr i8, ptr %t16318, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16319
+  %t16320 = getelementptr %Stmt, ptr %t16318, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16320
+  %t16321 = load i64, ptr @STMT_WHILE
+  %t16322 = load i64, ptr %l.16312
+  %t16323 = load i64, ptr %c.16313
+  call void @Stmt_new_jerry(ptr %t16318, i64 %t16321, i64 %t16322, i64 %t16323)
+  %st.16324 = alloca ptr
+  store ptr %t16318, ptr %st.16324
+  %t16325 = load ptr, ptr %this.16311
+  %t16326 = call ptr @Parser_parse_expr_jerry(ptr %t16325)
+  %t16327 = load ptr, ptr %st.16324
+  %t16328 = getelementptr %Stmt, ptr %t16327, i32 0, i32 10
+  %t16329 = load ptr, ptr %t16328
+  call void @jerry_retain(ptr %t16326)
+  store ptr %t16326, ptr %t16328
+  call void @jerry_release(ptr %t16329)
+  %t16330 = load ptr, ptr %this.16311
+  %t16331 = call ptr @Parser_parse_block_jerry(ptr %t16330)
+  %t16332 = load ptr, ptr %st.16324
+  %t16333 = getelementptr %Stmt, ptr %t16332, i32 0, i32 11
+  %t16334 = load ptr, ptr %t16333
+  call void @jerry_retain(ptr %t16331)
+  store ptr %t16331, ptr %t16333
+  call void @jerry_release(ptr %t16334)
+  %t16335 = load ptr, ptr %st.16324
+  ret ptr %t16335
+}
+
+define ptr @Parser_parse_for_stmt_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16336 = alloca ptr
+  store ptr %self.arg, ptr %this.16336
+  %l.16337 = alloca i64
+  store i64 %l.arg, ptr %l.16337
+  %c.16338 = alloca i64
+  store i64 %c.arg, ptr %c.16338
+  %t16339 = load ptr, ptr %this.16336
+  %t16340 = call ptr @Parser_advance_jerry(ptr %t16339)
+  %t16341 = load ptr, ptr %this.16336
+  %t16342 = load i64, ptr @TOK_OP
+  %t16343 = call ptr @jerry_string_new(ptr @.str.1371, i64 1)
+  %t16344 = call ptr @Parser_expect_jerry(ptr %t16341, i64 %t16342, ptr %t16343)
+  call void @jerry_release(ptr %t16343)
+  %t16345 = getelementptr %Stmt, ptr null, i32 1
+  %t16346 = ptrtoint ptr %t16345 to i64
+  %t16347 = call ptr @jerry_alloc(i64 %t16346)
+  %t16348 = getelementptr i8, ptr %t16347, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16348
+  %t16349 = getelementptr %Stmt, ptr %t16347, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16349
+  %t16350 = load i64, ptr @STMT_FOR
+  %t16351 = load i64, ptr %l.16337
+  %t16352 = load i64, ptr %c.16338
+  call void @Stmt_new_jerry(ptr %t16347, i64 %t16350, i64 %t16351, i64 %t16352)
+  %st.16353 = alloca ptr
+  store ptr %t16347, ptr %st.16353
+  %t16354 = load ptr, ptr %this.16336
+  %t16355 = load i64, ptr @TOK_OP
+  %t16356 = call ptr @jerry_string_new(ptr @.str.1372, i64 1)
+  %t16357 = call i1 @Parser_check_jerry(ptr %t16354, i64 %t16355, ptr %t16356)
+  call void @jerry_release(ptr %t16356)
+  %t16358 = xor i1 %t16357, true
+  br i1 %t16358, label %if.then.2713, label %if.else.2714
+if.then.2713:
+  %t16359 = load ptr, ptr %this.16336
+  %t16360 = load i64, ptr @TOK_KEYWORD
+  %t16361 = call ptr @jerry_string_new(ptr @.str.1373, i64 3)
+  %t16362 = call i1 @Parser_check_jerry(ptr %t16359, i64 %t16360, ptr %t16361)
+  call void @jerry_release(ptr %t16361)
+  br i1 %t16362, label %if.then.2716, label %if.else.2717
+if.then.2716:
+  %t16363 = load ptr, ptr %this.16336
+  %t16364 = call i64 @Parser_peek_line_jerry(ptr %t16363)
+  %init_l.16365 = alloca i64
+  store i64 %t16364, ptr %init_l.16365
+  %t16366 = load ptr, ptr %this.16336
+  %t16367 = call i64 @Parser_peek_col_jerry(ptr %t16366)
+  %init_c.16368 = alloca i64
+  store i64 %t16367, ptr %init_c.16368
+  %t16369 = load ptr, ptr %this.16336
+  %t16370 = load i64, ptr %init_l.16365
+  %t16371 = load i64, ptr %init_c.16368
+  %t16372 = call ptr @Parser_parse_for_var_decl_jerry(ptr %t16369, i64 %t16370, i64 %t16371)
+  %t16373 = load ptr, ptr %st.16353
+  %t16374 = getelementptr %Stmt, ptr %t16373, i32 0, i32 12
+  %t16375 = load ptr, ptr %t16374
+  call void @jerry_retain(ptr %t16372)
+  store ptr %t16372, ptr %t16374
+  call void @jerry_release(ptr %t16375)
+  br label %if.merge.2718
+if.else.2717:
+  %t16376 = load ptr, ptr %this.16336
+  %t16377 = call ptr @Parser_parse_expr_jerry(ptr %t16376)
+  %t16378 = load ptr, ptr %st.16353
+  %t16379 = getelementptr %Stmt, ptr %t16378, i32 0, i32 13
+  %t16380 = load ptr, ptr %t16379
+  call void @jerry_retain(ptr %t16377)
+  store ptr %t16377, ptr %t16379
+  call void @jerry_release(ptr %t16380)
+  br label %if.merge.2718
+if.merge.2718:
+  br label %if.merge.2715
+if.else.2714:
+  br label %if.merge.2715
+if.merge.2715:
+  %t16381 = load ptr, ptr %this.16336
+  %t16382 = load i64, ptr @TOK_OP
+  %t16383 = call ptr @jerry_string_new(ptr @.str.1374, i64 1)
+  %t16384 = call ptr @Parser_expect_jerry(ptr %t16381, i64 %t16382, ptr %t16383)
+  call void @jerry_release(ptr %t16383)
+  %t16385 = load ptr, ptr %this.16336
+  %t16386 = load i64, ptr @TOK_OP
+  %t16387 = call ptr @jerry_string_new(ptr @.str.1375, i64 1)
+  %t16388 = call i1 @Parser_check_jerry(ptr %t16385, i64 %t16386, ptr %t16387)
+  call void @jerry_release(ptr %t16387)
+  %t16389 = xor i1 %t16388, true
+  br i1 %t16389, label %if.then.2719, label %if.else.2720
+if.then.2719:
+  %t16390 = load ptr, ptr %this.16336
+  %t16391 = call ptr @Parser_parse_expr_jerry(ptr %t16390)
+  %t16392 = load ptr, ptr %st.16353
+  %t16393 = getelementptr %Stmt, ptr %t16392, i32 0, i32 14
+  %t16394 = load ptr, ptr %t16393
+  call void @jerry_retain(ptr %t16391)
+  store ptr %t16391, ptr %t16393
+  call void @jerry_release(ptr %t16394)
+  br label %if.merge.2721
+if.else.2720:
+  br label %if.merge.2721
+if.merge.2721:
+  %t16395 = load ptr, ptr %this.16336
+  %t16396 = load i64, ptr @TOK_OP
+  %t16397 = call ptr @jerry_string_new(ptr @.str.1376, i64 1)
+  %t16398 = call ptr @Parser_expect_jerry(ptr %t16395, i64 %t16396, ptr %t16397)
+  call void @jerry_release(ptr %t16397)
+  %t16399 = load ptr, ptr %this.16336
+  %t16400 = load i64, ptr @TOK_OP
+  %t16401 = call ptr @jerry_string_new(ptr @.str.1377, i64 1)
+  %t16402 = call i1 @Parser_check_jerry(ptr %t16399, i64 %t16400, ptr %t16401)
+  call void @jerry_release(ptr %t16401)
+  %t16403 = xor i1 %t16402, true
+  br i1 %t16403, label %if.then.2722, label %if.else.2723
+if.then.2722:
+  %t16404 = load ptr, ptr %this.16336
+  %t16405 = call ptr @Parser_parse_expr_jerry(ptr %t16404)
+  %t16406 = load ptr, ptr %st.16353
+  %t16407 = getelementptr %Stmt, ptr %t16406, i32 0, i32 15
+  %t16408 = load ptr, ptr %t16407
+  call void @jerry_retain(ptr %t16405)
+  store ptr %t16405, ptr %t16407
+  call void @jerry_release(ptr %t16408)
+  br label %if.merge.2724
+if.else.2723:
+  br label %if.merge.2724
+if.merge.2724:
+  %t16409 = load ptr, ptr %this.16336
+  %t16410 = load i64, ptr @TOK_OP
+  %t16411 = call ptr @jerry_string_new(ptr @.str.1378, i64 1)
+  %t16412 = call ptr @Parser_expect_jerry(ptr %t16409, i64 %t16410, ptr %t16411)
+  call void @jerry_release(ptr %t16411)
+  %t16413 = load ptr, ptr %this.16336
+  %t16414 = call ptr @Parser_parse_block_jerry(ptr %t16413)
+  %t16415 = load ptr, ptr %st.16353
+  %t16416 = getelementptr %Stmt, ptr %t16415, i32 0, i32 16
+  %t16417 = load ptr, ptr %t16416
+  call void @jerry_retain(ptr %t16414)
+  store ptr %t16414, ptr %t16416
+  call void @jerry_release(ptr %t16417)
+  %t16418 = load ptr, ptr %st.16353
+  ret ptr %t16418
+}
+
+define ptr @Parser_parse_for_var_decl_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
+entry:
+  %this.16419 = alloca ptr
+  store ptr %self.arg, ptr %this.16419
+  %l.16420 = alloca i64
+  store i64 %l.arg, ptr %l.16420
+  %c.16421 = alloca i64
+  store i64 %c.arg, ptr %c.16421
+  %t16422 = load ptr, ptr %this.16419
+  %t16423 = call ptr @Parser_advance_jerry(ptr %t16422)
+  %t16424 = load ptr, ptr %this.16419
+  %t16425 = load i64, ptr @TOK_IDENT
+  %t16426 = call ptr @jerry_string_new(ptr @.str.1379, i64 0)
+  %t16427 = call ptr @Parser_expect_jerry(ptr %t16424, i64 %t16425, ptr %t16426)
+  call void @jerry_release(ptr %t16426)
+  %name.16428 = alloca ptr
+  store ptr %t16427, ptr %name.16428
+  %t16429 = getelementptr %Stmt, ptr null, i32 1
+  %t16430 = ptrtoint ptr %t16429 to i64
+  %t16431 = call ptr @jerry_alloc(i64 %t16430)
+  %t16432 = getelementptr i8, ptr %t16431, i64 -8
+  store ptr @Stmt_destroy_jerry, ptr %t16432
+  %t16433 = getelementptr %Stmt, ptr %t16431, i32 0, i32 0
+  store ptr @vtable.Stmt, ptr %t16433
+  %t16434 = load i64, ptr @STMT_VAR
+  %t16435 = load i64, ptr %l.16420
+  %t16436 = load i64, ptr %c.16421
+  call void @Stmt_new_jerry(ptr %t16431, i64 %t16434, i64 %t16435, i64 %t16436)
+  %st.16437 = alloca ptr
+  store ptr %t16431, ptr %st.16437
+  %t16438 = load ptr, ptr %name.16428
+  %t16439 = getelementptr %Token, ptr %t16438, i32 0, i32 2
+  %t16440 = load ptr, ptr %t16439
+  %t16441 = load ptr, ptr %st.16437
+  %t16442 = getelementptr %Stmt, ptr %t16441, i32 0, i32 2
+  %t16443 = load ptr, ptr %t16442
+  call void @jerry_retain(ptr %t16440)
+  store ptr %t16440, ptr %t16442
+  call void @jerry_release(ptr %t16443)
+  %t16444 = load ptr, ptr %this.16419
+  %t16445 = load i64, ptr @TOK_OP
+  %t16446 = call ptr @jerry_string_new(ptr @.str.1380, i64 1)
+  %t16447 = call i1 @Parser_eat_jerry(ptr %t16444, i64 %t16445, ptr %t16446)
+  call void @jerry_release(ptr %t16446)
+  br i1 %t16447, label %if.then.2725, label %if.else.2726
+if.then.2725:
+  %t16448 = load ptr, ptr %this.16419
+  %t16449 = call ptr @Parser_parse_type_expr_jerry(ptr %t16448)
+  %t16450 = load ptr, ptr %st.16437
+  %t16451 = getelementptr %Stmt, ptr %t16450, i32 0, i32 3
+  %t16452 = load ptr, ptr %t16451
+  call void @jerry_retain(ptr %t16449)
+  store ptr %t16449, ptr %t16451
+  call void @jerry_release(ptr %t16452)
+  br label %if.merge.2727
+if.else.2726:
+  br label %if.merge.2727
+if.merge.2727:
+  %t16453 = load ptr, ptr %this.16419
+  %t16454 = load i64, ptr @TOK_OP
+  %t16455 = call ptr @jerry_string_new(ptr @.str.1381, i64 1)
+  %t16456 = call ptr @Parser_expect_jerry(ptr %t16453, i64 %t16454, ptr %t16455)
+  call void @jerry_release(ptr %t16455)
+  %t16457 = load ptr, ptr %this.16419
+  %t16458 = call ptr @Parser_parse_expr_jerry(ptr %t16457)
+  %t16459 = load ptr, ptr %st.16437
+  %t16460 = getelementptr %Stmt, ptr %t16459, i32 0, i32 4
+  %t16461 = load ptr, ptr %t16460
+  call void @jerry_retain(ptr %t16458)
+  store ptr %t16458, ptr %t16460
+  call void @jerry_release(ptr %t16461)
+  %t16462 = load ptr, ptr %st.16437
+  %t16463 = load ptr, ptr %name.16428
+  call void @jerry_release(ptr %t16463)
+  ret ptr %t16462
+}
+
+define ptr @Parser_parse_expr_jerry(ptr %self.arg) {
+entry:
+  %this.16464 = alloca ptr
+  store ptr %self.arg, ptr %this.16464
+  %t16465 = load ptr, ptr %this.16464
+  %t16466 = call ptr @Parser_parse_assign_jerry(ptr %t16465)
+  ret ptr %t16466
+}
+
+define ptr @Parser_parse_assign_jerry(ptr %self.arg) {
+entry:
+  %this.16467 = alloca ptr
+  store ptr %self.arg, ptr %this.16467
+  %t16468 = load ptr, ptr %this.16467
+  %t16469 = call ptr @Parser_parse_or_jerry(ptr %t16468)
+  %left.16470 = alloca ptr
+  store ptr %t16469, ptr %left.16470
+  %t16471 = load ptr, ptr %this.16467
+  %t16472 = load i64, ptr @TOK_OP
+  %t16473 = call ptr @jerry_string_new(ptr @.str.1382, i64 1)
+  %t16474 = call i1 @Parser_eat_jerry(ptr %t16471, i64 %t16472, ptr %t16473)
+  call void @jerry_release(ptr %t16473)
+  br i1 %t16474, label %if.then.2728, label %if.else.2729
+if.then.2728:
+  %t16475 = load ptr, ptr %left.16470
+  %t16476 = getelementptr %Expr, ptr %t16475, i32 0, i32 10
+  %t16477 = load i64, ptr %t16476
+  %l.16478 = alloca i64
+  store i64 %t16477, ptr %l.16478
+  %t16479 = load ptr, ptr %left.16470
+  %t16480 = getelementptr %Expr, ptr %t16479, i32 0, i32 11
+  %t16481 = load i64, ptr %t16480
+  %c.16482 = alloca i64
+  store i64 %t16481, ptr %c.16482
+  %t16483 = load ptr, ptr %this.16467
+  %t16484 = call ptr @Parser_parse_assign_jerry(ptr %t16483)
+  %right.16485 = alloca ptr
+  store ptr %t16484, ptr %right.16485
+  %t16486 = getelementptr %Expr, ptr null, i32 1
+  %t16487 = ptrtoint ptr %t16486 to i64
+  %t16488 = call ptr @jerry_alloc(i64 %t16487)
+  %t16489 = getelementptr i8, ptr %t16488, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16489
+  %t16490 = getelementptr %Expr, ptr %t16488, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16490
+  %t16491 = load i64, ptr @EXPR_ASSIGN
+  %t16492 = load i64, ptr %l.16478
+  %t16493 = load i64, ptr %c.16482
+  call void @Expr_new_jerry(ptr %t16488, i64 %t16491, i64 %t16492, i64 %t16493)
+  %e.16494 = alloca ptr
+  store ptr %t16488, ptr %e.16494
+  %t16495 = load ptr, ptr %left.16470
+  %t16496 = load ptr, ptr %e.16494
+  %t16497 = getelementptr %Expr, ptr %t16496, i32 0, i32 3
+  %t16498 = load ptr, ptr %t16497
+  call void @jerry_retain(ptr %t16495)
+  store ptr %t16495, ptr %t16497
+  call void @jerry_release(ptr %t16498)
+  %t16499 = load ptr, ptr %right.16485
+  %t16500 = load ptr, ptr %e.16494
+  %t16501 = getelementptr %Expr, ptr %t16500, i32 0, i32 4
+  %t16502 = load ptr, ptr %t16501
+  call void @jerry_retain(ptr %t16499)
+  store ptr %t16499, ptr %t16501
+  call void @jerry_release(ptr %t16502)
+  %t16503 = load ptr, ptr %e.16494
+  %t16504 = load ptr, ptr %right.16485
+  call void @jerry_release(ptr %t16504)
+  %t16505 = load ptr, ptr %left.16470
+  call void @jerry_release(ptr %t16505)
+  ret ptr %t16503
+if.else.2729:
+  br label %if.merge.2730
+if.merge.2730:
+  %t16506 = load ptr, ptr %left.16470
+  ret ptr %t16506
+}
+
+define ptr @Parser_parse_or_jerry(ptr %self.arg) {
+entry:
+  %this.16507 = alloca ptr
+  store ptr %self.arg, ptr %this.16507
+  %t16508 = load ptr, ptr %this.16507
+  %t16509 = call ptr @Parser_parse_and_jerry(ptr %t16508)
+  %left.16510 = alloca ptr
+  store ptr %t16509, ptr %left.16510
+  br label %while.cond.2731
+while.cond.2731:
+  %t16511 = load ptr, ptr %this.16507
+  %t16512 = load i64, ptr @TOK_OP
+  %t16513 = call ptr @jerry_string_new(ptr @.str.1383, i64 2)
+  %t16514 = call i1 @Parser_check_jerry(ptr %t16511, i64 %t16512, ptr %t16513)
+  call void @jerry_release(ptr %t16513)
+  br i1 %t16514, label %while.body.2732, label %while.end.2733
+while.body.2732:
+  %t16515 = load ptr, ptr %left.16510
+  %t16516 = getelementptr %Expr, ptr %t16515, i32 0, i32 10
+  %t16517 = load i64, ptr %t16516
+  %l.16518 = alloca i64
+  store i64 %t16517, ptr %l.16518
+  %t16519 = load ptr, ptr %left.16510
+  %t16520 = getelementptr %Expr, ptr %t16519, i32 0, i32 11
+  %t16521 = load i64, ptr %t16520
+  %c.16522 = alloca i64
+  store i64 %t16521, ptr %c.16522
+  %t16523 = load ptr, ptr %this.16507
+  %t16524 = call ptr @Parser_advance_jerry(ptr %t16523)
+  %t16525 = load ptr, ptr %this.16507
+  %t16526 = call ptr @Parser_parse_and_jerry(ptr %t16525)
+  %right.16527 = alloca ptr
+  store ptr %t16526, ptr %right.16527
+  %t16528 = getelementptr %Expr, ptr null, i32 1
+  %t16529 = ptrtoint ptr %t16528 to i64
+  %t16530 = call ptr @jerry_alloc(i64 %t16529)
+  %t16531 = getelementptr i8, ptr %t16530, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16531
+  %t16532 = getelementptr %Expr, ptr %t16530, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16532
+  %t16533 = load i64, ptr @EXPR_BINARY
+  %t16534 = load i64, ptr %l.16518
+  %t16535 = load i64, ptr %c.16522
+  call void @Expr_new_jerry(ptr %t16530, i64 %t16533, i64 %t16534, i64 %t16535)
+  %e.16536 = alloca ptr
+  store ptr %t16530, ptr %e.16536
+  %t16537 = call ptr @jerry_string_new(ptr @.str.1384, i64 2)
+  %t16538 = load ptr, ptr %e.16536
+  %t16539 = getelementptr %Expr, ptr %t16538, i32 0, i32 2
+  %t16540 = load ptr, ptr %t16539
+  call void @jerry_retain(ptr %t16537)
+  store ptr %t16537, ptr %t16539
+  call void @jerry_release(ptr %t16540)
+  %t16541 = load ptr, ptr %left.16510
+  %t16542 = load ptr, ptr %e.16536
+  %t16543 = getelementptr %Expr, ptr %t16542, i32 0, i32 3
+  %t16544 = load ptr, ptr %t16543
+  call void @jerry_retain(ptr %t16541)
+  store ptr %t16541, ptr %t16543
+  call void @jerry_release(ptr %t16544)
+  %t16545 = load ptr, ptr %right.16527
+  %t16546 = load ptr, ptr %e.16536
+  %t16547 = getelementptr %Expr, ptr %t16546, i32 0, i32 4
+  %t16548 = load ptr, ptr %t16547
+  call void @jerry_retain(ptr %t16545)
+  store ptr %t16545, ptr %t16547
+  call void @jerry_release(ptr %t16548)
+  %t16549 = load ptr, ptr %e.16536
+  %t16550 = load ptr, ptr %left.16510
+  call void @jerry_retain(ptr %t16549)
+  store ptr %t16549, ptr %left.16510
+  call void @jerry_release(ptr %t16550)
+  %t16551 = load ptr, ptr %e.16536
+  call void @jerry_release(ptr %t16551)
+  %t16552 = load ptr, ptr %right.16527
+  call void @jerry_release(ptr %t16552)
+  br label %while.cond.2731
+while.end.2733:
+  %t16553 = load ptr, ptr %left.16510
+  ret ptr %t16553
+}
+
+define ptr @Parser_parse_and_jerry(ptr %self.arg) {
+entry:
+  %this.16554 = alloca ptr
+  store ptr %self.arg, ptr %this.16554
+  %t16555 = load ptr, ptr %this.16554
+  %t16556 = call ptr @Parser_parse_eq_jerry(ptr %t16555)
+  %left.16557 = alloca ptr
+  store ptr %t16556, ptr %left.16557
+  br label %while.cond.2734
+while.cond.2734:
+  %t16558 = load ptr, ptr %this.16554
+  %t16559 = load i64, ptr @TOK_OP
+  %t16560 = call ptr @jerry_string_new(ptr @.str.1385, i64 2)
+  %t16561 = call i1 @Parser_check_jerry(ptr %t16558, i64 %t16559, ptr %t16560)
+  call void @jerry_release(ptr %t16560)
+  br i1 %t16561, label %while.body.2735, label %while.end.2736
+while.body.2735:
+  %t16562 = load ptr, ptr %left.16557
+  %t16563 = getelementptr %Expr, ptr %t16562, i32 0, i32 10
+  %t16564 = load i64, ptr %t16563
+  %l.16565 = alloca i64
+  store i64 %t16564, ptr %l.16565
+  %t16566 = load ptr, ptr %left.16557
+  %t16567 = getelementptr %Expr, ptr %t16566, i32 0, i32 11
+  %t16568 = load i64, ptr %t16567
+  %c.16569 = alloca i64
+  store i64 %t16568, ptr %c.16569
+  %t16570 = load ptr, ptr %this.16554
+  %t16571 = call ptr @Parser_advance_jerry(ptr %t16570)
+  %t16572 = load ptr, ptr %this.16554
+  %t16573 = call ptr @Parser_parse_eq_jerry(ptr %t16572)
+  %right.16574 = alloca ptr
+  store ptr %t16573, ptr %right.16574
+  %t16575 = getelementptr %Expr, ptr null, i32 1
+  %t16576 = ptrtoint ptr %t16575 to i64
+  %t16577 = call ptr @jerry_alloc(i64 %t16576)
+  %t16578 = getelementptr i8, ptr %t16577, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16578
+  %t16579 = getelementptr %Expr, ptr %t16577, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16579
+  %t16580 = load i64, ptr @EXPR_BINARY
+  %t16581 = load i64, ptr %l.16565
+  %t16582 = load i64, ptr %c.16569
+  call void @Expr_new_jerry(ptr %t16577, i64 %t16580, i64 %t16581, i64 %t16582)
+  %e.16583 = alloca ptr
+  store ptr %t16577, ptr %e.16583
+  %t16584 = call ptr @jerry_string_new(ptr @.str.1386, i64 2)
+  %t16585 = load ptr, ptr %e.16583
+  %t16586 = getelementptr %Expr, ptr %t16585, i32 0, i32 2
+  %t16587 = load ptr, ptr %t16586
+  call void @jerry_retain(ptr %t16584)
+  store ptr %t16584, ptr %t16586
+  call void @jerry_release(ptr %t16587)
+  %t16588 = load ptr, ptr %left.16557
+  %t16589 = load ptr, ptr %e.16583
+  %t16590 = getelementptr %Expr, ptr %t16589, i32 0, i32 3
+  %t16591 = load ptr, ptr %t16590
+  call void @jerry_retain(ptr %t16588)
+  store ptr %t16588, ptr %t16590
+  call void @jerry_release(ptr %t16591)
+  %t16592 = load ptr, ptr %right.16574
+  %t16593 = load ptr, ptr %e.16583
+  %t16594 = getelementptr %Expr, ptr %t16593, i32 0, i32 4
   %t16595 = load ptr, ptr %t16594
   call void @jerry_retain(ptr %t16592)
   store ptr %t16592, ptr %t16594
   call void @jerry_release(ptr %t16595)
-  %t16596 = load ptr, ptr %e.16589
-  %t16597 = load ptr, ptr %t.16580
+  %t16596 = load ptr, ptr %e.16583
+  %t16597 = load ptr, ptr %left.16557
+  call void @jerry_retain(ptr %t16596)
+  store ptr %t16596, ptr %left.16557
   call void @jerry_release(ptr %t16597)
-  ret ptr %t16596
-if.else.2648:
-  br label %if.merge.2649
-if.merge.2649:
-  %t16598 = load ptr, ptr %this.16567
-  %t16599 = call i64 @Parser_peek_kind_jerry(ptr %t16598)
-  %t16600 = load i64, ptr @TOK_FLOAT
-  %t16601 = icmp eq i64 %t16599, %t16600
-  br i1 %t16601, label %if.then.2650, label %if.else.2651
-if.then.2650:
-  %t16602 = load ptr, ptr %this.16567
-  %t16603 = call ptr @Parser_advance_jerry(ptr %t16602)
-  %t.16604 = alloca ptr
-  store ptr %t16603, ptr %t.16604
-  %t16605 = getelementptr %Expr, ptr null, i32 1
-  %t16606 = ptrtoint ptr %t16605 to i64
-  %t16607 = call ptr @jerry_alloc(i64 %t16606)
-  %t16608 = getelementptr i8, ptr %t16607, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16608
-  %t16609 = getelementptr %Expr, ptr %t16607, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16609
-  %t16610 = load i64, ptr @EXPR_FLOAT
-  %t16611 = load i64, ptr %l.16570
-  %t16612 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16607, i64 %t16610, i64 %t16611, i64 %t16612)
-  %e.16613 = alloca ptr
-  store ptr %t16607, ptr %e.16613
-  %t16614 = load ptr, ptr %t.16604
-  %t16615 = getelementptr %Token, ptr %t16614, i32 0, i32 2
-  %t16616 = load ptr, ptr %t16615
-  %t16617 = load ptr, ptr %e.16613
-  %t16618 = getelementptr %Expr, ptr %t16617, i32 0, i32 2
-  %t16619 = load ptr, ptr %t16618
-  call void @jerry_retain(ptr %t16616)
-  store ptr %t16616, ptr %t16618
-  call void @jerry_release(ptr %t16619)
-  %t16620 = load ptr, ptr %e.16613
-  %t16621 = load ptr, ptr %t.16604
-  call void @jerry_release(ptr %t16621)
-  ret ptr %t16620
-if.else.2651:
-  br label %if.merge.2652
-if.merge.2652:
-  %t16622 = load ptr, ptr %this.16567
-  %t16623 = call i64 @Parser_peek_kind_jerry(ptr %t16622)
-  %t16624 = load i64, ptr @TOK_STRING
-  %t16625 = icmp eq i64 %t16623, %t16624
-  br i1 %t16625, label %if.then.2653, label %if.else.2654
-if.then.2653:
-  %t16626 = load ptr, ptr %this.16567
-  %t16627 = call ptr @Parser_advance_jerry(ptr %t16626)
-  %t.16628 = alloca ptr
-  store ptr %t16627, ptr %t.16628
-  %t16629 = getelementptr %Expr, ptr null, i32 1
-  %t16630 = ptrtoint ptr %t16629 to i64
-  %t16631 = call ptr @jerry_alloc(i64 %t16630)
-  %t16632 = getelementptr i8, ptr %t16631, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16632
-  %t16633 = getelementptr %Expr, ptr %t16631, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16633
-  %t16634 = load i64, ptr @EXPR_STRING
-  %t16635 = load i64, ptr %l.16570
-  %t16636 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16631, i64 %t16634, i64 %t16635, i64 %t16636)
-  %e.16637 = alloca ptr
-  store ptr %t16631, ptr %e.16637
-  %t16638 = load ptr, ptr %t.16628
-  %t16639 = getelementptr %Token, ptr %t16638, i32 0, i32 2
-  %t16640 = load ptr, ptr %t16639
-  %t16641 = load ptr, ptr %e.16637
-  %t16642 = getelementptr %Expr, ptr %t16641, i32 0, i32 2
-  %t16643 = load ptr, ptr %t16642
-  call void @jerry_retain(ptr %t16640)
-  store ptr %t16640, ptr %t16642
-  call void @jerry_release(ptr %t16643)
-  %t16644 = load ptr, ptr %e.16637
-  %t16645 = load ptr, ptr %t.16628
-  call void @jerry_release(ptr %t16645)
-  ret ptr %t16644
-if.else.2654:
-  br label %if.merge.2655
-if.merge.2655:
-  %t16646 = load ptr, ptr %this.16567
-  %t16647 = call i64 @Parser_peek_kind_jerry(ptr %t16646)
-  %t16648 = load i64, ptr @TOK_BOOL
-  %t16649 = icmp eq i64 %t16647, %t16648
-  br i1 %t16649, label %if.then.2656, label %if.else.2657
-if.then.2656:
-  %t16650 = load ptr, ptr %this.16567
-  %t16651 = call ptr @Parser_advance_jerry(ptr %t16650)
-  %t.16652 = alloca ptr
-  store ptr %t16651, ptr %t.16652
-  %t16653 = getelementptr %Expr, ptr null, i32 1
-  %t16654 = ptrtoint ptr %t16653 to i64
-  %t16655 = call ptr @jerry_alloc(i64 %t16654)
-  %t16656 = getelementptr i8, ptr %t16655, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16656
-  %t16657 = getelementptr %Expr, ptr %t16655, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16657
-  %t16658 = load i64, ptr @EXPR_BOOL
-  %t16659 = load i64, ptr %l.16570
-  %t16660 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16655, i64 %t16658, i64 %t16659, i64 %t16660)
-  %e.16661 = alloca ptr
-  store ptr %t16655, ptr %e.16661
-  %t16662 = load ptr, ptr %t.16652
-  %t16663 = getelementptr %Token, ptr %t16662, i32 0, i32 2
-  %t16664 = load ptr, ptr %t16663
-  %t16665 = load ptr, ptr %e.16661
-  %t16666 = getelementptr %Expr, ptr %t16665, i32 0, i32 2
-  %t16667 = load ptr, ptr %t16666
-  call void @jerry_retain(ptr %t16664)
-  store ptr %t16664, ptr %t16666
+  %t16598 = load ptr, ptr %e.16583
+  call void @jerry_release(ptr %t16598)
+  %t16599 = load ptr, ptr %right.16574
+  call void @jerry_release(ptr %t16599)
+  br label %while.cond.2734
+while.end.2736:
+  %t16600 = load ptr, ptr %left.16557
+  ret ptr %t16600
+}
+
+define ptr @Parser_parse_eq_jerry(ptr %self.arg) {
+entry:
+  %this.16601 = alloca ptr
+  store ptr %self.arg, ptr %this.16601
+  %t16602 = load ptr, ptr %this.16601
+  %t16603 = call ptr @Parser_parse_cmp_jerry(ptr %t16602)
+  %left.16604 = alloca ptr
+  store ptr %t16603, ptr %left.16604
+  br label %while.cond.2737
+while.cond.2737:
+  %t16605 = load ptr, ptr %this.16601
+  %t16606 = load i64, ptr @TOK_OP
+  %t16607 = call ptr @jerry_string_new(ptr @.str.1387, i64 2)
+  %t16608 = call i1 @Parser_check_jerry(ptr %t16605, i64 %t16606, ptr %t16607)
+  call void @jerry_release(ptr %t16607)
+  br i1 %t16608, label %or.true.2740, label %or.rhs.2741
+or.rhs.2741:
+  %t16609 = load ptr, ptr %this.16601
+  %t16610 = load i64, ptr @TOK_OP
+  %t16611 = call ptr @jerry_string_new(ptr @.str.1388, i64 2)
+  %t16612 = call i1 @Parser_check_jerry(ptr %t16609, i64 %t16610, ptr %t16611)
+  call void @jerry_release(ptr %t16611)
+  br label %or.merge.2742
+or.true.2740:
+  br label %or.merge.2742
+or.merge.2742:
+  %t16613 = phi i1 [ true, %or.true.2740 ], [ %t16612, %or.rhs.2741 ]
+  br i1 %t16613, label %while.body.2738, label %while.end.2739
+while.body.2738:
+  %t16614 = load ptr, ptr %left.16604
+  %t16615 = getelementptr %Expr, ptr %t16614, i32 0, i32 10
+  %t16616 = load i64, ptr %t16615
+  %l.16617 = alloca i64
+  store i64 %t16616, ptr %l.16617
+  %t16618 = load ptr, ptr %left.16604
+  %t16619 = getelementptr %Expr, ptr %t16618, i32 0, i32 11
+  %t16620 = load i64, ptr %t16619
+  %c.16621 = alloca i64
+  store i64 %t16620, ptr %c.16621
+  %t16622 = load ptr, ptr %this.16601
+  %t16623 = call ptr @Parser_advance_jerry(ptr %t16622)
+  %op.16624 = alloca ptr
+  store ptr %t16623, ptr %op.16624
+  %t16625 = load ptr, ptr %this.16601
+  %t16626 = call ptr @Parser_parse_cmp_jerry(ptr %t16625)
+  %right.16627 = alloca ptr
+  store ptr %t16626, ptr %right.16627
+  %t16628 = getelementptr %Expr, ptr null, i32 1
+  %t16629 = ptrtoint ptr %t16628 to i64
+  %t16630 = call ptr @jerry_alloc(i64 %t16629)
+  %t16631 = getelementptr i8, ptr %t16630, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16631
+  %t16632 = getelementptr %Expr, ptr %t16630, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16632
+  %t16633 = load i64, ptr @EXPR_BINARY
+  %t16634 = load i64, ptr %l.16617
+  %t16635 = load i64, ptr %c.16621
+  call void @Expr_new_jerry(ptr %t16630, i64 %t16633, i64 %t16634, i64 %t16635)
+  %e.16636 = alloca ptr
+  store ptr %t16630, ptr %e.16636
+  %t16637 = load ptr, ptr %op.16624
+  %t16638 = getelementptr %Token, ptr %t16637, i32 0, i32 2
+  %t16639 = load ptr, ptr %t16638
+  %t16640 = load ptr, ptr %e.16636
+  %t16641 = getelementptr %Expr, ptr %t16640, i32 0, i32 2
+  %t16642 = load ptr, ptr %t16641
+  call void @jerry_retain(ptr %t16639)
+  store ptr %t16639, ptr %t16641
+  call void @jerry_release(ptr %t16642)
+  %t16643 = load ptr, ptr %left.16604
+  %t16644 = load ptr, ptr %e.16636
+  %t16645 = getelementptr %Expr, ptr %t16644, i32 0, i32 3
+  %t16646 = load ptr, ptr %t16645
+  call void @jerry_retain(ptr %t16643)
+  store ptr %t16643, ptr %t16645
+  call void @jerry_release(ptr %t16646)
+  %t16647 = load ptr, ptr %right.16627
+  %t16648 = load ptr, ptr %e.16636
+  %t16649 = getelementptr %Expr, ptr %t16648, i32 0, i32 4
+  %t16650 = load ptr, ptr %t16649
+  call void @jerry_retain(ptr %t16647)
+  store ptr %t16647, ptr %t16649
+  call void @jerry_release(ptr %t16650)
+  %t16651 = load ptr, ptr %e.16636
+  %t16652 = load ptr, ptr %left.16604
+  call void @jerry_retain(ptr %t16651)
+  store ptr %t16651, ptr %left.16604
+  call void @jerry_release(ptr %t16652)
+  %t16653 = load ptr, ptr %e.16636
+  call void @jerry_release(ptr %t16653)
+  %t16654 = load ptr, ptr %right.16627
+  call void @jerry_release(ptr %t16654)
+  %t16655 = load ptr, ptr %op.16624
+  call void @jerry_release(ptr %t16655)
+  br label %while.cond.2737
+while.end.2739:
+  %t16656 = load ptr, ptr %left.16604
+  ret ptr %t16656
+}
+
+define ptr @Parser_parse_cmp_jerry(ptr %self.arg) {
+entry:
+  %this.16657 = alloca ptr
+  store ptr %self.arg, ptr %this.16657
+  %t16658 = load ptr, ptr %this.16657
+  %t16659 = call ptr @Parser_parse_add_jerry(ptr %t16658)
+  %left.16660 = alloca ptr
+  store ptr %t16659, ptr %left.16660
+  br label %while.cond.2743
+while.cond.2743:
+  %t16661 = load ptr, ptr %this.16657
+  %t16662 = load i64, ptr @TOK_OP
+  %t16663 = call ptr @jerry_string_new(ptr @.str.1389, i64 1)
+  %t16664 = call i1 @Parser_check_jerry(ptr %t16661, i64 %t16662, ptr %t16663)
+  call void @jerry_release(ptr %t16663)
+  br i1 %t16664, label %or.true.2746, label %or.rhs.2747
+or.rhs.2747:
+  %t16665 = load ptr, ptr %this.16657
+  %t16666 = load i64, ptr @TOK_OP
+  %t16667 = call ptr @jerry_string_new(ptr @.str.1390, i64 1)
+  %t16668 = call i1 @Parser_check_jerry(ptr %t16665, i64 %t16666, ptr %t16667)
   call void @jerry_release(ptr %t16667)
-  %t16668 = load ptr, ptr %e.16661
-  %t16669 = load ptr, ptr %t.16652
-  call void @jerry_release(ptr %t16669)
-  ret ptr %t16668
-if.else.2657:
-  br label %if.merge.2658
-if.merge.2658:
-  %t16670 = call ptr @jerry_char_to_string(i64 110)
-  %t16671 = call ptr @jerry_char_to_string(i64 117)
-  %t16672 = call ptr @jerry_string_concat(ptr %t16670, ptr %t16671)
-  %t16673 = call ptr @jerry_char_to_string(i64 108)
-  %t16674 = call ptr @jerry_string_concat(ptr %t16672, ptr %t16673)
-  %t16675 = call ptr @jerry_char_to_string(i64 108)
-  %t16676 = call ptr @jerry_string_concat(ptr %t16674, ptr %t16675)
-  %kw_null.16677 = alloca ptr
-  store ptr %t16676, ptr %kw_null.16677
-  %t16678 = load ptr, ptr %this.16567
-  %t16679 = load i64, ptr @TOK_KEYWORD
-  %t16680 = load ptr, ptr %kw_null.16677
-  %t16681 = call i1 @Parser_check_jerry(ptr %t16678, i64 %t16679, ptr %t16680)
-  br i1 %t16681, label %if.then.2659, label %if.else.2660
-if.then.2659:
-  %t16682 = load ptr, ptr %this.16567
-  %t16683 = call ptr @Parser_advance_jerry(ptr %t16682)
-  %t16684 = getelementptr %Expr, ptr null, i32 1
-  %t16685 = ptrtoint ptr %t16684 to i64
-  %t16686 = call ptr @jerry_alloc(i64 %t16685)
-  %t16687 = getelementptr i8, ptr %t16686, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16687
-  %t16688 = getelementptr %Expr, ptr %t16686, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16688
-  %t16689 = load i64, ptr @EXPR_NULL
-  %t16690 = load i64, ptr %l.16570
-  %t16691 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16686, i64 %t16689, i64 %t16690, i64 %t16691)
-  %t16692 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16692)
-  ret ptr %t16686
-if.else.2660:
-  br label %if.merge.2661
-if.merge.2661:
-  %t16693 = call ptr @jerry_char_to_string(i64 116)
-  %t16694 = call ptr @jerry_char_to_string(i64 104)
-  %t16695 = call ptr @jerry_string_concat(ptr %t16693, ptr %t16694)
-  %t16696 = call ptr @jerry_char_to_string(i64 105)
-  %t16697 = call ptr @jerry_string_concat(ptr %t16695, ptr %t16696)
-  %t16698 = call ptr @jerry_char_to_string(i64 115)
-  %t16699 = call ptr @jerry_string_concat(ptr %t16697, ptr %t16698)
-  %kw_this.16700 = alloca ptr
-  store ptr %t16699, ptr %kw_this.16700
-  %t16701 = load ptr, ptr %this.16567
-  %t16702 = load i64, ptr @TOK_KEYWORD
-  %t16703 = load ptr, ptr %kw_this.16700
-  %t16704 = call i1 @Parser_check_jerry(ptr %t16701, i64 %t16702, ptr %t16703)
-  br i1 %t16704, label %if.then.2662, label %if.else.2663
-if.then.2662:
-  %t16705 = load ptr, ptr %this.16567
-  %t16706 = call ptr @Parser_advance_jerry(ptr %t16705)
-  %t16707 = getelementptr %Expr, ptr null, i32 1
-  %t16708 = ptrtoint ptr %t16707 to i64
-  %t16709 = call ptr @jerry_alloc(i64 %t16708)
-  %t16710 = getelementptr i8, ptr %t16709, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16710
-  %t16711 = getelementptr %Expr, ptr %t16709, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16711
-  %t16712 = load i64, ptr @EXPR_THIS
-  %t16713 = load i64, ptr %l.16570
-  %t16714 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16709, i64 %t16712, i64 %t16713, i64 %t16714)
-  %t16715 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16715)
-  %t16716 = load ptr, ptr %kw_null.16677
+  br label %or.merge.2748
+or.true.2746:
+  br label %or.merge.2748
+or.merge.2748:
+  %t16669 = phi i1 [ true, %or.true.2746 ], [ %t16668, %or.rhs.2747 ]
+  br i1 %t16669, label %or.true.2749, label %or.rhs.2750
+or.rhs.2750:
+  %t16670 = load ptr, ptr %this.16657
+  %t16671 = load i64, ptr @TOK_OP
+  %t16672 = call ptr @jerry_string_new(ptr @.str.1391, i64 2)
+  %t16673 = call i1 @Parser_check_jerry(ptr %t16670, i64 %t16671, ptr %t16672)
+  call void @jerry_release(ptr %t16672)
+  br label %or.merge.2751
+or.true.2749:
+  br label %or.merge.2751
+or.merge.2751:
+  %t16674 = phi i1 [ true, %or.true.2749 ], [ %t16673, %or.rhs.2750 ]
+  br i1 %t16674, label %or.true.2752, label %or.rhs.2753
+or.rhs.2753:
+  %t16675 = load ptr, ptr %this.16657
+  %t16676 = load i64, ptr @TOK_OP
+  %t16677 = call ptr @jerry_string_new(ptr @.str.1392, i64 2)
+  %t16678 = call i1 @Parser_check_jerry(ptr %t16675, i64 %t16676, ptr %t16677)
+  call void @jerry_release(ptr %t16677)
+  br label %or.merge.2754
+or.true.2752:
+  br label %or.merge.2754
+or.merge.2754:
+  %t16679 = phi i1 [ true, %or.true.2752 ], [ %t16678, %or.rhs.2753 ]
+  br i1 %t16679, label %while.body.2744, label %while.end.2745
+while.body.2744:
+  %t16680 = load ptr, ptr %left.16660
+  %t16681 = getelementptr %Expr, ptr %t16680, i32 0, i32 10
+  %t16682 = load i64, ptr %t16681
+  %l.16683 = alloca i64
+  store i64 %t16682, ptr %l.16683
+  %t16684 = load ptr, ptr %left.16660
+  %t16685 = getelementptr %Expr, ptr %t16684, i32 0, i32 11
+  %t16686 = load i64, ptr %t16685
+  %c.16687 = alloca i64
+  store i64 %t16686, ptr %c.16687
+  %t16688 = load ptr, ptr %this.16657
+  %t16689 = call ptr @Parser_advance_jerry(ptr %t16688)
+  %op.16690 = alloca ptr
+  store ptr %t16689, ptr %op.16690
+  %t16691 = load ptr, ptr %this.16657
+  %t16692 = call ptr @Parser_parse_add_jerry(ptr %t16691)
+  %right.16693 = alloca ptr
+  store ptr %t16692, ptr %right.16693
+  %t16694 = getelementptr %Expr, ptr null, i32 1
+  %t16695 = ptrtoint ptr %t16694 to i64
+  %t16696 = call ptr @jerry_alloc(i64 %t16695)
+  %t16697 = getelementptr i8, ptr %t16696, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16697
+  %t16698 = getelementptr %Expr, ptr %t16696, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16698
+  %t16699 = load i64, ptr @EXPR_BINARY
+  %t16700 = load i64, ptr %l.16683
+  %t16701 = load i64, ptr %c.16687
+  call void @Expr_new_jerry(ptr %t16696, i64 %t16699, i64 %t16700, i64 %t16701)
+  %e.16702 = alloca ptr
+  store ptr %t16696, ptr %e.16702
+  %t16703 = load ptr, ptr %op.16690
+  %t16704 = getelementptr %Token, ptr %t16703, i32 0, i32 2
+  %t16705 = load ptr, ptr %t16704
+  %t16706 = load ptr, ptr %e.16702
+  %t16707 = getelementptr %Expr, ptr %t16706, i32 0, i32 2
+  %t16708 = load ptr, ptr %t16707
+  call void @jerry_retain(ptr %t16705)
+  store ptr %t16705, ptr %t16707
+  call void @jerry_release(ptr %t16708)
+  %t16709 = load ptr, ptr %left.16660
+  %t16710 = load ptr, ptr %e.16702
+  %t16711 = getelementptr %Expr, ptr %t16710, i32 0, i32 3
+  %t16712 = load ptr, ptr %t16711
+  call void @jerry_retain(ptr %t16709)
+  store ptr %t16709, ptr %t16711
+  call void @jerry_release(ptr %t16712)
+  %t16713 = load ptr, ptr %right.16693
+  %t16714 = load ptr, ptr %e.16702
+  %t16715 = getelementptr %Expr, ptr %t16714, i32 0, i32 4
+  %t16716 = load ptr, ptr %t16715
+  call void @jerry_retain(ptr %t16713)
+  store ptr %t16713, ptr %t16715
   call void @jerry_release(ptr %t16716)
-  ret ptr %t16709
-if.else.2663:
-  br label %if.merge.2664
-if.merge.2664:
-  %t16717 = call ptr @jerry_char_to_string(i64 110)
-  %t16718 = call ptr @jerry_char_to_string(i64 101)
-  %t16719 = call ptr @jerry_string_concat(ptr %t16717, ptr %t16718)
-  %t16720 = call ptr @jerry_char_to_string(i64 119)
-  %t16721 = call ptr @jerry_string_concat(ptr %t16719, ptr %t16720)
-  %kw_new.16722 = alloca ptr
-  store ptr %t16721, ptr %kw_new.16722
-  %t16723 = load ptr, ptr %this.16567
-  %t16724 = load i64, ptr @TOK_KEYWORD
-  %t16725 = load ptr, ptr %kw_new.16722
-  %t16726 = call i1 @Parser_check_jerry(ptr %t16723, i64 %t16724, ptr %t16725)
-  br i1 %t16726, label %if.then.2665, label %if.else.2666
-if.then.2665:
-  %t16727 = load ptr, ptr %this.16567
-  %t16728 = call ptr @Parser_advance_jerry(ptr %t16727)
-  %t16729 = load ptr, ptr %this.16567
-  %t16730 = load i64, ptr @TOK_IDENT
-  %t16731 = call ptr @jerry_string_new(ptr @.str.1375, i64 0)
-  %t16732 = call ptr @Parser_expect_jerry(ptr %t16729, i64 %t16730, ptr %t16731)
-  call void @jerry_release(ptr %t16731)
-  %cn.16733 = alloca ptr
-  store ptr %t16732, ptr %cn.16733
-  %t16734 = load ptr, ptr %this.16567
-  %t16735 = load i64, ptr @TOK_OP
-  %t16736 = call ptr @jerry_string_new(ptr @.str.1376, i64 1)
-  %t16737 = call ptr @Parser_expect_jerry(ptr %t16734, i64 %t16735, ptr %t16736)
-  call void @jerry_release(ptr %t16736)
-  %t16738 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %new_args.16739 = alloca ptr
-  store ptr %t16738, ptr %new_args.16739
-  call void @jerry_array_mark_heap(ptr %t16738)
-  %t16740 = load ptr, ptr %this.16567
-  %t16741 = load i64, ptr @TOK_OP
-  %t16742 = call ptr @jerry_string_new(ptr @.str.1377, i64 1)
-  %t16743 = call i1 @Parser_check_jerry(ptr %t16740, i64 %t16741, ptr %t16742)
-  call void @jerry_release(ptr %t16742)
-  %t16744 = xor i1 %t16743, true
-  br i1 %t16744, label %if.then.2668, label %if.else.2669
-if.then.2668:
-  %t16745 = load ptr, ptr %this.16567
-  %t16746 = call ptr @Parser_parse_expr_jerry(ptr %t16745)
-  %a.16747 = alloca ptr
-  store ptr %t16746, ptr %a.16747
-  %t16748 = load ptr, ptr %new_args.16739
-  %t16749 = load ptr, ptr %a.16747
-  %t16750.slot = alloca ptr
-  store ptr %t16749, ptr %t16750.slot
-  call void @jerry_array_push(ptr %t16748, ptr %t16750.slot)
-  br label %while.cond.2671
-while.cond.2671:
-  %t16751 = load ptr, ptr %this.16567
-  %t16752 = load i64, ptr @TOK_OP
-  %t16753 = call ptr @jerry_string_new(ptr @.str.1378, i64 1)
-  %t16754 = call i1 @Parser_eat_jerry(ptr %t16751, i64 %t16752, ptr %t16753)
-  call void @jerry_release(ptr %t16753)
-  br i1 %t16754, label %while.body.2672, label %while.end.2673
-while.body.2672:
-  %t16755 = load ptr, ptr %this.16567
-  %t16756 = call ptr @Parser_parse_expr_jerry(ptr %t16755)
-  %a2.16757 = alloca ptr
-  store ptr %t16756, ptr %a2.16757
-  %t16758 = load ptr, ptr %new_args.16739
-  %t16759 = load ptr, ptr %a2.16757
-  %t16760.slot = alloca ptr
-  store ptr %t16759, ptr %t16760.slot
-  call void @jerry_array_push(ptr %t16758, ptr %t16760.slot)
-  %t16761 = load ptr, ptr %a2.16757
-  call void @jerry_release(ptr %t16761)
-  br label %while.cond.2671
-while.end.2673:
-  %t16762 = load ptr, ptr %a.16747
-  call void @jerry_release(ptr %t16762)
-  br label %if.merge.2670
-if.else.2669:
-  br label %if.merge.2670
-if.merge.2670:
-  %t16763 = load ptr, ptr %this.16567
-  %t16764 = load i64, ptr @TOK_OP
-  %t16765 = call ptr @jerry_string_new(ptr @.str.1379, i64 1)
-  %t16766 = call ptr @Parser_expect_jerry(ptr %t16763, i64 %t16764, ptr %t16765)
-  call void @jerry_release(ptr %t16765)
-  %t16767 = getelementptr %Expr, ptr null, i32 1
-  %t16768 = ptrtoint ptr %t16767 to i64
-  %t16769 = call ptr @jerry_alloc(i64 %t16768)
-  %t16770 = getelementptr i8, ptr %t16769, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16770
-  %t16771 = getelementptr %Expr, ptr %t16769, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16771
-  %t16772 = load i64, ptr @EXPR_NEW
-  %t16773 = load i64, ptr %l.16570
-  %t16774 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16769, i64 %t16772, i64 %t16773, i64 %t16774)
-  %e.16775 = alloca ptr
-  store ptr %t16769, ptr %e.16775
-  %t16776 = load ptr, ptr %cn.16733
-  %t16777 = getelementptr %Token, ptr %t16776, i32 0, i32 2
-  %t16778 = load ptr, ptr %t16777
-  %t16779 = load ptr, ptr %e.16775
-  %t16780 = getelementptr %Expr, ptr %t16779, i32 0, i32 2
-  %t16781 = load ptr, ptr %t16780
-  call void @jerry_retain(ptr %t16778)
-  store ptr %t16778, ptr %t16780
-  call void @jerry_release(ptr %t16781)
-  %t16782 = load ptr, ptr %new_args.16739
-  %t16783 = load ptr, ptr %e.16775
-  %t16784 = getelementptr %Expr, ptr %t16783, i32 0, i32 5
-  %t16785 = load ptr, ptr %t16784
-  call void @jerry_retain(ptr %t16782)
-  store ptr %t16782, ptr %t16784
+  %t16717 = load ptr, ptr %e.16702
+  %t16718 = load ptr, ptr %left.16660
+  call void @jerry_retain(ptr %t16717)
+  store ptr %t16717, ptr %left.16660
+  call void @jerry_release(ptr %t16718)
+  %t16719 = load ptr, ptr %e.16702
+  call void @jerry_release(ptr %t16719)
+  %t16720 = load ptr, ptr %right.16693
+  call void @jerry_release(ptr %t16720)
+  %t16721 = load ptr, ptr %op.16690
+  call void @jerry_release(ptr %t16721)
+  br label %while.cond.2743
+while.end.2745:
+  %t16722 = load ptr, ptr %left.16660
+  ret ptr %t16722
+}
+
+define ptr @Parser_parse_add_jerry(ptr %self.arg) {
+entry:
+  %this.16723 = alloca ptr
+  store ptr %self.arg, ptr %this.16723
+  %t16724 = load ptr, ptr %this.16723
+  %t16725 = call ptr @Parser_parse_mul_jerry(ptr %t16724)
+  %left.16726 = alloca ptr
+  store ptr %t16725, ptr %left.16726
+  br label %while.cond.2755
+while.cond.2755:
+  %t16727 = load ptr, ptr %this.16723
+  %t16728 = load i64, ptr @TOK_OP
+  %t16729 = call ptr @jerry_string_new(ptr @.str.1393, i64 1)
+  %t16730 = call i1 @Parser_check_jerry(ptr %t16727, i64 %t16728, ptr %t16729)
+  call void @jerry_release(ptr %t16729)
+  br i1 %t16730, label %or.true.2758, label %or.rhs.2759
+or.rhs.2759:
+  %t16731 = load ptr, ptr %this.16723
+  %t16732 = load i64, ptr @TOK_OP
+  %t16733 = call ptr @jerry_string_new(ptr @.str.1394, i64 1)
+  %t16734 = call i1 @Parser_check_jerry(ptr %t16731, i64 %t16732, ptr %t16733)
+  call void @jerry_release(ptr %t16733)
+  br label %or.merge.2760
+or.true.2758:
+  br label %or.merge.2760
+or.merge.2760:
+  %t16735 = phi i1 [ true, %or.true.2758 ], [ %t16734, %or.rhs.2759 ]
+  br i1 %t16735, label %while.body.2756, label %while.end.2757
+while.body.2756:
+  %t16736 = load ptr, ptr %left.16726
+  %t16737 = getelementptr %Expr, ptr %t16736, i32 0, i32 10
+  %t16738 = load i64, ptr %t16737
+  %l.16739 = alloca i64
+  store i64 %t16738, ptr %l.16739
+  %t16740 = load ptr, ptr %left.16726
+  %t16741 = getelementptr %Expr, ptr %t16740, i32 0, i32 11
+  %t16742 = load i64, ptr %t16741
+  %c.16743 = alloca i64
+  store i64 %t16742, ptr %c.16743
+  %t16744 = load ptr, ptr %this.16723
+  %t16745 = call ptr @Parser_advance_jerry(ptr %t16744)
+  %op.16746 = alloca ptr
+  store ptr %t16745, ptr %op.16746
+  %t16747 = load ptr, ptr %this.16723
+  %t16748 = call ptr @Parser_parse_mul_jerry(ptr %t16747)
+  %right.16749 = alloca ptr
+  store ptr %t16748, ptr %right.16749
+  %t16750 = getelementptr %Expr, ptr null, i32 1
+  %t16751 = ptrtoint ptr %t16750 to i64
+  %t16752 = call ptr @jerry_alloc(i64 %t16751)
+  %t16753 = getelementptr i8, ptr %t16752, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16753
+  %t16754 = getelementptr %Expr, ptr %t16752, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16754
+  %t16755 = load i64, ptr @EXPR_BINARY
+  %t16756 = load i64, ptr %l.16739
+  %t16757 = load i64, ptr %c.16743
+  call void @Expr_new_jerry(ptr %t16752, i64 %t16755, i64 %t16756, i64 %t16757)
+  %e.16758 = alloca ptr
+  store ptr %t16752, ptr %e.16758
+  %t16759 = load ptr, ptr %op.16746
+  %t16760 = getelementptr %Token, ptr %t16759, i32 0, i32 2
+  %t16761 = load ptr, ptr %t16760
+  %t16762 = load ptr, ptr %e.16758
+  %t16763 = getelementptr %Expr, ptr %t16762, i32 0, i32 2
+  %t16764 = load ptr, ptr %t16763
+  call void @jerry_retain(ptr %t16761)
+  store ptr %t16761, ptr %t16763
+  call void @jerry_release(ptr %t16764)
+  %t16765 = load ptr, ptr %left.16726
+  %t16766 = load ptr, ptr %e.16758
+  %t16767 = getelementptr %Expr, ptr %t16766, i32 0, i32 3
+  %t16768 = load ptr, ptr %t16767
+  call void @jerry_retain(ptr %t16765)
+  store ptr %t16765, ptr %t16767
+  call void @jerry_release(ptr %t16768)
+  %t16769 = load ptr, ptr %right.16749
+  %t16770 = load ptr, ptr %e.16758
+  %t16771 = getelementptr %Expr, ptr %t16770, i32 0, i32 4
+  %t16772 = load ptr, ptr %t16771
+  call void @jerry_retain(ptr %t16769)
+  store ptr %t16769, ptr %t16771
+  call void @jerry_release(ptr %t16772)
+  %t16773 = load ptr, ptr %e.16758
+  %t16774 = load ptr, ptr %left.16726
+  call void @jerry_retain(ptr %t16773)
+  store ptr %t16773, ptr %left.16726
+  call void @jerry_release(ptr %t16774)
+  %t16775 = load ptr, ptr %e.16758
+  call void @jerry_release(ptr %t16775)
+  %t16776 = load ptr, ptr %right.16749
+  call void @jerry_release(ptr %t16776)
+  %t16777 = load ptr, ptr %op.16746
+  call void @jerry_release(ptr %t16777)
+  br label %while.cond.2755
+while.end.2757:
+  %t16778 = load ptr, ptr %left.16726
+  ret ptr %t16778
+}
+
+define ptr @Parser_parse_mul_jerry(ptr %self.arg) {
+entry:
+  %this.16779 = alloca ptr
+  store ptr %self.arg, ptr %this.16779
+  %t16780 = load ptr, ptr %this.16779
+  %t16781 = call ptr @Parser_parse_unary_jerry(ptr %t16780)
+  %left.16782 = alloca ptr
+  store ptr %t16781, ptr %left.16782
+  br label %while.cond.2761
+while.cond.2761:
+  %t16783 = load ptr, ptr %this.16779
+  %t16784 = load i64, ptr @TOK_OP
+  %t16785 = call ptr @jerry_string_new(ptr @.str.1395, i64 1)
+  %t16786 = call i1 @Parser_check_jerry(ptr %t16783, i64 %t16784, ptr %t16785)
   call void @jerry_release(ptr %t16785)
-  %t16786 = load ptr, ptr %e.16775
-  %t16787 = load ptr, ptr %new_args.16739
-  call void @jerry_release(ptr %t16787)
-  %t16788 = load ptr, ptr %cn.16733
-  call void @jerry_release(ptr %t16788)
-  %t16789 = load ptr, ptr %kw_new.16722
+  br i1 %t16786, label %or.true.2764, label %or.rhs.2765
+or.rhs.2765:
+  %t16787 = load ptr, ptr %this.16779
+  %t16788 = load i64, ptr @TOK_OP
+  %t16789 = call ptr @jerry_string_new(ptr @.str.1396, i64 1)
+  %t16790 = call i1 @Parser_check_jerry(ptr %t16787, i64 %t16788, ptr %t16789)
   call void @jerry_release(ptr %t16789)
-  %t16790 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16790)
-  %t16791 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16791)
-  ret ptr %t16786
-if.else.2666:
-  br label %if.merge.2667
-if.merge.2667:
-  %t16792 = load ptr, ptr %this.16567
-  %t16793 = load i64, ptr @TOK_KEYWORD
-  %t16794 = call ptr @jerry_string_new(ptr @.str.1380, i64 2)
+  br label %or.merge.2766
+or.true.2764:
+  br label %or.merge.2766
+or.merge.2766:
+  %t16791 = phi i1 [ true, %or.true.2764 ], [ %t16790, %or.rhs.2765 ]
+  br i1 %t16791, label %or.true.2767, label %or.rhs.2768
+or.rhs.2768:
+  %t16792 = load ptr, ptr %this.16779
+  %t16793 = load i64, ptr @TOK_OP
+  %t16794 = call ptr @jerry_string_new(ptr @.str.1397, i64 1)
   %t16795 = call i1 @Parser_check_jerry(ptr %t16792, i64 %t16793, ptr %t16794)
   call void @jerry_release(ptr %t16794)
-  br i1 %t16795, label %if.then.2674, label %if.else.2675
-if.then.2674:
-  %t16796 = load ptr, ptr %this.16567
-  %t16797 = load i64, ptr %l.16570
-  %t16798 = load i64, ptr %c.16573
-  %t16799 = call ptr @Parser_parse_fn_expr_jerry(ptr %t16796, i64 %t16797, i64 %t16798)
-  %t16800 = load ptr, ptr %kw_new.16722
-  call void @jerry_release(ptr %t16800)
-  %t16801 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16801)
-  %t16802 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16802)
-  ret ptr %t16799
-if.else.2675:
-  br label %if.merge.2676
-if.merge.2676:
-  %t16803 = load ptr, ptr %this.16567
-  %t16804 = load i64, ptr @TOK_OP
-  %t16805 = call ptr @jerry_string_new(ptr @.str.1381, i64 1)
-  %t16806 = call i1 @Parser_check_jerry(ptr %t16803, i64 %t16804, ptr %t16805)
-  call void @jerry_release(ptr %t16805)
-  br i1 %t16806, label %if.then.2677, label %if.else.2678
-if.then.2677:
-  %t16807 = load ptr, ptr %this.16567
-  %t16808 = call ptr @Parser_advance_jerry(ptr %t16807)
-  %t16809 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %elems.16810 = alloca ptr
-  store ptr %t16809, ptr %elems.16810
-  call void @jerry_array_mark_heap(ptr %t16809)
-  %t16811 = load ptr, ptr %this.16567
-  %t16812 = load i64, ptr @TOK_OP
-  %t16813 = call ptr @jerry_string_new(ptr @.str.1382, i64 1)
-  %t16814 = call i1 @Parser_check_jerry(ptr %t16811, i64 %t16812, ptr %t16813)
-  call void @jerry_release(ptr %t16813)
-  %t16815 = xor i1 %t16814, true
-  br i1 %t16815, label %if.then.2680, label %if.else.2681
-if.then.2680:
-  %t16816 = load ptr, ptr %this.16567
-  %t16817 = call ptr @Parser_parse_expr_jerry(ptr %t16816)
-  %elem.16818 = alloca ptr
-  store ptr %t16817, ptr %elem.16818
-  %t16819 = load ptr, ptr %elems.16810
-  %t16820 = load ptr, ptr %elem.16818
-  %t16821.slot = alloca ptr
-  store ptr %t16820, ptr %t16821.slot
-  call void @jerry_array_push(ptr %t16819, ptr %t16821.slot)
-  br label %while.cond.2683
-while.cond.2683:
-  %t16822 = load ptr, ptr %this.16567
-  %t16823 = load i64, ptr @TOK_OP
-  %t16824 = call ptr @jerry_string_new(ptr @.str.1383, i64 1)
-  %t16825 = call i1 @Parser_eat_jerry(ptr %t16822, i64 %t16823, ptr %t16824)
-  call void @jerry_release(ptr %t16824)
-  br i1 %t16825, label %while.body.2684, label %while.end.2685
-while.body.2684:
-  %t16826 = load ptr, ptr %this.16567
-  %t16827 = call ptr @Parser_parse_expr_jerry(ptr %t16826)
-  %elem2.16828 = alloca ptr
-  store ptr %t16827, ptr %elem2.16828
-  %t16829 = load ptr, ptr %elems.16810
-  %t16830 = load ptr, ptr %elem2.16828
-  %t16831.slot = alloca ptr
-  store ptr %t16830, ptr %t16831.slot
-  call void @jerry_array_push(ptr %t16829, ptr %t16831.slot)
-  %t16832 = load ptr, ptr %elem2.16828
-  call void @jerry_release(ptr %t16832)
-  br label %while.cond.2683
-while.end.2685:
-  %t16833 = load ptr, ptr %elem.16818
+  br label %or.merge.2769
+or.true.2767:
+  br label %or.merge.2769
+or.merge.2769:
+  %t16796 = phi i1 [ true, %or.true.2767 ], [ %t16795, %or.rhs.2768 ]
+  br i1 %t16796, label %while.body.2762, label %while.end.2763
+while.body.2762:
+  %t16797 = load ptr, ptr %left.16782
+  %t16798 = getelementptr %Expr, ptr %t16797, i32 0, i32 10
+  %t16799 = load i64, ptr %t16798
+  %l.16800 = alloca i64
+  store i64 %t16799, ptr %l.16800
+  %t16801 = load ptr, ptr %left.16782
+  %t16802 = getelementptr %Expr, ptr %t16801, i32 0, i32 11
+  %t16803 = load i64, ptr %t16802
+  %c.16804 = alloca i64
+  store i64 %t16803, ptr %c.16804
+  %t16805 = load ptr, ptr %this.16779
+  %t16806 = call ptr @Parser_advance_jerry(ptr %t16805)
+  %op.16807 = alloca ptr
+  store ptr %t16806, ptr %op.16807
+  %t16808 = load ptr, ptr %this.16779
+  %t16809 = call ptr @Parser_parse_unary_jerry(ptr %t16808)
+  %right.16810 = alloca ptr
+  store ptr %t16809, ptr %right.16810
+  %t16811 = getelementptr %Expr, ptr null, i32 1
+  %t16812 = ptrtoint ptr %t16811 to i64
+  %t16813 = call ptr @jerry_alloc(i64 %t16812)
+  %t16814 = getelementptr i8, ptr %t16813, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16814
+  %t16815 = getelementptr %Expr, ptr %t16813, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16815
+  %t16816 = load i64, ptr @EXPR_BINARY
+  %t16817 = load i64, ptr %l.16800
+  %t16818 = load i64, ptr %c.16804
+  call void @Expr_new_jerry(ptr %t16813, i64 %t16816, i64 %t16817, i64 %t16818)
+  %e.16819 = alloca ptr
+  store ptr %t16813, ptr %e.16819
+  %t16820 = load ptr, ptr %op.16807
+  %t16821 = getelementptr %Token, ptr %t16820, i32 0, i32 2
+  %t16822 = load ptr, ptr %t16821
+  %t16823 = load ptr, ptr %e.16819
+  %t16824 = getelementptr %Expr, ptr %t16823, i32 0, i32 2
+  %t16825 = load ptr, ptr %t16824
+  call void @jerry_retain(ptr %t16822)
+  store ptr %t16822, ptr %t16824
+  call void @jerry_release(ptr %t16825)
+  %t16826 = load ptr, ptr %left.16782
+  %t16827 = load ptr, ptr %e.16819
+  %t16828 = getelementptr %Expr, ptr %t16827, i32 0, i32 3
+  %t16829 = load ptr, ptr %t16828
+  call void @jerry_retain(ptr %t16826)
+  store ptr %t16826, ptr %t16828
+  call void @jerry_release(ptr %t16829)
+  %t16830 = load ptr, ptr %right.16810
+  %t16831 = load ptr, ptr %e.16819
+  %t16832 = getelementptr %Expr, ptr %t16831, i32 0, i32 4
+  %t16833 = load ptr, ptr %t16832
+  call void @jerry_retain(ptr %t16830)
+  store ptr %t16830, ptr %t16832
   call void @jerry_release(ptr %t16833)
-  br label %if.merge.2682
-if.else.2681:
-  br label %if.merge.2682
-if.merge.2682:
-  %t16834 = load ptr, ptr %this.16567
-  %t16835 = load i64, ptr @TOK_OP
-  %t16836 = call ptr @jerry_string_new(ptr @.str.1384, i64 1)
-  %t16837 = call ptr @Parser_expect_jerry(ptr %t16834, i64 %t16835, ptr %t16836)
+  %t16834 = load ptr, ptr %e.16819
+  %t16835 = load ptr, ptr %left.16782
+  call void @jerry_retain(ptr %t16834)
+  store ptr %t16834, ptr %left.16782
+  call void @jerry_release(ptr %t16835)
+  %t16836 = load ptr, ptr %e.16819
   call void @jerry_release(ptr %t16836)
-  %t16838 = getelementptr %Expr, ptr null, i32 1
-  %t16839 = ptrtoint ptr %t16838 to i64
-  %t16840 = call ptr @jerry_alloc(i64 %t16839)
-  %t16841 = getelementptr i8, ptr %t16840, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16841
-  %t16842 = getelementptr %Expr, ptr %t16840, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16842
-  %t16843 = load i64, ptr @EXPR_ARRAY
-  %t16844 = load i64, ptr %l.16570
-  %t16845 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16840, i64 %t16843, i64 %t16844, i64 %t16845)
-  %e.16846 = alloca ptr
-  store ptr %t16840, ptr %e.16846
-  %t16847 = load ptr, ptr %elems.16810
-  %t16848 = load ptr, ptr %e.16846
-  %t16849 = getelementptr %Expr, ptr %t16848, i32 0, i32 5
-  %t16850 = load ptr, ptr %t16849
-  call void @jerry_retain(ptr %t16847)
-  store ptr %t16847, ptr %t16849
-  call void @jerry_release(ptr %t16850)
-  %t16851 = load ptr, ptr %e.16846
-  %t16852 = load ptr, ptr %elems.16810
-  call void @jerry_release(ptr %t16852)
-  %t16853 = load ptr, ptr %kw_new.16722
+  %t16837 = load ptr, ptr %right.16810
+  call void @jerry_release(ptr %t16837)
+  %t16838 = load ptr, ptr %op.16807
+  call void @jerry_release(ptr %t16838)
+  br label %while.cond.2761
+while.end.2763:
+  %t16839 = load ptr, ptr %left.16782
+  ret ptr %t16839
+}
+
+define ptr @Parser_parse_unary_jerry(ptr %self.arg) {
+entry:
+  %this.16840 = alloca ptr
+  store ptr %self.arg, ptr %this.16840
+  %t16841 = load ptr, ptr %this.16840
+  %t16842 = call i64 @Parser_peek_line_jerry(ptr %t16841)
+  %l.16843 = alloca i64
+  store i64 %t16842, ptr %l.16843
+  %t16844 = load ptr, ptr %this.16840
+  %t16845 = call i64 @Parser_peek_col_jerry(ptr %t16844)
+  %c.16846 = alloca i64
+  store i64 %t16845, ptr %c.16846
+  %t16847 = load ptr, ptr %this.16840
+  %t16848 = load i64, ptr @TOK_OP
+  %t16849 = call ptr @jerry_string_new(ptr @.str.1398, i64 1)
+  %t16850 = call i1 @Parser_check_jerry(ptr %t16847, i64 %t16848, ptr %t16849)
+  call void @jerry_release(ptr %t16849)
+  br i1 %t16850, label %or.true.2773, label %or.rhs.2774
+or.rhs.2774:
+  %t16851 = load ptr, ptr %this.16840
+  %t16852 = load i64, ptr @TOK_OP
+  %t16853 = call ptr @jerry_string_new(ptr @.str.1399, i64 1)
+  %t16854 = call i1 @Parser_check_jerry(ptr %t16851, i64 %t16852, ptr %t16853)
   call void @jerry_release(ptr %t16853)
-  %t16854 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16854)
-  %t16855 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16855)
-  ret ptr %t16851
-if.else.2678:
-  br label %if.merge.2679
-if.merge.2679:
-  %t16856 = load ptr, ptr %this.16567
-  %t16857 = load i64, ptr @TOK_OP
-  %t16858 = call ptr @jerry_string_new(ptr @.str.1385, i64 1)
-  %t16859 = call i1 @Parser_check_jerry(ptr %t16856, i64 %t16857, ptr %t16858)
-  call void @jerry_release(ptr %t16858)
-  br i1 %t16859, label %if.then.2686, label %if.else.2687
-if.then.2686:
-  %t16860 = load ptr, ptr %this.16567
-  %t16861 = load i64, ptr %l.16570
-  %t16862 = load i64, ptr %c.16573
-  %t16863 = call ptr @Parser_parse_map_lit_jerry(ptr %t16860, i64 %t16861, i64 %t16862)
-  %t16864 = load ptr, ptr %kw_new.16722
-  call void @jerry_release(ptr %t16864)
-  %t16865 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16865)
-  %t16866 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16866)
-  ret ptr %t16863
-if.else.2687:
-  br label %if.merge.2688
-if.merge.2688:
-  %t16867 = load ptr, ptr %this.16567
-  %t16868 = load i64, ptr @TOK_OP
-  %t16869 = call ptr @jerry_string_new(ptr @.str.1386, i64 1)
-  %t16870 = call i1 @Parser_check_jerry(ptr %t16867, i64 %t16868, ptr %t16869)
-  call void @jerry_release(ptr %t16869)
-  br i1 %t16870, label %if.then.2689, label %if.else.2690
-if.then.2689:
-  %t16871 = load ptr, ptr %this.16567
-  %t16872 = call ptr @Parser_advance_jerry(ptr %t16871)
-  %t16873 = load ptr, ptr %this.16567
-  %t16874 = call ptr @Parser_parse_expr_jerry(ptr %t16873)
-  %inner.16875 = alloca ptr
-  store ptr %t16874, ptr %inner.16875
-  %t16876 = load ptr, ptr %this.16567
-  %t16877 = load i64, ptr @TOK_OP
-  %t16878 = call ptr @jerry_string_new(ptr @.str.1387, i64 1)
-  %t16879 = call ptr @Parser_expect_jerry(ptr %t16876, i64 %t16877, ptr %t16878)
-  call void @jerry_release(ptr %t16878)
-  %t16880 = getelementptr %Expr, ptr null, i32 1
-  %t16881 = ptrtoint ptr %t16880 to i64
-  %t16882 = call ptr @jerry_alloc(i64 %t16881)
-  %t16883 = getelementptr i8, ptr %t16882, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16883
-  %t16884 = getelementptr %Expr, ptr %t16882, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16884
-  %t16885 = load i64, ptr @EXPR_PAREN
-  %t16886 = load i64, ptr %l.16570
-  %t16887 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16882, i64 %t16885, i64 %t16886, i64 %t16887)
-  %e.16888 = alloca ptr
-  store ptr %t16882, ptr %e.16888
-  %t16889 = load ptr, ptr %inner.16875
-  %t16890 = load ptr, ptr %e.16888
-  %t16891 = getelementptr %Expr, ptr %t16890, i32 0, i32 3
-  %t16892 = load ptr, ptr %t16891
-  call void @jerry_retain(ptr %t16889)
-  store ptr %t16889, ptr %t16891
+  br label %or.merge.2775
+or.true.2773:
+  br label %or.merge.2775
+or.merge.2775:
+  %t16855 = phi i1 [ true, %or.true.2773 ], [ %t16854, %or.rhs.2774 ]
+  br i1 %t16855, label %if.then.2770, label %if.else.2771
+if.then.2770:
+  %t16856 = load ptr, ptr %this.16840
+  %t16857 = call ptr @Parser_advance_jerry(ptr %t16856)
+  %op.16858 = alloca ptr
+  store ptr %t16857, ptr %op.16858
+  %t16859 = load ptr, ptr %this.16840
+  %t16860 = call ptr @Parser_parse_unary_jerry(ptr %t16859)
+  %operand.16861 = alloca ptr
+  store ptr %t16860, ptr %operand.16861
+  %t16862 = getelementptr %Expr, ptr null, i32 1
+  %t16863 = ptrtoint ptr %t16862 to i64
+  %t16864 = call ptr @jerry_alloc(i64 %t16863)
+  %t16865 = getelementptr i8, ptr %t16864, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16865
+  %t16866 = getelementptr %Expr, ptr %t16864, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16866
+  %t16867 = load i64, ptr @EXPR_UNARY
+  %t16868 = load i64, ptr %l.16843
+  %t16869 = load i64, ptr %c.16846
+  call void @Expr_new_jerry(ptr %t16864, i64 %t16867, i64 %t16868, i64 %t16869)
+  %e.16870 = alloca ptr
+  store ptr %t16864, ptr %e.16870
+  %t16871 = load ptr, ptr %op.16858
+  %t16872 = getelementptr %Token, ptr %t16871, i32 0, i32 2
+  %t16873 = load ptr, ptr %t16872
+  %t16874 = load ptr, ptr %e.16870
+  %t16875 = getelementptr %Expr, ptr %t16874, i32 0, i32 2
+  %t16876 = load ptr, ptr %t16875
+  call void @jerry_retain(ptr %t16873)
+  store ptr %t16873, ptr %t16875
+  call void @jerry_release(ptr %t16876)
+  %t16877 = load ptr, ptr %operand.16861
+  %t16878 = load ptr, ptr %e.16870
+  %t16879 = getelementptr %Expr, ptr %t16878, i32 0, i32 3
+  %t16880 = load ptr, ptr %t16879
+  call void @jerry_retain(ptr %t16877)
+  store ptr %t16877, ptr %t16879
+  call void @jerry_release(ptr %t16880)
+  %t16881 = load ptr, ptr %e.16870
+  %t16882 = load ptr, ptr %operand.16861
+  call void @jerry_release(ptr %t16882)
+  %t16883 = load ptr, ptr %op.16858
+  call void @jerry_release(ptr %t16883)
+  ret ptr %t16881
+if.else.2771:
+  br label %if.merge.2772
+if.merge.2772:
+  %t16884 = load ptr, ptr %this.16840
+  %t16885 = call ptr @Parser_parse_postfix_jerry(ptr %t16884)
+  ret ptr %t16885
+}
+
+define ptr @Parser_parse_postfix_jerry(ptr %self.arg) {
+entry:
+  %this.16886 = alloca ptr
+  store ptr %self.arg, ptr %this.16886
+  %t16887 = load ptr, ptr %this.16886
+  %t16888 = call ptr @Parser_parse_primary_jerry(ptr %t16887)
+  %base.16889 = alloca ptr
+  store ptr %t16888, ptr %base.16889
+  br label %while.cond.2776
+while.cond.2776:
+  br i1 true, label %while.body.2777, label %while.end.2778
+while.body.2777:
+  %t16890 = load ptr, ptr %this.16886
+  %t16891 = load i64, ptr @TOK_OP
+  %t16892 = call ptr @jerry_string_new(ptr @.str.1400, i64 1)
+  %t16893 = call i1 @Parser_check_jerry(ptr %t16890, i64 %t16891, ptr %t16892)
   call void @jerry_release(ptr %t16892)
-  %t16893 = load ptr, ptr %e.16888
-  %t16894 = load ptr, ptr %inner.16875
-  call void @jerry_release(ptr %t16894)
-  %t16895 = load ptr, ptr %kw_new.16722
-  call void @jerry_release(ptr %t16895)
-  %t16896 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16896)
-  %t16897 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16897)
-  ret ptr %t16893
-if.else.2690:
-  br label %if.merge.2691
-if.merge.2691:
-  %t16898 = load ptr, ptr %this.16567
-  %t16899 = call i64 @Parser_peek_kind_jerry(ptr %t16898)
-  %t16900 = load i64, ptr @TOK_IDENT
-  %t16901 = icmp eq i64 %t16899, %t16900
-  br i1 %t16901, label %if.then.2692, label %if.else.2693
-if.then.2692:
-  %t16902 = load ptr, ptr %this.16567
+  br i1 %t16893, label %if.then.2779, label %if.else.2780
+if.then.2779:
+  %t16894 = load ptr, ptr %base.16889
+  %t16895 = getelementptr %Expr, ptr %t16894, i32 0, i32 10
+  %t16896 = load i64, ptr %t16895
+  %l.16897 = alloca i64
+  store i64 %t16896, ptr %l.16897
+  %t16898 = load ptr, ptr %base.16889
+  %t16899 = getelementptr %Expr, ptr %t16898, i32 0, i32 11
+  %t16900 = load i64, ptr %t16899
+  %c.16901 = alloca i64
+  store i64 %t16900, ptr %c.16901
+  %t16902 = load ptr, ptr %this.16886
   %t16903 = call ptr @Parser_advance_jerry(ptr %t16902)
-  %t.16904 = alloca ptr
-  store ptr %t16903, ptr %t.16904
-  %t16905 = getelementptr %Expr, ptr null, i32 1
-  %t16906 = ptrtoint ptr %t16905 to i64
-  %t16907 = call ptr @jerry_alloc(i64 %t16906)
-  %t16908 = getelementptr i8, ptr %t16907, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t16908
-  %t16909 = getelementptr %Expr, ptr %t16907, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t16909
-  %t16910 = load i64, ptr @EXPR_IDENT
-  %t16911 = load i64, ptr %l.16570
-  %t16912 = load i64, ptr %c.16573
-  call void @Expr_new_jerry(ptr %t16907, i64 %t16910, i64 %t16911, i64 %t16912)
-  %e.16913 = alloca ptr
-  store ptr %t16907, ptr %e.16913
-  %t16914 = load ptr, ptr %t.16904
-  %t16915 = getelementptr %Token, ptr %t16914, i32 0, i32 2
-  %t16916 = load ptr, ptr %t16915
-  %t16917 = load ptr, ptr %e.16913
-  %t16918 = getelementptr %Expr, ptr %t16917, i32 0, i32 2
-  %t16919 = load ptr, ptr %t16918
-  call void @jerry_retain(ptr %t16916)
-  store ptr %t16916, ptr %t16918
-  call void @jerry_release(ptr %t16919)
-  %t16920 = load ptr, ptr %e.16913
-  %t16921 = load ptr, ptr %t.16904
+  %t16904 = load ptr, ptr %this.16886
+  %t16905 = load i64, ptr @TOK_IDENT
+  %t16906 = call ptr @jerry_string_new(ptr @.str.1401, i64 0)
+  %t16907 = call ptr @Parser_expect_jerry(ptr %t16904, i64 %t16905, ptr %t16906)
+  call void @jerry_release(ptr %t16906)
+  %field.16908 = alloca ptr
+  store ptr %t16907, ptr %field.16908
+  %t16909 = getelementptr %Expr, ptr null, i32 1
+  %t16910 = ptrtoint ptr %t16909 to i64
+  %t16911 = call ptr @jerry_alloc(i64 %t16910)
+  %t16912 = getelementptr i8, ptr %t16911, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16912
+  %t16913 = getelementptr %Expr, ptr %t16911, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16913
+  %t16914 = load i64, ptr @EXPR_FIELD
+  %t16915 = load i64, ptr %l.16897
+  %t16916 = load i64, ptr %c.16901
+  call void @Expr_new_jerry(ptr %t16911, i64 %t16914, i64 %t16915, i64 %t16916)
+  %e.16917 = alloca ptr
+  store ptr %t16911, ptr %e.16917
+  %t16918 = load ptr, ptr %base.16889
+  %t16919 = load ptr, ptr %e.16917
+  %t16920 = getelementptr %Expr, ptr %t16919, i32 0, i32 3
+  %t16921 = load ptr, ptr %t16920
+  call void @jerry_retain(ptr %t16918)
+  store ptr %t16918, ptr %t16920
   call void @jerry_release(ptr %t16921)
-  %t16922 = load ptr, ptr %kw_new.16722
-  call void @jerry_release(ptr %t16922)
-  %t16923 = load ptr, ptr %kw_this.16700
-  call void @jerry_release(ptr %t16923)
-  %t16924 = load ptr, ptr %kw_null.16677
-  call void @jerry_release(ptr %t16924)
-  ret ptr %t16920
-if.else.2693:
-  br label %if.merge.2694
-if.merge.2694:
-  %t16925 = load ptr, ptr %this.16567
-  %t16926 = getelementptr %Parser, ptr %t16925, i32 0, i32 1
+  %t16922 = load ptr, ptr %field.16908
+  %t16923 = getelementptr %Token, ptr %t16922, i32 0, i32 2
+  %t16924 = load ptr, ptr %t16923
+  %t16925 = load ptr, ptr %e.16917
+  %t16926 = getelementptr %Expr, ptr %t16925, i32 0, i32 2
   %t16927 = load ptr, ptr %t16926
-  %t16928 = load ptr, ptr %this.16567
-  %t16929 = getelementptr %Parser, ptr %t16928, i32 0, i32 2
-  %t16930 = load i64, ptr %t16929
-  %t16931 = call ptr @jerry_array_get(ptr %t16927, i64 %t16930)
-  %t16932 = load ptr, ptr %t16931
-  %t.16933 = alloca ptr
-  store ptr %t16932, ptr %t.16933
-  call void @jerry_retain(ptr %t16932)
-  %t16934 = call ptr @jerry_string_new(ptr @.str.1388, i64 15)
-  %t16935 = load ptr, ptr %t.16933
-  %t16936 = getelementptr %Token, ptr %t16935, i32 0, i32 3
-  %t16937 = load i64, ptr %t16936
-  %t16938 = call ptr @jerry_int_to_string(i64 %t16937)
-  %t16939 = call ptr @jerry_string_concat(ptr %t16934, ptr %t16938)
-  %t16940 = call ptr @jerry_string_new(ptr @.str.1389, i64 1)
-  %t16941 = call ptr @jerry_string_concat(ptr %t16939, ptr %t16940)
-  %t16942 = load ptr, ptr %t.16933
-  %t16943 = getelementptr %Token, ptr %t16942, i32 0, i32 4
-  %t16944 = load i64, ptr %t16943
-  %t16945 = call ptr @jerry_int_to_string(i64 %t16944)
-  %t16946 = call ptr @jerry_string_concat(ptr %t16941, ptr %t16945)
-  %t16947 = call ptr @jerry_string_new(ptr @.str.1390, i64 20)
-  %t16948 = call ptr @jerry_string_concat(ptr %t16946, ptr %t16947)
-  %t16949 = load ptr, ptr %t.16933
-  %t16950 = getelementptr %Token, ptr %t16949, i32 0, i32 2
-  %t16951 = load ptr, ptr %t16950
-  %t16952 = call ptr @jerry_string_concat(ptr %t16948, ptr %t16951)
-  %t16953 = call ptr @jerry_string_new(ptr @.str.1391, i64 15)
-  %t16954 = call ptr @jerry_string_concat(ptr %t16952, ptr %t16953)
-  call void @jerry_print_string(ptr %t16954)
+  call void @jerry_retain(ptr %t16924)
+  store ptr %t16924, ptr %t16926
+  call void @jerry_release(ptr %t16927)
+  %t16928 = load ptr, ptr %e.16917
+  %t16929 = load ptr, ptr %base.16889
+  call void @jerry_retain(ptr %t16928)
+  store ptr %t16928, ptr %base.16889
+  call void @jerry_release(ptr %t16929)
+  %t16930 = load ptr, ptr %e.16917
+  call void @jerry_release(ptr %t16930)
+  %t16931 = load ptr, ptr %field.16908
+  call void @jerry_release(ptr %t16931)
+  br label %if.merge.2781
+if.else.2780:
+  %t16932 = load ptr, ptr %this.16886
+  %t16933 = load i64, ptr @TOK_OP
+  %t16934 = call ptr @jerry_string_new(ptr @.str.1402, i64 1)
+  %t16935 = call i1 @Parser_check_jerry(ptr %t16932, i64 %t16933, ptr %t16934)
+  call void @jerry_release(ptr %t16934)
+  br i1 %t16935, label %if.then.2782, label %if.else.2783
+if.then.2782:
+  %t16936 = load ptr, ptr %base.16889
+  %t16937 = getelementptr %Expr, ptr %t16936, i32 0, i32 10
+  %t16938 = load i64, ptr %t16937
+  %l.16939 = alloca i64
+  store i64 %t16938, ptr %l.16939
+  %t16940 = load ptr, ptr %base.16889
+  %t16941 = getelementptr %Expr, ptr %t16940, i32 0, i32 11
+  %t16942 = load i64, ptr %t16941
+  %c.16943 = alloca i64
+  store i64 %t16942, ptr %c.16943
+  %t16944 = load ptr, ptr %this.16886
+  %t16945 = call ptr @Parser_advance_jerry(ptr %t16944)
+  %t16946 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %call_args.16947 = alloca ptr
+  store ptr %t16946, ptr %call_args.16947
+  call void @jerry_array_mark_heap(ptr %t16946)
+  %t16948 = load ptr, ptr %this.16886
+  %t16949 = load i64, ptr @TOK_OP
+  %t16950 = call ptr @jerry_string_new(ptr @.str.1403, i64 1)
+  %t16951 = call i1 @Parser_check_jerry(ptr %t16948, i64 %t16949, ptr %t16950)
+  call void @jerry_release(ptr %t16950)
+  %t16952 = xor i1 %t16951, true
+  br i1 %t16952, label %if.then.2785, label %if.else.2786
+if.then.2785:
+  %t16953 = load ptr, ptr %this.16886
+  %t16954 = call ptr @Parser_parse_expr_jerry(ptr %t16953)
+  %a.16955 = alloca ptr
+  store ptr %t16954, ptr %a.16955
+  %t16956 = load ptr, ptr %call_args.16947
+  %t16957 = load ptr, ptr %a.16955
+  %t16958.slot = alloca ptr
+  store ptr %t16957, ptr %t16958.slot
+  call void @jerry_array_push(ptr %t16956, ptr %t16958.slot)
+  br label %while.cond.2788
+while.cond.2788:
+  %t16959 = load ptr, ptr %this.16886
+  %t16960 = load i64, ptr @TOK_OP
+  %t16961 = call ptr @jerry_string_new(ptr @.str.1404, i64 1)
+  %t16962 = call i1 @Parser_eat_jerry(ptr %t16959, i64 %t16960, ptr %t16961)
+  call void @jerry_release(ptr %t16961)
+  br i1 %t16962, label %while.body.2789, label %while.end.2790
+while.body.2789:
+  %t16963 = load ptr, ptr %this.16886
+  %t16964 = call ptr @Parser_parse_expr_jerry(ptr %t16963)
+  %a2.16965 = alloca ptr
+  store ptr %t16964, ptr %a2.16965
+  %t16966 = load ptr, ptr %call_args.16947
+  %t16967 = load ptr, ptr %a2.16965
+  %t16968.slot = alloca ptr
+  store ptr %t16967, ptr %t16968.slot
+  call void @jerry_array_push(ptr %t16966, ptr %t16968.slot)
+  %t16969 = load ptr, ptr %a2.16965
+  call void @jerry_release(ptr %t16969)
+  br label %while.cond.2788
+while.end.2790:
+  %t16970 = load ptr, ptr %a.16955
+  call void @jerry_release(ptr %t16970)
+  br label %if.merge.2787
+if.else.2786:
+  br label %if.merge.2787
+if.merge.2787:
+  %t16971 = load ptr, ptr %this.16886
+  %t16972 = load i64, ptr @TOK_OP
+  %t16973 = call ptr @jerry_string_new(ptr @.str.1405, i64 1)
+  %t16974 = call ptr @Parser_expect_jerry(ptr %t16971, i64 %t16972, ptr %t16973)
+  call void @jerry_release(ptr %t16973)
+  %t16975 = getelementptr %Expr, ptr null, i32 1
+  %t16976 = ptrtoint ptr %t16975 to i64
+  %t16977 = call ptr @jerry_alloc(i64 %t16976)
+  %t16978 = getelementptr i8, ptr %t16977, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t16978
+  %t16979 = getelementptr %Expr, ptr %t16977, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t16979
+  %t16980 = load i64, ptr @EXPR_CALL
+  %t16981 = load i64, ptr %l.16939
+  %t16982 = load i64, ptr %c.16943
+  call void @Expr_new_jerry(ptr %t16977, i64 %t16980, i64 %t16981, i64 %t16982)
+  %e.16983 = alloca ptr
+  store ptr %t16977, ptr %e.16983
+  %t16984 = load ptr, ptr %base.16889
+  %t16985 = load ptr, ptr %e.16983
+  %t16986 = getelementptr %Expr, ptr %t16985, i32 0, i32 3
+  %t16987 = load ptr, ptr %t16986
+  call void @jerry_retain(ptr %t16984)
+  store ptr %t16984, ptr %t16986
+  call void @jerry_release(ptr %t16987)
+  %t16988 = load ptr, ptr %call_args.16947
+  %t16989 = load ptr, ptr %e.16983
+  %t16990 = getelementptr %Expr, ptr %t16989, i32 0, i32 5
+  %t16991 = load ptr, ptr %t16990
+  call void @jerry_retain(ptr %t16988)
+  store ptr %t16988, ptr %t16990
+  call void @jerry_release(ptr %t16991)
+  %t16992 = load ptr, ptr %e.16983
+  %t16993 = load ptr, ptr %base.16889
+  call void @jerry_retain(ptr %t16992)
+  store ptr %t16992, ptr %base.16889
+  call void @jerry_release(ptr %t16993)
+  %t16994 = load ptr, ptr %e.16983
+  call void @jerry_release(ptr %t16994)
+  %t16995 = load ptr, ptr %call_args.16947
+  call void @jerry_release(ptr %t16995)
+  br label %if.merge.2784
+if.else.2783:
+  %t16996 = load ptr, ptr %this.16886
+  %t16997 = load i64, ptr @TOK_OP
+  %t16998 = call ptr @jerry_string_new(ptr @.str.1406, i64 1)
+  %t16999 = call i1 @Parser_check_jerry(ptr %t16996, i64 %t16997, ptr %t16998)
+  call void @jerry_release(ptr %t16998)
+  br i1 %t16999, label %if.then.2791, label %if.else.2792
+if.then.2791:
+  %t17000 = load ptr, ptr %base.16889
+  %t17001 = getelementptr %Expr, ptr %t17000, i32 0, i32 10
+  %t17002 = load i64, ptr %t17001
+  %l.17003 = alloca i64
+  store i64 %t17002, ptr %l.17003
+  %t17004 = load ptr, ptr %base.16889
+  %t17005 = getelementptr %Expr, ptr %t17004, i32 0, i32 11
+  %t17006 = load i64, ptr %t17005
+  %c.17007 = alloca i64
+  store i64 %t17006, ptr %c.17007
+  %t17008 = load ptr, ptr %this.16886
+  %t17009 = call ptr @Parser_advance_jerry(ptr %t17008)
+  %t17010 = load ptr, ptr %this.16886
+  %t17011 = call ptr @Parser_parse_expr_jerry(ptr %t17010)
+  %idx.17012 = alloca ptr
+  store ptr %t17011, ptr %idx.17012
+  %t17013 = load ptr, ptr %this.16886
+  %t17014 = load i64, ptr @TOK_OP
+  %t17015 = call ptr @jerry_string_new(ptr @.str.1407, i64 1)
+  %t17016 = call ptr @Parser_expect_jerry(ptr %t17013, i64 %t17014, ptr %t17015)
+  call void @jerry_release(ptr %t17015)
+  %t17017 = getelementptr %Expr, ptr null, i32 1
+  %t17018 = ptrtoint ptr %t17017 to i64
+  %t17019 = call ptr @jerry_alloc(i64 %t17018)
+  %t17020 = getelementptr i8, ptr %t17019, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17020
+  %t17021 = getelementptr %Expr, ptr %t17019, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17021
+  %t17022 = load i64, ptr @EXPR_INDEX
+  %t17023 = load i64, ptr %l.17003
+  %t17024 = load i64, ptr %c.17007
+  call void @Expr_new_jerry(ptr %t17019, i64 %t17022, i64 %t17023, i64 %t17024)
+  %e.17025 = alloca ptr
+  store ptr %t17019, ptr %e.17025
+  %t17026 = load ptr, ptr %base.16889
+  %t17027 = load ptr, ptr %e.17025
+  %t17028 = getelementptr %Expr, ptr %t17027, i32 0, i32 3
+  %t17029 = load ptr, ptr %t17028
+  call void @jerry_retain(ptr %t17026)
+  store ptr %t17026, ptr %t17028
+  call void @jerry_release(ptr %t17029)
+  %t17030 = load ptr, ptr %idx.17012
+  %t17031 = load ptr, ptr %e.17025
+  %t17032 = getelementptr %Expr, ptr %t17031, i32 0, i32 4
+  %t17033 = load ptr, ptr %t17032
+  call void @jerry_retain(ptr %t17030)
+  store ptr %t17030, ptr %t17032
+  call void @jerry_release(ptr %t17033)
+  %t17034 = load ptr, ptr %e.17025
+  %t17035 = load ptr, ptr %base.16889
+  call void @jerry_retain(ptr %t17034)
+  store ptr %t17034, ptr %base.16889
+  call void @jerry_release(ptr %t17035)
+  %t17036 = load ptr, ptr %e.17025
+  call void @jerry_release(ptr %t17036)
+  %t17037 = load ptr, ptr %idx.17012
+  call void @jerry_release(ptr %t17037)
+  br label %if.merge.2793
+if.else.2792:
+  %t17038 = load ptr, ptr %this.16886
+  %t17039 = load i64, ptr @TOK_OP
+  %t17040 = call ptr @jerry_string_new(ptr @.str.1408, i64 2)
+  %t17041 = call i1 @Parser_check_jerry(ptr %t17038, i64 %t17039, ptr %t17040)
+  call void @jerry_release(ptr %t17040)
+  br i1 %t17041, label %if.then.2794, label %if.else.2795
+if.then.2794:
+  %t17042 = load ptr, ptr %base.16889
+  %t17043 = getelementptr %Expr, ptr %t17042, i32 0, i32 10
+  %t17044 = load i64, ptr %t17043
+  %l.17045 = alloca i64
+  store i64 %t17044, ptr %l.17045
+  %t17046 = load ptr, ptr %base.16889
+  %t17047 = getelementptr %Expr, ptr %t17046, i32 0, i32 11
+  %t17048 = load i64, ptr %t17047
+  %c.17049 = alloca i64
+  store i64 %t17048, ptr %c.17049
+  %t17050 = load ptr, ptr %this.16886
+  %t17051 = call ptr @Parser_advance_jerry(ptr %t17050)
+  %t17052 = getelementptr %Expr, ptr null, i32 1
+  %t17053 = ptrtoint ptr %t17052 to i64
+  %t17054 = call ptr @jerry_alloc(i64 %t17053)
+  %t17055 = getelementptr i8, ptr %t17054, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17055
+  %t17056 = getelementptr %Expr, ptr %t17054, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17056
+  %t17057 = load i64, ptr @EXPR_INC
+  %t17058 = load i64, ptr %l.17045
+  %t17059 = load i64, ptr %c.17049
+  call void @Expr_new_jerry(ptr %t17054, i64 %t17057, i64 %t17058, i64 %t17059)
+  %e.17060 = alloca ptr
+  store ptr %t17054, ptr %e.17060
+  %t17061 = load ptr, ptr %base.16889
+  %t17062 = load ptr, ptr %e.17060
+  %t17063 = getelementptr %Expr, ptr %t17062, i32 0, i32 3
+  %t17064 = load ptr, ptr %t17063
+  call void @jerry_retain(ptr %t17061)
+  store ptr %t17061, ptr %t17063
+  call void @jerry_release(ptr %t17064)
+  %t17065 = load ptr, ptr %e.17060
+  %t17066 = load ptr, ptr %base.16889
+  call void @jerry_retain(ptr %t17065)
+  store ptr %t17065, ptr %base.16889
+  call void @jerry_release(ptr %t17066)
+  %t17067 = load ptr, ptr %e.17060
+  call void @jerry_release(ptr %t17067)
+  br label %if.merge.2796
+if.else.2795:
+  %t17068 = load ptr, ptr %this.16886
+  %t17069 = load i64, ptr @TOK_OP
+  %t17070 = call ptr @jerry_string_new(ptr @.str.1409, i64 2)
+  %t17071 = call i1 @Parser_check_jerry(ptr %t17068, i64 %t17069, ptr %t17070)
+  call void @jerry_release(ptr %t17070)
+  br i1 %t17071, label %if.then.2797, label %if.else.2798
+if.then.2797:
+  %t17072 = load ptr, ptr %base.16889
+  %t17073 = getelementptr %Expr, ptr %t17072, i32 0, i32 10
+  %t17074 = load i64, ptr %t17073
+  %l.17075 = alloca i64
+  store i64 %t17074, ptr %l.17075
+  %t17076 = load ptr, ptr %base.16889
+  %t17077 = getelementptr %Expr, ptr %t17076, i32 0, i32 11
+  %t17078 = load i64, ptr %t17077
+  %c.17079 = alloca i64
+  store i64 %t17078, ptr %c.17079
+  %t17080 = load ptr, ptr %this.16886
+  %t17081 = call ptr @Parser_advance_jerry(ptr %t17080)
+  %t17082 = getelementptr %Expr, ptr null, i32 1
+  %t17083 = ptrtoint ptr %t17082 to i64
+  %t17084 = call ptr @jerry_alloc(i64 %t17083)
+  %t17085 = getelementptr i8, ptr %t17084, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17085
+  %t17086 = getelementptr %Expr, ptr %t17084, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17086
+  %t17087 = load i64, ptr @EXPR_DEC
+  %t17088 = load i64, ptr %l.17075
+  %t17089 = load i64, ptr %c.17079
+  call void @Expr_new_jerry(ptr %t17084, i64 %t17087, i64 %t17088, i64 %t17089)
+  %e.17090 = alloca ptr
+  store ptr %t17084, ptr %e.17090
+  %t17091 = load ptr, ptr %base.16889
+  %t17092 = load ptr, ptr %e.17090
+  %t17093 = getelementptr %Expr, ptr %t17092, i32 0, i32 3
+  %t17094 = load ptr, ptr %t17093
+  call void @jerry_retain(ptr %t17091)
+  store ptr %t17091, ptr %t17093
+  call void @jerry_release(ptr %t17094)
+  %t17095 = load ptr, ptr %e.17090
+  %t17096 = load ptr, ptr %base.16889
+  call void @jerry_retain(ptr %t17095)
+  store ptr %t17095, ptr %base.16889
+  call void @jerry_release(ptr %t17096)
+  %t17097 = load ptr, ptr %e.17090
+  call void @jerry_release(ptr %t17097)
+  br label %if.merge.2799
+if.else.2798:
+  br label %while.end.2778
+if.merge.2799:
+  br label %if.merge.2796
+if.merge.2796:
+  br label %if.merge.2793
+if.merge.2793:
+  br label %if.merge.2784
+if.merge.2784:
+  br label %if.merge.2781
+if.merge.2781:
+  br label %while.cond.2776
+while.end.2778:
+  %t17098 = load ptr, ptr %base.16889
+  ret ptr %t17098
+}
+
+define ptr @Parser_parse_primary_jerry(ptr %self.arg) {
+entry:
+  %this.17099 = alloca ptr
+  store ptr %self.arg, ptr %this.17099
+  %t17100 = load ptr, ptr %this.17099
+  %t17101 = call i64 @Parser_peek_line_jerry(ptr %t17100)
+  %l.17102 = alloca i64
+  store i64 %t17101, ptr %l.17102
+  %t17103 = load ptr, ptr %this.17099
+  %t17104 = call i64 @Parser_peek_col_jerry(ptr %t17103)
+  %c.17105 = alloca i64
+  store i64 %t17104, ptr %c.17105
+  %t17106 = load ptr, ptr %this.17099
+  %t17107 = call i64 @Parser_peek_kind_jerry(ptr %t17106)
+  %t17108 = load i64, ptr @TOK_INT
+  %t17109 = icmp eq i64 %t17107, %t17108
+  br i1 %t17109, label %if.then.2800, label %if.else.2801
+if.then.2800:
+  %t17110 = load ptr, ptr %this.17099
+  %t17111 = call ptr @Parser_advance_jerry(ptr %t17110)
+  %t.17112 = alloca ptr
+  store ptr %t17111, ptr %t.17112
+  %t17113 = getelementptr %Expr, ptr null, i32 1
+  %t17114 = ptrtoint ptr %t17113 to i64
+  %t17115 = call ptr @jerry_alloc(i64 %t17114)
+  %t17116 = getelementptr i8, ptr %t17115, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17116
+  %t17117 = getelementptr %Expr, ptr %t17115, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17117
+  %t17118 = load i64, ptr @EXPR_INT
+  %t17119 = load i64, ptr %l.17102
+  %t17120 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17115, i64 %t17118, i64 %t17119, i64 %t17120)
+  %e.17121 = alloca ptr
+  store ptr %t17115, ptr %e.17121
+  %t17122 = load ptr, ptr %t.17112
+  %t17123 = getelementptr %Token, ptr %t17122, i32 0, i32 2
+  %t17124 = load ptr, ptr %t17123
+  %t17125 = load ptr, ptr %e.17121
+  %t17126 = getelementptr %Expr, ptr %t17125, i32 0, i32 2
+  %t17127 = load ptr, ptr %t17126
+  call void @jerry_retain(ptr %t17124)
+  store ptr %t17124, ptr %t17126
+  call void @jerry_release(ptr %t17127)
+  %t17128 = load ptr, ptr %e.17121
+  %t17129 = load ptr, ptr %t.17112
+  call void @jerry_release(ptr %t17129)
+  ret ptr %t17128
+if.else.2801:
+  br label %if.merge.2802
+if.merge.2802:
+  %t17130 = load ptr, ptr %this.17099
+  %t17131 = call i64 @Parser_peek_kind_jerry(ptr %t17130)
+  %t17132 = load i64, ptr @TOK_FLOAT
+  %t17133 = icmp eq i64 %t17131, %t17132
+  br i1 %t17133, label %if.then.2803, label %if.else.2804
+if.then.2803:
+  %t17134 = load ptr, ptr %this.17099
+  %t17135 = call ptr @Parser_advance_jerry(ptr %t17134)
+  %t.17136 = alloca ptr
+  store ptr %t17135, ptr %t.17136
+  %t17137 = getelementptr %Expr, ptr null, i32 1
+  %t17138 = ptrtoint ptr %t17137 to i64
+  %t17139 = call ptr @jerry_alloc(i64 %t17138)
+  %t17140 = getelementptr i8, ptr %t17139, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17140
+  %t17141 = getelementptr %Expr, ptr %t17139, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17141
+  %t17142 = load i64, ptr @EXPR_FLOAT
+  %t17143 = load i64, ptr %l.17102
+  %t17144 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17139, i64 %t17142, i64 %t17143, i64 %t17144)
+  %e.17145 = alloca ptr
+  store ptr %t17139, ptr %e.17145
+  %t17146 = load ptr, ptr %t.17136
+  %t17147 = getelementptr %Token, ptr %t17146, i32 0, i32 2
+  %t17148 = load ptr, ptr %t17147
+  %t17149 = load ptr, ptr %e.17145
+  %t17150 = getelementptr %Expr, ptr %t17149, i32 0, i32 2
+  %t17151 = load ptr, ptr %t17150
+  call void @jerry_retain(ptr %t17148)
+  store ptr %t17148, ptr %t17150
+  call void @jerry_release(ptr %t17151)
+  %t17152 = load ptr, ptr %e.17145
+  %t17153 = load ptr, ptr %t.17136
+  call void @jerry_release(ptr %t17153)
+  ret ptr %t17152
+if.else.2804:
+  br label %if.merge.2805
+if.merge.2805:
+  %t17154 = load ptr, ptr %this.17099
+  %t17155 = call i64 @Parser_peek_kind_jerry(ptr %t17154)
+  %t17156 = load i64, ptr @TOK_STRING
+  %t17157 = icmp eq i64 %t17155, %t17156
+  br i1 %t17157, label %if.then.2806, label %if.else.2807
+if.then.2806:
+  %t17158 = load ptr, ptr %this.17099
+  %t17159 = call ptr @Parser_advance_jerry(ptr %t17158)
+  %t.17160 = alloca ptr
+  store ptr %t17159, ptr %t.17160
+  %t17161 = getelementptr %Expr, ptr null, i32 1
+  %t17162 = ptrtoint ptr %t17161 to i64
+  %t17163 = call ptr @jerry_alloc(i64 %t17162)
+  %t17164 = getelementptr i8, ptr %t17163, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17164
+  %t17165 = getelementptr %Expr, ptr %t17163, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17165
+  %t17166 = load i64, ptr @EXPR_STRING
+  %t17167 = load i64, ptr %l.17102
+  %t17168 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17163, i64 %t17166, i64 %t17167, i64 %t17168)
+  %e.17169 = alloca ptr
+  store ptr %t17163, ptr %e.17169
+  %t17170 = load ptr, ptr %t.17160
+  %t17171 = getelementptr %Token, ptr %t17170, i32 0, i32 2
+  %t17172 = load ptr, ptr %t17171
+  %t17173 = load ptr, ptr %e.17169
+  %t17174 = getelementptr %Expr, ptr %t17173, i32 0, i32 2
+  %t17175 = load ptr, ptr %t17174
+  call void @jerry_retain(ptr %t17172)
+  store ptr %t17172, ptr %t17174
+  call void @jerry_release(ptr %t17175)
+  %t17176 = load ptr, ptr %e.17169
+  %t17177 = load ptr, ptr %t.17160
+  call void @jerry_release(ptr %t17177)
+  ret ptr %t17176
+if.else.2807:
+  br label %if.merge.2808
+if.merge.2808:
+  %t17178 = load ptr, ptr %this.17099
+  %t17179 = call i64 @Parser_peek_kind_jerry(ptr %t17178)
+  %t17180 = load i64, ptr @TOK_BOOL
+  %t17181 = icmp eq i64 %t17179, %t17180
+  br i1 %t17181, label %if.then.2809, label %if.else.2810
+if.then.2809:
+  %t17182 = load ptr, ptr %this.17099
+  %t17183 = call ptr @Parser_advance_jerry(ptr %t17182)
+  %t.17184 = alloca ptr
+  store ptr %t17183, ptr %t.17184
+  %t17185 = getelementptr %Expr, ptr null, i32 1
+  %t17186 = ptrtoint ptr %t17185 to i64
+  %t17187 = call ptr @jerry_alloc(i64 %t17186)
+  %t17188 = getelementptr i8, ptr %t17187, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17188
+  %t17189 = getelementptr %Expr, ptr %t17187, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17189
+  %t17190 = load i64, ptr @EXPR_BOOL
+  %t17191 = load i64, ptr %l.17102
+  %t17192 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17187, i64 %t17190, i64 %t17191, i64 %t17192)
+  %e.17193 = alloca ptr
+  store ptr %t17187, ptr %e.17193
+  %t17194 = load ptr, ptr %t.17184
+  %t17195 = getelementptr %Token, ptr %t17194, i32 0, i32 2
+  %t17196 = load ptr, ptr %t17195
+  %t17197 = load ptr, ptr %e.17193
+  %t17198 = getelementptr %Expr, ptr %t17197, i32 0, i32 2
+  %t17199 = load ptr, ptr %t17198
+  call void @jerry_retain(ptr %t17196)
+  store ptr %t17196, ptr %t17198
+  call void @jerry_release(ptr %t17199)
+  %t17200 = load ptr, ptr %e.17193
+  %t17201 = load ptr, ptr %t.17184
+  call void @jerry_release(ptr %t17201)
+  ret ptr %t17200
+if.else.2810:
+  br label %if.merge.2811
+if.merge.2811:
+  %t17202 = call ptr @jerry_char_to_string(i64 110)
+  %t17203 = call ptr @jerry_char_to_string(i64 117)
+  %t17204 = call ptr @jerry_string_concat(ptr %t17202, ptr %t17203)
+  %t17205 = call ptr @jerry_char_to_string(i64 108)
+  %t17206 = call ptr @jerry_string_concat(ptr %t17204, ptr %t17205)
+  %t17207 = call ptr @jerry_char_to_string(i64 108)
+  %t17208 = call ptr @jerry_string_concat(ptr %t17206, ptr %t17207)
+  %kw_null.17209 = alloca ptr
+  store ptr %t17208, ptr %kw_null.17209
+  %t17210 = load ptr, ptr %this.17099
+  %t17211 = load i64, ptr @TOK_KEYWORD
+  %t17212 = load ptr, ptr %kw_null.17209
+  %t17213 = call i1 @Parser_check_jerry(ptr %t17210, i64 %t17211, ptr %t17212)
+  br i1 %t17213, label %if.then.2812, label %if.else.2813
+if.then.2812:
+  %t17214 = load ptr, ptr %this.17099
+  %t17215 = call ptr @Parser_advance_jerry(ptr %t17214)
+  %t17216 = getelementptr %Expr, ptr null, i32 1
+  %t17217 = ptrtoint ptr %t17216 to i64
+  %t17218 = call ptr @jerry_alloc(i64 %t17217)
+  %t17219 = getelementptr i8, ptr %t17218, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17219
+  %t17220 = getelementptr %Expr, ptr %t17218, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17220
+  %t17221 = load i64, ptr @EXPR_NULL
+  %t17222 = load i64, ptr %l.17102
+  %t17223 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17218, i64 %t17221, i64 %t17222, i64 %t17223)
+  %t17224 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17224)
+  ret ptr %t17218
+if.else.2813:
+  br label %if.merge.2814
+if.merge.2814:
+  %t17225 = call ptr @jerry_char_to_string(i64 116)
+  %t17226 = call ptr @jerry_char_to_string(i64 104)
+  %t17227 = call ptr @jerry_string_concat(ptr %t17225, ptr %t17226)
+  %t17228 = call ptr @jerry_char_to_string(i64 105)
+  %t17229 = call ptr @jerry_string_concat(ptr %t17227, ptr %t17228)
+  %t17230 = call ptr @jerry_char_to_string(i64 115)
+  %t17231 = call ptr @jerry_string_concat(ptr %t17229, ptr %t17230)
+  %kw_this.17232 = alloca ptr
+  store ptr %t17231, ptr %kw_this.17232
+  %t17233 = load ptr, ptr %this.17099
+  %t17234 = load i64, ptr @TOK_KEYWORD
+  %t17235 = load ptr, ptr %kw_this.17232
+  %t17236 = call i1 @Parser_check_jerry(ptr %t17233, i64 %t17234, ptr %t17235)
+  br i1 %t17236, label %if.then.2815, label %if.else.2816
+if.then.2815:
+  %t17237 = load ptr, ptr %this.17099
+  %t17238 = call ptr @Parser_advance_jerry(ptr %t17237)
+  %t17239 = getelementptr %Expr, ptr null, i32 1
+  %t17240 = ptrtoint ptr %t17239 to i64
+  %t17241 = call ptr @jerry_alloc(i64 %t17240)
+  %t17242 = getelementptr i8, ptr %t17241, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17242
+  %t17243 = getelementptr %Expr, ptr %t17241, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17243
+  %t17244 = load i64, ptr @EXPR_THIS
+  %t17245 = load i64, ptr %l.17102
+  %t17246 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17241, i64 %t17244, i64 %t17245, i64 %t17246)
+  %t17247 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17247)
+  %t17248 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17248)
+  ret ptr %t17241
+if.else.2816:
+  br label %if.merge.2817
+if.merge.2817:
+  %t17249 = call ptr @jerry_char_to_string(i64 110)
+  %t17250 = call ptr @jerry_char_to_string(i64 101)
+  %t17251 = call ptr @jerry_string_concat(ptr %t17249, ptr %t17250)
+  %t17252 = call ptr @jerry_char_to_string(i64 119)
+  %t17253 = call ptr @jerry_string_concat(ptr %t17251, ptr %t17252)
+  %kw_new.17254 = alloca ptr
+  store ptr %t17253, ptr %kw_new.17254
+  %t17255 = load ptr, ptr %this.17099
+  %t17256 = load i64, ptr @TOK_KEYWORD
+  %t17257 = load ptr, ptr %kw_new.17254
+  %t17258 = call i1 @Parser_check_jerry(ptr %t17255, i64 %t17256, ptr %t17257)
+  br i1 %t17258, label %if.then.2818, label %if.else.2819
+if.then.2818:
+  %t17259 = load ptr, ptr %this.17099
+  %t17260 = call ptr @Parser_advance_jerry(ptr %t17259)
+  %t17261 = load ptr, ptr %this.17099
+  %t17262 = load i64, ptr @TOK_IDENT
+  %t17263 = call ptr @jerry_string_new(ptr @.str.1410, i64 0)
+  %t17264 = call ptr @Parser_expect_jerry(ptr %t17261, i64 %t17262, ptr %t17263)
+  call void @jerry_release(ptr %t17263)
+  %cn.17265 = alloca ptr
+  store ptr %t17264, ptr %cn.17265
+  %t17266 = load ptr, ptr %this.17099
+  %t17267 = load i64, ptr @TOK_OP
+  %t17268 = call ptr @jerry_string_new(ptr @.str.1411, i64 1)
+  %t17269 = call ptr @Parser_expect_jerry(ptr %t17266, i64 %t17267, ptr %t17268)
+  call void @jerry_release(ptr %t17268)
+  %t17270 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %new_args.17271 = alloca ptr
+  store ptr %t17270, ptr %new_args.17271
+  call void @jerry_array_mark_heap(ptr %t17270)
+  %t17272 = load ptr, ptr %this.17099
+  %t17273 = load i64, ptr @TOK_OP
+  %t17274 = call ptr @jerry_string_new(ptr @.str.1412, i64 1)
+  %t17275 = call i1 @Parser_check_jerry(ptr %t17272, i64 %t17273, ptr %t17274)
+  call void @jerry_release(ptr %t17274)
+  %t17276 = xor i1 %t17275, true
+  br i1 %t17276, label %if.then.2821, label %if.else.2822
+if.then.2821:
+  %t17277 = load ptr, ptr %this.17099
+  %t17278 = call ptr @Parser_parse_expr_jerry(ptr %t17277)
+  %a.17279 = alloca ptr
+  store ptr %t17278, ptr %a.17279
+  %t17280 = load ptr, ptr %new_args.17271
+  %t17281 = load ptr, ptr %a.17279
+  %t17282.slot = alloca ptr
+  store ptr %t17281, ptr %t17282.slot
+  call void @jerry_array_push(ptr %t17280, ptr %t17282.slot)
+  br label %while.cond.2824
+while.cond.2824:
+  %t17283 = load ptr, ptr %this.17099
+  %t17284 = load i64, ptr @TOK_OP
+  %t17285 = call ptr @jerry_string_new(ptr @.str.1413, i64 1)
+  %t17286 = call i1 @Parser_eat_jerry(ptr %t17283, i64 %t17284, ptr %t17285)
+  call void @jerry_release(ptr %t17285)
+  br i1 %t17286, label %while.body.2825, label %while.end.2826
+while.body.2825:
+  %t17287 = load ptr, ptr %this.17099
+  %t17288 = call ptr @Parser_parse_expr_jerry(ptr %t17287)
+  %a2.17289 = alloca ptr
+  store ptr %t17288, ptr %a2.17289
+  %t17290 = load ptr, ptr %new_args.17271
+  %t17291 = load ptr, ptr %a2.17289
+  %t17292.slot = alloca ptr
+  store ptr %t17291, ptr %t17292.slot
+  call void @jerry_array_push(ptr %t17290, ptr %t17292.slot)
+  %t17293 = load ptr, ptr %a2.17289
+  call void @jerry_release(ptr %t17293)
+  br label %while.cond.2824
+while.end.2826:
+  %t17294 = load ptr, ptr %a.17279
+  call void @jerry_release(ptr %t17294)
+  br label %if.merge.2823
+if.else.2822:
+  br label %if.merge.2823
+if.merge.2823:
+  %t17295 = load ptr, ptr %this.17099
+  %t17296 = load i64, ptr @TOK_OP
+  %t17297 = call ptr @jerry_string_new(ptr @.str.1414, i64 1)
+  %t17298 = call ptr @Parser_expect_jerry(ptr %t17295, i64 %t17296, ptr %t17297)
+  call void @jerry_release(ptr %t17297)
+  %t17299 = getelementptr %Expr, ptr null, i32 1
+  %t17300 = ptrtoint ptr %t17299 to i64
+  %t17301 = call ptr @jerry_alloc(i64 %t17300)
+  %t17302 = getelementptr i8, ptr %t17301, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17302
+  %t17303 = getelementptr %Expr, ptr %t17301, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17303
+  %t17304 = load i64, ptr @EXPR_NEW
+  %t17305 = load i64, ptr %l.17102
+  %t17306 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17301, i64 %t17304, i64 %t17305, i64 %t17306)
+  %e.17307 = alloca ptr
+  store ptr %t17301, ptr %e.17307
+  %t17308 = load ptr, ptr %cn.17265
+  %t17309 = getelementptr %Token, ptr %t17308, i32 0, i32 2
+  %t17310 = load ptr, ptr %t17309
+  %t17311 = load ptr, ptr %e.17307
+  %t17312 = getelementptr %Expr, ptr %t17311, i32 0, i32 2
+  %t17313 = load ptr, ptr %t17312
+  call void @jerry_retain(ptr %t17310)
+  store ptr %t17310, ptr %t17312
+  call void @jerry_release(ptr %t17313)
+  %t17314 = load ptr, ptr %new_args.17271
+  %t17315 = load ptr, ptr %e.17307
+  %t17316 = getelementptr %Expr, ptr %t17315, i32 0, i32 5
+  %t17317 = load ptr, ptr %t17316
+  call void @jerry_retain(ptr %t17314)
+  store ptr %t17314, ptr %t17316
+  call void @jerry_release(ptr %t17317)
+  %t17318 = load ptr, ptr %e.17307
+  %t17319 = load ptr, ptr %new_args.17271
+  call void @jerry_release(ptr %t17319)
+  %t17320 = load ptr, ptr %cn.17265
+  call void @jerry_release(ptr %t17320)
+  %t17321 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17321)
+  %t17322 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17322)
+  %t17323 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17323)
+  ret ptr %t17318
+if.else.2819:
+  br label %if.merge.2820
+if.merge.2820:
+  %t17324 = load ptr, ptr %this.17099
+  %t17325 = load i64, ptr @TOK_KEYWORD
+  %t17326 = call ptr @jerry_string_new(ptr @.str.1415, i64 2)
+  %t17327 = call i1 @Parser_check_jerry(ptr %t17324, i64 %t17325, ptr %t17326)
+  call void @jerry_release(ptr %t17326)
+  br i1 %t17327, label %if.then.2827, label %if.else.2828
+if.then.2827:
+  %t17328 = load ptr, ptr %this.17099
+  %t17329 = load i64, ptr %l.17102
+  %t17330 = load i64, ptr %c.17105
+  %t17331 = call ptr @Parser_parse_fn_expr_jerry(ptr %t17328, i64 %t17329, i64 %t17330)
+  %t17332 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17332)
+  %t17333 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17333)
+  %t17334 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17334)
+  ret ptr %t17331
+if.else.2828:
+  br label %if.merge.2829
+if.merge.2829:
+  %t17335 = load ptr, ptr %this.17099
+  %t17336 = load i64, ptr @TOK_OP
+  %t17337 = call ptr @jerry_string_new(ptr @.str.1416, i64 1)
+  %t17338 = call i1 @Parser_check_jerry(ptr %t17335, i64 %t17336, ptr %t17337)
+  call void @jerry_release(ptr %t17337)
+  br i1 %t17338, label %if.then.2830, label %if.else.2831
+if.then.2830:
+  %t17339 = load ptr, ptr %this.17099
+  %t17340 = call ptr @Parser_advance_jerry(ptr %t17339)
+  %t17341 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %elems.17342 = alloca ptr
+  store ptr %t17341, ptr %elems.17342
+  call void @jerry_array_mark_heap(ptr %t17341)
+  %t17343 = load ptr, ptr %this.17099
+  %t17344 = load i64, ptr @TOK_OP
+  %t17345 = call ptr @jerry_string_new(ptr @.str.1417, i64 1)
+  %t17346 = call i1 @Parser_check_jerry(ptr %t17343, i64 %t17344, ptr %t17345)
+  call void @jerry_release(ptr %t17345)
+  %t17347 = xor i1 %t17346, true
+  br i1 %t17347, label %if.then.2833, label %if.else.2834
+if.then.2833:
+  %t17348 = load ptr, ptr %this.17099
+  %t17349 = call ptr @Parser_parse_expr_jerry(ptr %t17348)
+  %elem.17350 = alloca ptr
+  store ptr %t17349, ptr %elem.17350
+  %t17351 = load ptr, ptr %elems.17342
+  %t17352 = load ptr, ptr %elem.17350
+  %t17353.slot = alloca ptr
+  store ptr %t17352, ptr %t17353.slot
+  call void @jerry_array_push(ptr %t17351, ptr %t17353.slot)
+  br label %while.cond.2836
+while.cond.2836:
+  %t17354 = load ptr, ptr %this.17099
+  %t17355 = load i64, ptr @TOK_OP
+  %t17356 = call ptr @jerry_string_new(ptr @.str.1418, i64 1)
+  %t17357 = call i1 @Parser_eat_jerry(ptr %t17354, i64 %t17355, ptr %t17356)
+  call void @jerry_release(ptr %t17356)
+  br i1 %t17357, label %while.body.2837, label %while.end.2838
+while.body.2837:
+  %t17358 = load ptr, ptr %this.17099
+  %t17359 = call ptr @Parser_parse_expr_jerry(ptr %t17358)
+  %elem2.17360 = alloca ptr
+  store ptr %t17359, ptr %elem2.17360
+  %t17361 = load ptr, ptr %elems.17342
+  %t17362 = load ptr, ptr %elem2.17360
+  %t17363.slot = alloca ptr
+  store ptr %t17362, ptr %t17363.slot
+  call void @jerry_array_push(ptr %t17361, ptr %t17363.slot)
+  %t17364 = load ptr, ptr %elem2.17360
+  call void @jerry_release(ptr %t17364)
+  br label %while.cond.2836
+while.end.2838:
+  %t17365 = load ptr, ptr %elem.17350
+  call void @jerry_release(ptr %t17365)
+  br label %if.merge.2835
+if.else.2834:
+  br label %if.merge.2835
+if.merge.2835:
+  %t17366 = load ptr, ptr %this.17099
+  %t17367 = load i64, ptr @TOK_OP
+  %t17368 = call ptr @jerry_string_new(ptr @.str.1419, i64 1)
+  %t17369 = call ptr @Parser_expect_jerry(ptr %t17366, i64 %t17367, ptr %t17368)
+  call void @jerry_release(ptr %t17368)
+  %t17370 = getelementptr %Expr, ptr null, i32 1
+  %t17371 = ptrtoint ptr %t17370 to i64
+  %t17372 = call ptr @jerry_alloc(i64 %t17371)
+  %t17373 = getelementptr i8, ptr %t17372, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17373
+  %t17374 = getelementptr %Expr, ptr %t17372, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17374
+  %t17375 = load i64, ptr @EXPR_ARRAY
+  %t17376 = load i64, ptr %l.17102
+  %t17377 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17372, i64 %t17375, i64 %t17376, i64 %t17377)
+  %e.17378 = alloca ptr
+  store ptr %t17372, ptr %e.17378
+  %t17379 = load ptr, ptr %elems.17342
+  %t17380 = load ptr, ptr %e.17378
+  %t17381 = getelementptr %Expr, ptr %t17380, i32 0, i32 5
+  %t17382 = load ptr, ptr %t17381
+  call void @jerry_retain(ptr %t17379)
+  store ptr %t17379, ptr %t17381
+  call void @jerry_release(ptr %t17382)
+  %t17383 = load ptr, ptr %e.17378
+  %t17384 = load ptr, ptr %elems.17342
+  call void @jerry_release(ptr %t17384)
+  %t17385 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17385)
+  %t17386 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17386)
+  %t17387 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17387)
+  ret ptr %t17383
+if.else.2831:
+  br label %if.merge.2832
+if.merge.2832:
+  %t17388 = load ptr, ptr %this.17099
+  %t17389 = load i64, ptr @TOK_OP
+  %t17390 = call ptr @jerry_string_new(ptr @.str.1420, i64 1)
+  %t17391 = call i1 @Parser_check_jerry(ptr %t17388, i64 %t17389, ptr %t17390)
+  call void @jerry_release(ptr %t17390)
+  br i1 %t17391, label %if.then.2839, label %if.else.2840
+if.then.2839:
+  %t17392 = load ptr, ptr %this.17099
+  %t17393 = load i64, ptr %l.17102
+  %t17394 = load i64, ptr %c.17105
+  %t17395 = call ptr @Parser_parse_map_lit_jerry(ptr %t17392, i64 %t17393, i64 %t17394)
+  %t17396 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17396)
+  %t17397 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17397)
+  %t17398 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17398)
+  ret ptr %t17395
+if.else.2840:
+  br label %if.merge.2841
+if.merge.2841:
+  %t17399 = load ptr, ptr %this.17099
+  %t17400 = load i64, ptr @TOK_OP
+  %t17401 = call ptr @jerry_string_new(ptr @.str.1421, i64 1)
+  %t17402 = call i1 @Parser_check_jerry(ptr %t17399, i64 %t17400, ptr %t17401)
+  call void @jerry_release(ptr %t17401)
+  br i1 %t17402, label %if.then.2842, label %if.else.2843
+if.then.2842:
+  %t17403 = load ptr, ptr %this.17099
+  %t17404 = call ptr @Parser_advance_jerry(ptr %t17403)
+  %t17405 = load ptr, ptr %this.17099
+  %t17406 = call ptr @Parser_parse_expr_jerry(ptr %t17405)
+  %inner.17407 = alloca ptr
+  store ptr %t17406, ptr %inner.17407
+  %t17408 = load ptr, ptr %this.17099
+  %t17409 = load i64, ptr @TOK_OP
+  %t17410 = call ptr @jerry_string_new(ptr @.str.1422, i64 1)
+  %t17411 = call ptr @Parser_expect_jerry(ptr %t17408, i64 %t17409, ptr %t17410)
+  call void @jerry_release(ptr %t17410)
+  %t17412 = getelementptr %Expr, ptr null, i32 1
+  %t17413 = ptrtoint ptr %t17412 to i64
+  %t17414 = call ptr @jerry_alloc(i64 %t17413)
+  %t17415 = getelementptr i8, ptr %t17414, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17415
+  %t17416 = getelementptr %Expr, ptr %t17414, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17416
+  %t17417 = load i64, ptr @EXPR_PAREN
+  %t17418 = load i64, ptr %l.17102
+  %t17419 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17414, i64 %t17417, i64 %t17418, i64 %t17419)
+  %e.17420 = alloca ptr
+  store ptr %t17414, ptr %e.17420
+  %t17421 = load ptr, ptr %inner.17407
+  %t17422 = load ptr, ptr %e.17420
+  %t17423 = getelementptr %Expr, ptr %t17422, i32 0, i32 3
+  %t17424 = load ptr, ptr %t17423
+  call void @jerry_retain(ptr %t17421)
+  store ptr %t17421, ptr %t17423
+  call void @jerry_release(ptr %t17424)
+  %t17425 = load ptr, ptr %e.17420
+  %t17426 = load ptr, ptr %inner.17407
+  call void @jerry_release(ptr %t17426)
+  %t17427 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17427)
+  %t17428 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17428)
+  %t17429 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17429)
+  ret ptr %t17425
+if.else.2843:
+  br label %if.merge.2844
+if.merge.2844:
+  %t17430 = load ptr, ptr %this.17099
+  %t17431 = call i64 @Parser_peek_kind_jerry(ptr %t17430)
+  %t17432 = load i64, ptr @TOK_IDENT
+  %t17433 = icmp eq i64 %t17431, %t17432
+  br i1 %t17433, label %if.then.2845, label %if.else.2846
+if.then.2845:
+  %t17434 = load ptr, ptr %this.17099
+  %t17435 = call ptr @Parser_advance_jerry(ptr %t17434)
+  %t.17436 = alloca ptr
+  store ptr %t17435, ptr %t.17436
+  %t17437 = getelementptr %Expr, ptr null, i32 1
+  %t17438 = ptrtoint ptr %t17437 to i64
+  %t17439 = call ptr @jerry_alloc(i64 %t17438)
+  %t17440 = getelementptr i8, ptr %t17439, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17440
+  %t17441 = getelementptr %Expr, ptr %t17439, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17441
+  %t17442 = load i64, ptr @EXPR_IDENT
+  %t17443 = load i64, ptr %l.17102
+  %t17444 = load i64, ptr %c.17105
+  call void @Expr_new_jerry(ptr %t17439, i64 %t17442, i64 %t17443, i64 %t17444)
+  %e.17445 = alloca ptr
+  store ptr %t17439, ptr %e.17445
+  %t17446 = load ptr, ptr %t.17436
+  %t17447 = getelementptr %Token, ptr %t17446, i32 0, i32 2
+  %t17448 = load ptr, ptr %t17447
+  %t17449 = load ptr, ptr %e.17445
+  %t17450 = getelementptr %Expr, ptr %t17449, i32 0, i32 2
+  %t17451 = load ptr, ptr %t17450
+  call void @jerry_retain(ptr %t17448)
+  store ptr %t17448, ptr %t17450
+  call void @jerry_release(ptr %t17451)
+  %t17452 = load ptr, ptr %e.17445
+  %t17453 = load ptr, ptr %t.17436
+  call void @jerry_release(ptr %t17453)
+  %t17454 = load ptr, ptr %kw_new.17254
+  call void @jerry_release(ptr %t17454)
+  %t17455 = load ptr, ptr %kw_this.17232
+  call void @jerry_release(ptr %t17455)
+  %t17456 = load ptr, ptr %kw_null.17209
+  call void @jerry_release(ptr %t17456)
+  ret ptr %t17452
+if.else.2846:
+  br label %if.merge.2847
+if.merge.2847:
+  %t17457 = load ptr, ptr %this.17099
+  %t17458 = getelementptr %Parser, ptr %t17457, i32 0, i32 1
+  %t17459 = load ptr, ptr %t17458
+  %t17460 = load ptr, ptr %this.17099
+  %t17461 = getelementptr %Parser, ptr %t17460, i32 0, i32 2
+  %t17462 = load i64, ptr %t17461
+  %t17463 = call ptr @jerry_array_get(ptr %t17459, i64 %t17462)
+  %t17464 = load ptr, ptr %t17463
+  %t.17465 = alloca ptr
+  store ptr %t17464, ptr %t.17465
+  call void @jerry_retain(ptr %t17464)
+  %t17466 = call ptr @jerry_string_new(ptr @.str.1423, i64 15)
+  %t17467 = load ptr, ptr %t.17465
+  %t17468 = getelementptr %Token, ptr %t17467, i32 0, i32 3
+  %t17469 = load i64, ptr %t17468
+  %t17470 = call ptr @jerry_int_to_string(i64 %t17469)
+  %t17471 = call ptr @jerry_string_concat(ptr %t17466, ptr %t17470)
+  %t17472 = call ptr @jerry_string_new(ptr @.str.1424, i64 1)
+  %t17473 = call ptr @jerry_string_concat(ptr %t17471, ptr %t17472)
+  %t17474 = load ptr, ptr %t.17465
+  %t17475 = getelementptr %Token, ptr %t17474, i32 0, i32 4
+  %t17476 = load i64, ptr %t17475
+  %t17477 = call ptr @jerry_int_to_string(i64 %t17476)
+  %t17478 = call ptr @jerry_string_concat(ptr %t17473, ptr %t17477)
+  %t17479 = call ptr @jerry_string_new(ptr @.str.1425, i64 20)
+  %t17480 = call ptr @jerry_string_concat(ptr %t17478, ptr %t17479)
+  %t17481 = load ptr, ptr %t.17465
+  %t17482 = getelementptr %Token, ptr %t17481, i32 0, i32 2
+  %t17483 = load ptr, ptr %t17482
+  %t17484 = call ptr @jerry_string_concat(ptr %t17480, ptr %t17483)
+  %t17485 = call ptr @jerry_string_new(ptr @.str.1426, i64 15)
+  %t17486 = call ptr @jerry_string_concat(ptr %t17484, ptr %t17485)
+  call void @jerry_print_string(ptr %t17486)
   call void @jerry_println()
   call void @jerry_exit(i64 1)
   unreachable
@@ -30081,2165 +31145,1103 @@ if.merge.2694:
 
 define ptr @Parser_parse_fn_expr_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
 entry:
-  %this.16955 = alloca ptr
-  store ptr %self.arg, ptr %this.16955
-  %l.16956 = alloca i64
-  store i64 %l.arg, ptr %l.16956
-  %c.16957 = alloca i64
-  store i64 %c.arg, ptr %c.16957
-  %t16958 = load ptr, ptr %this.16955
-  %t16959 = call ptr @Parser_advance_jerry(ptr %t16958)
-  %t16960 = load ptr, ptr %this.16955
-  %t16961 = load i64, ptr @TOK_OP
-  %t16962 = call ptr @jerry_string_new(ptr @.str.1392, i64 1)
-  %t16963 = call ptr @Parser_expect_jerry(ptr %t16960, i64 %t16961, ptr %t16962)
-  call void @jerry_release(ptr %t16962)
-  %t16964 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %ps.16965 = alloca ptr
-  store ptr %t16964, ptr %ps.16965
-  call void @jerry_array_mark_heap(ptr %t16964)
-  %t16966 = load ptr, ptr %this.16955
-  %t16967 = load i64, ptr @TOK_OP
-  %t16968 = call ptr @jerry_string_new(ptr @.str.1393, i64 1)
-  %t16969 = call i1 @Parser_check_jerry(ptr %t16966, i64 %t16967, ptr %t16968)
-  call void @jerry_release(ptr %t16968)
-  %t16970 = xor i1 %t16969, true
-  br i1 %t16970, label %if.then.2695, label %if.else.2696
-if.then.2695:
-  %t16971 = load ptr, ptr %this.16955
-  %t16972 = call ptr @Parser_parse_param_jerry(ptr %t16971)
-  %p.16973 = alloca ptr
-  store ptr %t16972, ptr %p.16973
-  %t16974 = load ptr, ptr %ps.16965
-  %t16975 = load ptr, ptr %p.16973
-  %t16976.slot = alloca ptr
-  store ptr %t16975, ptr %t16976.slot
-  call void @jerry_array_push(ptr %t16974, ptr %t16976.slot)
-  br label %while.cond.2698
-while.cond.2698:
-  %t16977 = load ptr, ptr %this.16955
-  %t16978 = load i64, ptr @TOK_OP
-  %t16979 = call ptr @jerry_string_new(ptr @.str.1394, i64 1)
-  %t16980 = call i1 @Parser_eat_jerry(ptr %t16977, i64 %t16978, ptr %t16979)
-  call void @jerry_release(ptr %t16979)
-  br i1 %t16980, label %while.body.2699, label %while.end.2700
-while.body.2699:
-  %t16981 = load ptr, ptr %this.16955
-  %t16982 = call ptr @Parser_parse_param_jerry(ptr %t16981)
-  %p2.16983 = alloca ptr
-  store ptr %t16982, ptr %p2.16983
-  %t16984 = load ptr, ptr %ps.16965
-  %t16985 = load ptr, ptr %p2.16983
-  %t16986.slot = alloca ptr
-  store ptr %t16985, ptr %t16986.slot
-  call void @jerry_array_push(ptr %t16984, ptr %t16986.slot)
-  %t16987 = load ptr, ptr %p2.16983
-  call void @jerry_release(ptr %t16987)
-  br label %while.cond.2698
-while.end.2700:
-  %t16988 = load ptr, ptr %p.16973
-  call void @jerry_release(ptr %t16988)
-  br label %if.merge.2697
-if.else.2696:
-  br label %if.merge.2697
-if.merge.2697:
-  %t16989 = load ptr, ptr %this.16955
-  %t16990 = load i64, ptr @TOK_OP
-  %t16991 = call ptr @jerry_string_new(ptr @.str.1395, i64 1)
-  %t16992 = call ptr @Parser_expect_jerry(ptr %t16989, i64 %t16990, ptr %t16991)
-  call void @jerry_release(ptr %t16991)
-  %ret.16993 = alloca ptr
-  store ptr null, ptr %ret.16993
-  %t16994 = load ptr, ptr %this.16955
-  %t16995 = load i64, ptr @TOK_OP
-  %t16996 = call ptr @jerry_string_new(ptr @.str.1396, i64 1)
-  %t16997 = call i1 @Parser_eat_jerry(ptr %t16994, i64 %t16995, ptr %t16996)
-  call void @jerry_release(ptr %t16996)
-  br i1 %t16997, label %if.then.2701, label %if.else.2702
-if.then.2701:
-  %t16998 = load ptr, ptr %this.16955
-  %t16999 = call ptr @Parser_parse_type_expr_jerry(ptr %t16998)
-  %t17000 = load ptr, ptr %ret.16993
-  call void @jerry_retain(ptr %t16999)
-  store ptr %t16999, ptr %ret.16993
-  call void @jerry_release(ptr %t17000)
-  br label %if.merge.2703
-if.else.2702:
-  br label %if.merge.2703
-if.merge.2703:
-  %t17001 = load ptr, ptr %this.16955
-  %t17002 = call ptr @Parser_parse_block_jerry(ptr %t17001)
-  %body.17003 = alloca ptr
-  store ptr %t17002, ptr %body.17003
-  %t17004 = getelementptr %Expr, ptr null, i32 1
-  %t17005 = ptrtoint ptr %t17004 to i64
-  %t17006 = call ptr @jerry_alloc(i64 %t17005)
-  %t17007 = getelementptr i8, ptr %t17006, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t17007
-  %t17008 = getelementptr %Expr, ptr %t17006, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t17008
-  %t17009 = load i64, ptr @EXPR_FN
-  %t17010 = load i64, ptr %l.16956
-  %t17011 = load i64, ptr %c.16957
-  call void @Expr_new_jerry(ptr %t17006, i64 %t17009, i64 %t17010, i64 %t17011)
-  %e.17012 = alloca ptr
-  store ptr %t17006, ptr %e.17012
-  %t17013 = load ptr, ptr %ps.16965
-  %t17014 = load ptr, ptr %e.17012
-  %t17015 = getelementptr %Expr, ptr %t17014, i32 0, i32 7
-  %t17016 = load ptr, ptr %t17015
-  call void @jerry_retain(ptr %t17013)
-  store ptr %t17013, ptr %t17015
-  call void @jerry_release(ptr %t17016)
-  %t17017 = load ptr, ptr %ret.16993
-  %t17018 = load ptr, ptr %e.17012
-  %t17019 = getelementptr %Expr, ptr %t17018, i32 0, i32 8
-  %t17020 = load ptr, ptr %t17019
-  call void @jerry_retain(ptr %t17017)
-  store ptr %t17017, ptr %t17019
-  call void @jerry_release(ptr %t17020)
-  %t17021 = load ptr, ptr %body.17003
-  %t17022 = load ptr, ptr %e.17012
-  %t17023 = getelementptr %Expr, ptr %t17022, i32 0, i32 9
-  %t17024 = load ptr, ptr %t17023
-  call void @jerry_retain(ptr %t17021)
-  store ptr %t17021, ptr %t17023
-  call void @jerry_release(ptr %t17024)
-  %t17025 = load ptr, ptr %e.17012
-  %t17026 = load ptr, ptr %body.17003
-  call void @jerry_release(ptr %t17026)
-  %t17027 = load ptr, ptr %ret.16993
-  call void @jerry_release(ptr %t17027)
-  %t17028 = load ptr, ptr %ps.16965
-  call void @jerry_release(ptr %t17028)
-  ret ptr %t17025
+  %this.17487 = alloca ptr
+  store ptr %self.arg, ptr %this.17487
+  %l.17488 = alloca i64
+  store i64 %l.arg, ptr %l.17488
+  %c.17489 = alloca i64
+  store i64 %c.arg, ptr %c.17489
+  %t17490 = load ptr, ptr %this.17487
+  %t17491 = call ptr @Parser_advance_jerry(ptr %t17490)
+  %t17492 = load ptr, ptr %this.17487
+  %t17493 = load i64, ptr @TOK_OP
+  %t17494 = call ptr @jerry_string_new(ptr @.str.1427, i64 1)
+  %t17495 = call ptr @Parser_expect_jerry(ptr %t17492, i64 %t17493, ptr %t17494)
+  call void @jerry_release(ptr %t17494)
+  %t17496 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %ps.17497 = alloca ptr
+  store ptr %t17496, ptr %ps.17497
+  call void @jerry_array_mark_heap(ptr %t17496)
+  %t17498 = load ptr, ptr %this.17487
+  %t17499 = load i64, ptr @TOK_OP
+  %t17500 = call ptr @jerry_string_new(ptr @.str.1428, i64 1)
+  %t17501 = call i1 @Parser_check_jerry(ptr %t17498, i64 %t17499, ptr %t17500)
+  call void @jerry_release(ptr %t17500)
+  %t17502 = xor i1 %t17501, true
+  br i1 %t17502, label %if.then.2848, label %if.else.2849
+if.then.2848:
+  %t17503 = load ptr, ptr %this.17487
+  %t17504 = call ptr @Parser_parse_param_jerry(ptr %t17503)
+  %p.17505 = alloca ptr
+  store ptr %t17504, ptr %p.17505
+  %t17506 = load ptr, ptr %ps.17497
+  %t17507 = load ptr, ptr %p.17505
+  %t17508.slot = alloca ptr
+  store ptr %t17507, ptr %t17508.slot
+  call void @jerry_array_push(ptr %t17506, ptr %t17508.slot)
+  br label %while.cond.2851
+while.cond.2851:
+  %t17509 = load ptr, ptr %this.17487
+  %t17510 = load i64, ptr @TOK_OP
+  %t17511 = call ptr @jerry_string_new(ptr @.str.1429, i64 1)
+  %t17512 = call i1 @Parser_eat_jerry(ptr %t17509, i64 %t17510, ptr %t17511)
+  call void @jerry_release(ptr %t17511)
+  br i1 %t17512, label %while.body.2852, label %while.end.2853
+while.body.2852:
+  %t17513 = load ptr, ptr %this.17487
+  %t17514 = call ptr @Parser_parse_param_jerry(ptr %t17513)
+  %p2.17515 = alloca ptr
+  store ptr %t17514, ptr %p2.17515
+  %t17516 = load ptr, ptr %ps.17497
+  %t17517 = load ptr, ptr %p2.17515
+  %t17518.slot = alloca ptr
+  store ptr %t17517, ptr %t17518.slot
+  call void @jerry_array_push(ptr %t17516, ptr %t17518.slot)
+  %t17519 = load ptr, ptr %p2.17515
+  call void @jerry_release(ptr %t17519)
+  br label %while.cond.2851
+while.end.2853:
+  %t17520 = load ptr, ptr %p.17505
+  call void @jerry_release(ptr %t17520)
+  br label %if.merge.2850
+if.else.2849:
+  br label %if.merge.2850
+if.merge.2850:
+  %t17521 = load ptr, ptr %this.17487
+  %t17522 = load i64, ptr @TOK_OP
+  %t17523 = call ptr @jerry_string_new(ptr @.str.1430, i64 1)
+  %t17524 = call ptr @Parser_expect_jerry(ptr %t17521, i64 %t17522, ptr %t17523)
+  call void @jerry_release(ptr %t17523)
+  %ret.17525 = alloca ptr
+  store ptr null, ptr %ret.17525
+  %t17526 = load ptr, ptr %this.17487
+  %t17527 = load i64, ptr @TOK_OP
+  %t17528 = call ptr @jerry_string_new(ptr @.str.1431, i64 1)
+  %t17529 = call i1 @Parser_eat_jerry(ptr %t17526, i64 %t17527, ptr %t17528)
+  call void @jerry_release(ptr %t17528)
+  br i1 %t17529, label %if.then.2854, label %if.else.2855
+if.then.2854:
+  %t17530 = load ptr, ptr %this.17487
+  %t17531 = call ptr @Parser_parse_type_expr_jerry(ptr %t17530)
+  %t17532 = load ptr, ptr %ret.17525
+  call void @jerry_retain(ptr %t17531)
+  store ptr %t17531, ptr %ret.17525
+  call void @jerry_release(ptr %t17532)
+  br label %if.merge.2856
+if.else.2855:
+  br label %if.merge.2856
+if.merge.2856:
+  %t17533 = load ptr, ptr %this.17487
+  %t17534 = call ptr @Parser_parse_block_jerry(ptr %t17533)
+  %body.17535 = alloca ptr
+  store ptr %t17534, ptr %body.17535
+  %t17536 = getelementptr %Expr, ptr null, i32 1
+  %t17537 = ptrtoint ptr %t17536 to i64
+  %t17538 = call ptr @jerry_alloc(i64 %t17537)
+  %t17539 = getelementptr i8, ptr %t17538, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17539
+  %t17540 = getelementptr %Expr, ptr %t17538, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17540
+  %t17541 = load i64, ptr @EXPR_FN
+  %t17542 = load i64, ptr %l.17488
+  %t17543 = load i64, ptr %c.17489
+  call void @Expr_new_jerry(ptr %t17538, i64 %t17541, i64 %t17542, i64 %t17543)
+  %e.17544 = alloca ptr
+  store ptr %t17538, ptr %e.17544
+  %t17545 = load ptr, ptr %ps.17497
+  %t17546 = load ptr, ptr %e.17544
+  %t17547 = getelementptr %Expr, ptr %t17546, i32 0, i32 7
+  %t17548 = load ptr, ptr %t17547
+  call void @jerry_retain(ptr %t17545)
+  store ptr %t17545, ptr %t17547
+  call void @jerry_release(ptr %t17548)
+  %t17549 = load ptr, ptr %ret.17525
+  %t17550 = load ptr, ptr %e.17544
+  %t17551 = getelementptr %Expr, ptr %t17550, i32 0, i32 8
+  %t17552 = load ptr, ptr %t17551
+  call void @jerry_retain(ptr %t17549)
+  store ptr %t17549, ptr %t17551
+  call void @jerry_release(ptr %t17552)
+  %t17553 = load ptr, ptr %body.17535
+  %t17554 = load ptr, ptr %e.17544
+  %t17555 = getelementptr %Expr, ptr %t17554, i32 0, i32 9
+  %t17556 = load ptr, ptr %t17555
+  call void @jerry_retain(ptr %t17553)
+  store ptr %t17553, ptr %t17555
+  call void @jerry_release(ptr %t17556)
+  %t17557 = load ptr, ptr %e.17544
+  %t17558 = load ptr, ptr %body.17535
+  call void @jerry_release(ptr %t17558)
+  %t17559 = load ptr, ptr %ret.17525
+  call void @jerry_release(ptr %t17559)
+  %t17560 = load ptr, ptr %ps.17497
+  call void @jerry_release(ptr %t17560)
+  ret ptr %t17557
 }
 
 define ptr @Parser_parse_map_lit_jerry(ptr %self.arg, i64 %l.arg, i64 %c.arg) {
 entry:
-  %this.17029 = alloca ptr
-  store ptr %self.arg, ptr %this.17029
-  %l.17030 = alloca i64
-  store i64 %l.arg, ptr %l.17030
-  %c.17031 = alloca i64
-  store i64 %c.arg, ptr %c.17031
-  %t17032 = load ptr, ptr %this.17029
-  %t17033 = call ptr @Parser_advance_jerry(ptr %t17032)
-  %t17034 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %keys.17035 = alloca ptr
-  store ptr %t17034, ptr %keys.17035
-  call void @jerry_array_mark_heap(ptr %t17034)
-  %t17036 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %vals.17037 = alloca ptr
-  store ptr %t17036, ptr %vals.17037
-  call void @jerry_array_mark_heap(ptr %t17036)
-  %t17038 = load ptr, ptr %this.17029
-  %t17039 = load i64, ptr @TOK_OP
-  %t17040 = call ptr @jerry_string_new(ptr @.str.1397, i64 1)
-  %t17041 = call i1 @Parser_check_jerry(ptr %t17038, i64 %t17039, ptr %t17040)
-  call void @jerry_release(ptr %t17040)
-  %t17042 = xor i1 %t17041, true
-  br i1 %t17042, label %if.then.2704, label %if.else.2705
-if.then.2704:
-  %t17043 = load ptr, ptr %this.17029
-  %t17044 = call ptr @Parser_parse_expr_jerry(ptr %t17043)
-  %k.17045 = alloca ptr
-  store ptr %t17044, ptr %k.17045
-  %t17046 = load ptr, ptr %this.17029
-  %t17047 = load i64, ptr @TOK_OP
-  %t17048 = call ptr @jerry_string_new(ptr @.str.1398, i64 1)
-  %t17049 = call ptr @Parser_expect_jerry(ptr %t17046, i64 %t17047, ptr %t17048)
-  call void @jerry_release(ptr %t17048)
-  %t17050 = load ptr, ptr %this.17029
-  %t17051 = call ptr @Parser_parse_expr_jerry(ptr %t17050)
-  %v.17052 = alloca ptr
-  store ptr %t17051, ptr %v.17052
-  %t17053 = load ptr, ptr %keys.17035
-  %t17054 = load ptr, ptr %k.17045
-  %t17055.slot = alloca ptr
-  store ptr %t17054, ptr %t17055.slot
-  call void @jerry_array_push(ptr %t17053, ptr %t17055.slot)
-  %t17056 = load ptr, ptr %vals.17037
-  %t17057 = load ptr, ptr %v.17052
-  %t17058.slot = alloca ptr
-  store ptr %t17057, ptr %t17058.slot
-  call void @jerry_array_push(ptr %t17056, ptr %t17058.slot)
-  br label %while.cond.2707
-while.cond.2707:
-  %t17059 = load ptr, ptr %this.17029
-  %t17060 = load i64, ptr @TOK_OP
-  %t17061 = call ptr @jerry_string_new(ptr @.str.1399, i64 1)
-  %t17062 = call i1 @Parser_eat_jerry(ptr %t17059, i64 %t17060, ptr %t17061)
-  call void @jerry_release(ptr %t17061)
-  br i1 %t17062, label %while.body.2708, label %while.end.2709
-while.body.2708:
-  %t17063 = load ptr, ptr %this.17029
-  %t17064 = call ptr @Parser_parse_expr_jerry(ptr %t17063)
-  %k2.17065 = alloca ptr
-  store ptr %t17064, ptr %k2.17065
-  %t17066 = load ptr, ptr %this.17029
-  %t17067 = load i64, ptr @TOK_OP
-  %t17068 = call ptr @jerry_string_new(ptr @.str.1400, i64 1)
-  %t17069 = call ptr @Parser_expect_jerry(ptr %t17066, i64 %t17067, ptr %t17068)
-  call void @jerry_release(ptr %t17068)
-  %t17070 = load ptr, ptr %this.17029
-  %t17071 = call ptr @Parser_parse_expr_jerry(ptr %t17070)
-  %v2.17072 = alloca ptr
-  store ptr %t17071, ptr %v2.17072
-  %t17073 = load ptr, ptr %keys.17035
-  %t17074 = load ptr, ptr %k2.17065
-  %t17075.slot = alloca ptr
-  store ptr %t17074, ptr %t17075.slot
-  call void @jerry_array_push(ptr %t17073, ptr %t17075.slot)
-  %t17076 = load ptr, ptr %vals.17037
-  %t17077 = load ptr, ptr %v2.17072
-  %t17078.slot = alloca ptr
-  store ptr %t17077, ptr %t17078.slot
-  call void @jerry_array_push(ptr %t17076, ptr %t17078.slot)
-  %t17079 = load ptr, ptr %v2.17072
-  call void @jerry_release(ptr %t17079)
-  %t17080 = load ptr, ptr %k2.17065
-  call void @jerry_release(ptr %t17080)
-  br label %while.cond.2707
-while.end.2709:
-  %t17081 = load ptr, ptr %v.17052
-  call void @jerry_release(ptr %t17081)
-  %t17082 = load ptr, ptr %k.17045
-  call void @jerry_release(ptr %t17082)
-  br label %if.merge.2706
-if.else.2705:
-  br label %if.merge.2706
-if.merge.2706:
-  %t17083 = load ptr, ptr %this.17029
-  %t17084 = load i64, ptr @TOK_OP
-  %t17085 = call ptr @jerry_string_new(ptr @.str.1401, i64 1)
-  %t17086 = call ptr @Parser_expect_jerry(ptr %t17083, i64 %t17084, ptr %t17085)
-  call void @jerry_release(ptr %t17085)
-  %t17087 = getelementptr %Expr, ptr null, i32 1
-  %t17088 = ptrtoint ptr %t17087 to i64
-  %t17089 = call ptr @jerry_alloc(i64 %t17088)
-  %t17090 = getelementptr i8, ptr %t17089, i64 -8
-  store ptr @Expr_destroy_jerry, ptr %t17090
-  %t17091 = getelementptr %Expr, ptr %t17089, i32 0, i32 0
-  store ptr @vtable.Expr, ptr %t17091
-  %t17092 = load i64, ptr @EXPR_MAP
-  %t17093 = load i64, ptr %l.17030
-  %t17094 = load i64, ptr %c.17031
-  call void @Expr_new_jerry(ptr %t17089, i64 %t17092, i64 %t17093, i64 %t17094)
-  %e.17095 = alloca ptr
-  store ptr %t17089, ptr %e.17095
-  %t17096 = load ptr, ptr %keys.17035
-  %t17097 = load ptr, ptr %e.17095
-  %t17098 = getelementptr %Expr, ptr %t17097, i32 0, i32 5
-  %t17099 = load ptr, ptr %t17098
-  call void @jerry_retain(ptr %t17096)
-  store ptr %t17096, ptr %t17098
-  call void @jerry_release(ptr %t17099)
-  %t17100 = load ptr, ptr %vals.17037
-  %t17101 = load ptr, ptr %e.17095
-  %t17102 = getelementptr %Expr, ptr %t17101, i32 0, i32 6
-  %t17103 = load ptr, ptr %t17102
-  call void @jerry_retain(ptr %t17100)
-  store ptr %t17100, ptr %t17102
-  call void @jerry_release(ptr %t17103)
-  %t17104 = load ptr, ptr %e.17095
-  %t17105 = load ptr, ptr %vals.17037
-  call void @jerry_release(ptr %t17105)
-  %t17106 = load ptr, ptr %keys.17035
-  call void @jerry_release(ptr %t17106)
-  ret ptr %t17104
+  %this.17561 = alloca ptr
+  store ptr %self.arg, ptr %this.17561
+  %l.17562 = alloca i64
+  store i64 %l.arg, ptr %l.17562
+  %c.17563 = alloca i64
+  store i64 %c.arg, ptr %c.17563
+  %t17564 = load ptr, ptr %this.17561
+  %t17565 = call ptr @Parser_advance_jerry(ptr %t17564)
+  %t17566 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %keys.17567 = alloca ptr
+  store ptr %t17566, ptr %keys.17567
+  call void @jerry_array_mark_heap(ptr %t17566)
+  %t17568 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %vals.17569 = alloca ptr
+  store ptr %t17568, ptr %vals.17569
+  call void @jerry_array_mark_heap(ptr %t17568)
+  %t17570 = load ptr, ptr %this.17561
+  %t17571 = load i64, ptr @TOK_OP
+  %t17572 = call ptr @jerry_string_new(ptr @.str.1432, i64 1)
+  %t17573 = call i1 @Parser_check_jerry(ptr %t17570, i64 %t17571, ptr %t17572)
+  call void @jerry_release(ptr %t17572)
+  %t17574 = xor i1 %t17573, true
+  br i1 %t17574, label %if.then.2857, label %if.else.2858
+if.then.2857:
+  %t17575 = load ptr, ptr %this.17561
+  %t17576 = call ptr @Parser_parse_expr_jerry(ptr %t17575)
+  %k.17577 = alloca ptr
+  store ptr %t17576, ptr %k.17577
+  %t17578 = load ptr, ptr %this.17561
+  %t17579 = load i64, ptr @TOK_OP
+  %t17580 = call ptr @jerry_string_new(ptr @.str.1433, i64 1)
+  %t17581 = call ptr @Parser_expect_jerry(ptr %t17578, i64 %t17579, ptr %t17580)
+  call void @jerry_release(ptr %t17580)
+  %t17582 = load ptr, ptr %this.17561
+  %t17583 = call ptr @Parser_parse_expr_jerry(ptr %t17582)
+  %v.17584 = alloca ptr
+  store ptr %t17583, ptr %v.17584
+  %t17585 = load ptr, ptr %keys.17567
+  %t17586 = load ptr, ptr %k.17577
+  %t17587.slot = alloca ptr
+  store ptr %t17586, ptr %t17587.slot
+  call void @jerry_array_push(ptr %t17585, ptr %t17587.slot)
+  %t17588 = load ptr, ptr %vals.17569
+  %t17589 = load ptr, ptr %v.17584
+  %t17590.slot = alloca ptr
+  store ptr %t17589, ptr %t17590.slot
+  call void @jerry_array_push(ptr %t17588, ptr %t17590.slot)
+  br label %while.cond.2860
+while.cond.2860:
+  %t17591 = load ptr, ptr %this.17561
+  %t17592 = load i64, ptr @TOK_OP
+  %t17593 = call ptr @jerry_string_new(ptr @.str.1434, i64 1)
+  %t17594 = call i1 @Parser_eat_jerry(ptr %t17591, i64 %t17592, ptr %t17593)
+  call void @jerry_release(ptr %t17593)
+  br i1 %t17594, label %while.body.2861, label %while.end.2862
+while.body.2861:
+  %t17595 = load ptr, ptr %this.17561
+  %t17596 = call ptr @Parser_parse_expr_jerry(ptr %t17595)
+  %k2.17597 = alloca ptr
+  store ptr %t17596, ptr %k2.17597
+  %t17598 = load ptr, ptr %this.17561
+  %t17599 = load i64, ptr @TOK_OP
+  %t17600 = call ptr @jerry_string_new(ptr @.str.1435, i64 1)
+  %t17601 = call ptr @Parser_expect_jerry(ptr %t17598, i64 %t17599, ptr %t17600)
+  call void @jerry_release(ptr %t17600)
+  %t17602 = load ptr, ptr %this.17561
+  %t17603 = call ptr @Parser_parse_expr_jerry(ptr %t17602)
+  %v2.17604 = alloca ptr
+  store ptr %t17603, ptr %v2.17604
+  %t17605 = load ptr, ptr %keys.17567
+  %t17606 = load ptr, ptr %k2.17597
+  %t17607.slot = alloca ptr
+  store ptr %t17606, ptr %t17607.slot
+  call void @jerry_array_push(ptr %t17605, ptr %t17607.slot)
+  %t17608 = load ptr, ptr %vals.17569
+  %t17609 = load ptr, ptr %v2.17604
+  %t17610.slot = alloca ptr
+  store ptr %t17609, ptr %t17610.slot
+  call void @jerry_array_push(ptr %t17608, ptr %t17610.slot)
+  %t17611 = load ptr, ptr %v2.17604
+  call void @jerry_release(ptr %t17611)
+  %t17612 = load ptr, ptr %k2.17597
+  call void @jerry_release(ptr %t17612)
+  br label %while.cond.2860
+while.end.2862:
+  %t17613 = load ptr, ptr %v.17584
+  call void @jerry_release(ptr %t17613)
+  %t17614 = load ptr, ptr %k.17577
+  call void @jerry_release(ptr %t17614)
+  br label %if.merge.2859
+if.else.2858:
+  br label %if.merge.2859
+if.merge.2859:
+  %t17615 = load ptr, ptr %this.17561
+  %t17616 = load i64, ptr @TOK_OP
+  %t17617 = call ptr @jerry_string_new(ptr @.str.1436, i64 1)
+  %t17618 = call ptr @Parser_expect_jerry(ptr %t17615, i64 %t17616, ptr %t17617)
+  call void @jerry_release(ptr %t17617)
+  %t17619 = getelementptr %Expr, ptr null, i32 1
+  %t17620 = ptrtoint ptr %t17619 to i64
+  %t17621 = call ptr @jerry_alloc(i64 %t17620)
+  %t17622 = getelementptr i8, ptr %t17621, i64 -8
+  store ptr @Expr_destroy_jerry, ptr %t17622
+  %t17623 = getelementptr %Expr, ptr %t17621, i32 0, i32 0
+  store ptr @vtable.Expr, ptr %t17623
+  %t17624 = load i64, ptr @EXPR_MAP
+  %t17625 = load i64, ptr %l.17562
+  %t17626 = load i64, ptr %c.17563
+  call void @Expr_new_jerry(ptr %t17621, i64 %t17624, i64 %t17625, i64 %t17626)
+  %e.17627 = alloca ptr
+  store ptr %t17621, ptr %e.17627
+  %t17628 = load ptr, ptr %keys.17567
+  %t17629 = load ptr, ptr %e.17627
+  %t17630 = getelementptr %Expr, ptr %t17629, i32 0, i32 5
+  %t17631 = load ptr, ptr %t17630
+  call void @jerry_retain(ptr %t17628)
+  store ptr %t17628, ptr %t17630
+  call void @jerry_release(ptr %t17631)
+  %t17632 = load ptr, ptr %vals.17569
+  %t17633 = load ptr, ptr %e.17627
+  %t17634 = getelementptr %Expr, ptr %t17633, i32 0, i32 6
+  %t17635 = load ptr, ptr %t17634
+  call void @jerry_retain(ptr %t17632)
+  store ptr %t17632, ptr %t17634
+  call void @jerry_release(ptr %t17635)
+  %t17636 = load ptr, ptr %e.17627
+  %t17637 = load ptr, ptr %vals.17569
+  call void @jerry_release(ptr %t17637)
+  %t17638 = load ptr, ptr %keys.17567
+  call void @jerry_release(ptr %t17638)
+  ret ptr %t17636
 }
 
 define ptr @parse_jerry(ptr %src.arg) {
 entry:
-  %src.17107 = alloca ptr
-  store ptr %src.arg, ptr %src.17107
-  %t17108 = getelementptr %Lexer, ptr null, i32 1
-  %t17109 = ptrtoint ptr %t17108 to i64
-  %t17110 = call ptr @jerry_alloc(i64 %t17109)
-  %t17111 = getelementptr i8, ptr %t17110, i64 -8
-  store ptr @Lexer_destroy_jerry, ptr %t17111
-  %t17112 = getelementptr %Lexer, ptr %t17110, i32 0, i32 0
-  store ptr @vtable.Lexer, ptr %t17112
-  %t17113 = load ptr, ptr %src.17107
-  call void @Lexer_new_jerry(ptr %t17110, ptr %t17113)
-  %lx.17114 = alloca ptr
-  store ptr %t17110, ptr %lx.17114
-  %t17115 = load ptr, ptr %lx.17114
-  %t17116 = call ptr @Lexer_tokenize_jerry(ptr %t17115)
-  %tokens.17117 = alloca ptr
-  store ptr %t17116, ptr %tokens.17117
-  %t17118 = getelementptr %Parser, ptr null, i32 1
-  %t17119 = ptrtoint ptr %t17118 to i64
-  %t17120 = call ptr @jerry_alloc(i64 %t17119)
-  %t17121 = getelementptr i8, ptr %t17120, i64 -8
-  store ptr @Parser_destroy_jerry, ptr %t17121
-  %t17122 = getelementptr %Parser, ptr %t17120, i32 0, i32 0
-  store ptr @vtable.Parser, ptr %t17122
-  %t17123 = load ptr, ptr %tokens.17117
-  call void @Parser_new_jerry(ptr %t17120, ptr %t17123)
-  %p.17124 = alloca ptr
-  store ptr %t17120, ptr %p.17124
-  %t17125 = load ptr, ptr %p.17124
-  %t17126 = call ptr @Parser_parse_program_jerry(ptr %t17125)
-  %t17127 = load ptr, ptr %p.17124
-  call void @jerry_release(ptr %t17127)
-  %t17128 = load ptr, ptr %tokens.17117
-  call void @jerry_release(ptr %t17128)
-  %t17129 = load ptr, ptr %lx.17114
-  call void @jerry_release(ptr %t17129)
-  ret ptr %t17126
+  %src.17639 = alloca ptr
+  store ptr %src.arg, ptr %src.17639
+  %t17640 = getelementptr %Lexer, ptr null, i32 1
+  %t17641 = ptrtoint ptr %t17640 to i64
+  %t17642 = call ptr @jerry_alloc(i64 %t17641)
+  %t17643 = getelementptr i8, ptr %t17642, i64 -8
+  store ptr @Lexer_destroy_jerry, ptr %t17643
+  %t17644 = getelementptr %Lexer, ptr %t17642, i32 0, i32 0
+  store ptr @vtable.Lexer, ptr %t17644
+  %t17645 = load ptr, ptr %src.17639
+  call void @Lexer_new_jerry(ptr %t17642, ptr %t17645)
+  %lx.17646 = alloca ptr
+  store ptr %t17642, ptr %lx.17646
+  %t17647 = load ptr, ptr %lx.17646
+  %t17648 = call ptr @Lexer_tokenize_jerry(ptr %t17647)
+  %tokens.17649 = alloca ptr
+  store ptr %t17648, ptr %tokens.17649
+  %t17650 = getelementptr %Parser, ptr null, i32 1
+  %t17651 = ptrtoint ptr %t17650 to i64
+  %t17652 = call ptr @jerry_alloc(i64 %t17651)
+  %t17653 = getelementptr i8, ptr %t17652, i64 -8
+  store ptr @Parser_destroy_jerry, ptr %t17653
+  %t17654 = getelementptr %Parser, ptr %t17652, i32 0, i32 0
+  store ptr @vtable.Parser, ptr %t17654
+  %t17655 = load ptr, ptr %tokens.17649
+  call void @Parser_new_jerry(ptr %t17652, ptr %t17655)
+  %p.17656 = alloca ptr
+  store ptr %t17652, ptr %p.17656
+  %t17657 = load ptr, ptr %p.17656
+  %t17658 = call ptr @Parser_parse_program_jerry(ptr %t17657)
+  %t17659 = load ptr, ptr %p.17656
+  call void @jerry_release(ptr %t17659)
+  %t17660 = load ptr, ptr %tokens.17649
+  call void @jerry_release(ptr %t17660)
+  %t17661 = load ptr, ptr %lx.17646
+  call void @jerry_release(ptr %t17661)
+  ret ptr %t17658
 }
 
 define void @JType_new_jerry(ptr %self.arg) {
 entry:
-  %this.17130 = alloca ptr
-  store ptr %self.arg, ptr %this.17130
-  %t17131 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %p.17132 = alloca ptr
-  store ptr %t17131, ptr %p.17132
-  call void @jerry_array_mark_heap(ptr %t17131)
-  %t17133 = load ptr, ptr %p.17132
-  %t17134 = load ptr, ptr %this.17130
-  %t17135 = getelementptr %JType, ptr %t17134, i32 0, i32 5
-  %t17136 = load ptr, ptr %t17135
-  call void @jerry_retain(ptr %t17133)
-  store ptr %t17133, ptr %t17135
-  call void @jerry_release(ptr %t17136)
-  %t17137 = load ptr, ptr %p.17132
-  call void @jerry_release(ptr %t17137)
+  %this.17662 = alloca ptr
+  store ptr %self.arg, ptr %this.17662
+  %t17663 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
+  %p.17664 = alloca ptr
+  store ptr %t17663, ptr %p.17664
+  call void @jerry_array_mark_heap(ptr %t17663)
+  %t17665 = load ptr, ptr %p.17664
+  %t17666 = load ptr, ptr %this.17662
+  %t17667 = getelementptr %JType, ptr %t17666, i32 0, i32 5
+  %t17668 = load ptr, ptr %t17667
+  call void @jerry_retain(ptr %t17665)
+  store ptr %t17665, ptr %t17667
+  call void @jerry_release(ptr %t17668)
+  %t17669 = load ptr, ptr %p.17664
+  call void @jerry_release(ptr %t17669)
   ret void
 }
 
 define ptr @JType_to_string_jerry(ptr %self.arg) {
 entry:
-  %this.17138 = alloca ptr
-  store ptr %self.arg, ptr %this.17138
-  %t17139 = load ptr, ptr %this.17138
-  %t17140 = getelementptr %JType, ptr %t17139, i32 0, i32 1
-  %t17141 = load i64, ptr %t17140
-  %t17142 = load i64, ptr @TY_VOID
-  %t17143 = icmp eq i64 %t17141, %t17142
-  br i1 %t17143, label %if.then.2710, label %if.else.2711
-if.then.2710:
-  %t17144 = call ptr @jerry_string_new(ptr @.str.1402, i64 4)
-  ret ptr %t17144
-if.else.2711:
-  br label %if.merge.2712
-if.merge.2712:
-  %t17145 = load ptr, ptr %this.17138
-  %t17146 = getelementptr %JType, ptr %t17145, i32 0, i32 1
-  %t17147 = load i64, ptr %t17146
-  %t17148 = load i64, ptr @TY_INT
-  %t17149 = icmp eq i64 %t17147, %t17148
-  br i1 %t17149, label %if.then.2713, label %if.else.2714
-if.then.2713:
-  %t17150 = call ptr @jerry_string_new(ptr @.str.1403, i64 3)
-  ret ptr %t17150
-if.else.2714:
-  br label %if.merge.2715
-if.merge.2715:
-  %t17151 = load ptr, ptr %this.17138
-  %t17152 = getelementptr %JType, ptr %t17151, i32 0, i32 1
-  %t17153 = load i64, ptr %t17152
-  %t17154 = load i64, ptr @TY_FLOAT
-  %t17155 = icmp eq i64 %t17153, %t17154
-  br i1 %t17155, label %if.then.2716, label %if.else.2717
-if.then.2716:
-  %t17156 = call ptr @jerry_string_new(ptr @.str.1404, i64 5)
-  ret ptr %t17156
-if.else.2717:
-  br label %if.merge.2718
-if.merge.2718:
-  %t17157 = load ptr, ptr %this.17138
-  %t17158 = getelementptr %JType, ptr %t17157, i32 0, i32 1
-  %t17159 = load i64, ptr %t17158
-  %t17160 = load i64, ptr @TY_BOOL
-  %t17161 = icmp eq i64 %t17159, %t17160
-  br i1 %t17161, label %if.then.2719, label %if.else.2720
-if.then.2719:
-  %t17162 = call ptr @jerry_string_new(ptr @.str.1405, i64 4)
-  ret ptr %t17162
-if.else.2720:
-  br label %if.merge.2721
-if.merge.2721:
-  %t17163 = load ptr, ptr %this.17138
-  %t17164 = getelementptr %JType, ptr %t17163, i32 0, i32 1
-  %t17165 = load i64, ptr %t17164
-  %t17166 = load i64, ptr @TY_STRING
-  %t17167 = icmp eq i64 %t17165, %t17166
-  br i1 %t17167, label %if.then.2722, label %if.else.2723
-if.then.2722:
-  %t17168 = call ptr @jerry_string_new(ptr @.str.1406, i64 6)
-  ret ptr %t17168
-if.else.2723:
-  br label %if.merge.2724
-if.merge.2724:
-  %t17169 = load ptr, ptr %this.17138
-  %t17170 = getelementptr %JType, ptr %t17169, i32 0, i32 1
-  %t17171 = load i64, ptr %t17170
-  %t17172 = load i64, ptr @TY_NULL
-  %t17173 = icmp eq i64 %t17171, %t17172
-  br i1 %t17173, label %if.then.2725, label %if.else.2726
-if.then.2725:
-  %t17174 = call ptr @jerry_string_new(ptr @.str.1407, i64 4)
-  ret ptr %t17174
-if.else.2726:
-  br label %if.merge.2727
-if.merge.2727:
-  %t17175 = load ptr, ptr %this.17138
-  %t17176 = getelementptr %JType, ptr %t17175, i32 0, i32 1
-  %t17177 = load i64, ptr %t17176
-  %t17178 = load i64, ptr @TY_ARRAY
-  %t17179 = icmp eq i64 %t17177, %t17178
-  br i1 %t17179, label %if.then.2728, label %if.else.2729
-if.then.2728:
-  %t17180 = load ptr, ptr %this.17138
-  %t17181 = getelementptr %JType, ptr %t17180, i32 0, i32 2
-  %t17182 = load ptr, ptr %t17181
-  %t17183 = call ptr @JType_to_string_jerry(ptr %t17182)
-  %t17184 = call ptr @jerry_string_new(ptr @.str.1408, i64 2)
-  %t17185 = call ptr @jerry_string_concat(ptr %t17183, ptr %t17184)
-  ret ptr %t17185
-if.else.2729:
-  br label %if.merge.2730
-if.merge.2730:
-  %t17186 = load ptr, ptr %this.17138
-  %t17187 = getelementptr %JType, ptr %t17186, i32 0, i32 1
-  %t17188 = load i64, ptr %t17187
-  %t17189 = load i64, ptr @TY_MAP
-  %t17190 = icmp eq i64 %t17188, %t17189
-  br i1 %t17190, label %if.then.2731, label %if.else.2732
-if.then.2731:
-  %t17191 = call ptr @jerry_string_new(ptr @.str.1409, i64 4)
-  %t17192 = load ptr, ptr %this.17138
-  %t17193 = getelementptr %JType, ptr %t17192, i32 0, i32 3
-  %t17194 = load ptr, ptr %t17193
-  %t17195 = call ptr @JType_to_string_jerry(ptr %t17194)
-  %t17196 = call ptr @jerry_string_concat(ptr %t17191, ptr %t17195)
-  %t17197 = call ptr @jerry_string_new(ptr @.str.1410, i64 2)
-  %t17198 = call ptr @jerry_string_concat(ptr %t17196, ptr %t17197)
-  %t17199 = load ptr, ptr %this.17138
-  %t17200 = getelementptr %JType, ptr %t17199, i32 0, i32 4
-  %t17201 = load ptr, ptr %t17200
-  %t17202 = call ptr @JType_to_string_jerry(ptr %t17201)
-  %t17203 = call ptr @jerry_string_concat(ptr %t17198, ptr %t17202)
-  %t17204 = call ptr @jerry_string_new(ptr @.str.1411, i64 1)
-  %t17205 = call ptr @jerry_string_concat(ptr %t17203, ptr %t17204)
-  ret ptr %t17205
-if.else.2732:
-  br label %if.merge.2733
-if.merge.2733:
-  %t17206 = load ptr, ptr %this.17138
-  %t17207 = getelementptr %JType, ptr %t17206, i32 0, i32 1
-  %t17208 = load i64, ptr %t17207
-  %t17209 = load i64, ptr @TY_CLASS
-  %t17210 = icmp eq i64 %t17208, %t17209
-  br i1 %t17210, label %if.then.2734, label %if.else.2735
-if.then.2734:
-  %t17211 = load ptr, ptr %this.17138
-  %t17212 = getelementptr %JType, ptr %t17211, i32 0, i32 7
-  %t17213 = load ptr, ptr %t17212
-  call void @jerry_retain(ptr %t17213)
-  ret ptr %t17213
-if.else.2735:
-  br label %if.merge.2736
-if.merge.2736:
-  %t17214 = load ptr, ptr %this.17138
-  %t17215 = getelementptr %JType, ptr %t17214, i32 0, i32 1
-  %t17216 = load i64, ptr %t17215
-  %t17217 = load i64, ptr @TY_FN
-  %t17218 = icmp eq i64 %t17216, %t17217
-  br i1 %t17218, label %if.then.2737, label %if.else.2738
-if.then.2737:
-  %t17219 = call ptr @jerry_string_new(ptr @.str.1412, i64 3)
-  %s.17220 = alloca ptr
-  store ptr %t17219, ptr %s.17220
-  %i.17221 = alloca i64
-  store i64 0, ptr %i.17221
-  br label %while.cond.2740
-while.cond.2740:
-  %t17222 = load i64, ptr %i.17221
-  %t17223 = load ptr, ptr %this.17138
-  %t17224 = getelementptr %JType, ptr %t17223, i32 0, i32 5
-  %t17225 = load ptr, ptr %t17224
-  %t17226 = call i64 @jerry_array_len(ptr %t17225)
-  %t17227 = icmp slt i64 %t17222, %t17226
-  br i1 %t17227, label %while.body.2741, label %while.end.2742
-while.body.2741:
-  %t17228 = load i64, ptr %i.17221
-  %t17229 = icmp sgt i64 %t17228, 0
-  br i1 %t17229, label %if.then.2743, label %if.else.2744
-if.then.2743:
-  %t17230 = load ptr, ptr %s.17220
-  %t17231 = call ptr @jerry_string_new(ptr @.str.1413, i64 2)
-  %t17232 = call ptr @jerry_string_concat(ptr %t17230, ptr %t17231)
-  %t17233 = load ptr, ptr %s.17220
-  call void @jerry_retain(ptr %t17232)
-  store ptr %t17232, ptr %s.17220
-  call void @jerry_release(ptr %t17233)
-  br label %if.merge.2745
-if.else.2744:
-  br label %if.merge.2745
-if.merge.2745:
-  %t17234 = load ptr, ptr %s.17220
-  %t17235 = load ptr, ptr %this.17138
-  %t17236 = getelementptr %JType, ptr %t17235, i32 0, i32 5
-  %t17237 = load ptr, ptr %t17236
-  %t17238 = load i64, ptr %i.17221
-  %t17239 = call ptr @jerry_array_get(ptr %t17237, i64 %t17238)
-  %t17240 = load ptr, ptr %t17239
-  %t17241 = call ptr @JType_to_string_jerry(ptr %t17240)
-  %t17242 = call ptr @jerry_string_concat(ptr %t17234, ptr %t17241)
-  %t17243 = load ptr, ptr %s.17220
-  call void @jerry_retain(ptr %t17242)
-  store ptr %t17242, ptr %s.17220
-  call void @jerry_release(ptr %t17243)
-  %t17244 = load i64, ptr %i.17221
-  %t17245 = add i64 %t17244, 1
-  store i64 %t17245, ptr %i.17221
-  br label %while.cond.2740
-while.end.2742:
-  %t17246 = load ptr, ptr %s.17220
-  %t17247 = call ptr @jerry_string_new(ptr @.str.1414, i64 1)
-  %t17248 = call ptr @jerry_string_concat(ptr %t17246, ptr %t17247)
-  %t17249 = load ptr, ptr %s.17220
-  call void @jerry_retain(ptr %t17248)
-  store ptr %t17248, ptr %s.17220
-  call void @jerry_release(ptr %t17249)
-  %t17250 = load ptr, ptr %this.17138
-  %t17251 = getelementptr %JType, ptr %t17250, i32 0, i32 6
-  %t17252 = load ptr, ptr %t17251
-  %t17253 = icmp ne ptr %t17252, null
-  br i1 %t17253, label %and.rhs.2750, label %and.false.2749
-and.rhs.2750:
-  %t17254 = load ptr, ptr %this.17138
-  %t17255 = getelementptr %JType, ptr %t17254, i32 0, i32 6
-  %t17256 = load ptr, ptr %t17255
-  %t17257 = getelementptr %JType, ptr %t17256, i32 0, i32 1
-  %t17258 = load i64, ptr %t17257
-  %t17259 = load i64, ptr @TY_VOID
-  %t17260 = icmp ne i64 %t17258, %t17259
-  br label %and.merge.2751
-and.false.2749:
-  br label %and.merge.2751
-and.merge.2751:
-  %t17261 = phi i1 [ %t17260, %and.rhs.2750 ], [ false, %and.false.2749 ]
-  br i1 %t17261, label %if.then.2746, label %if.else.2747
-if.then.2746:
-  %t17262 = load ptr, ptr %s.17220
-  %t17263 = call ptr @jerry_string_new(ptr @.str.1415, i64 2)
-  %t17264 = call ptr @jerry_string_concat(ptr %t17262, ptr %t17263)
-  %t17265 = load ptr, ptr %this.17138
-  %t17266 = getelementptr %JType, ptr %t17265, i32 0, i32 6
-  %t17267 = load ptr, ptr %t17266
-  %t17268 = call ptr @JType_to_string_jerry(ptr %t17267)
-  %t17269 = call ptr @jerry_string_concat(ptr %t17264, ptr %t17268)
-  %t17270 = load ptr, ptr %s.17220
-  call void @jerry_retain(ptr %t17269)
-  store ptr %t17269, ptr %s.17220
-  call void @jerry_release(ptr %t17270)
-  br label %if.merge.2748
-if.else.2747:
-  br label %if.merge.2748
-if.merge.2748:
-  %t17271 = load ptr, ptr %s.17220
-  ret ptr %t17271
-if.else.2738:
-  br label %if.merge.2739
-if.merge.2739:
-  %t17272 = call ptr @jerry_string_new(ptr @.str.1416, i64 7)
-  ret ptr %t17272
+  %this.17670 = alloca ptr
+  store ptr %self.arg, ptr %this.17670
+  %t17671 = load ptr, ptr %this.17670
+  %t17672 = getelementptr %JType, ptr %t17671, i32 0, i32 1
+  %t17673 = load i64, ptr %t17672
+  %t17674 = load i64, ptr @TY_VOID
+  %t17675 = icmp eq i64 %t17673, %t17674
+  br i1 %t17675, label %if.then.2863, label %if.else.2864
+if.then.2863:
+  %t17676 = call ptr @jerry_string_new(ptr @.str.1437, i64 4)
+  ret ptr %t17676
+if.else.2864:
+  br label %if.merge.2865
+if.merge.2865:
+  %t17677 = load ptr, ptr %this.17670
+  %t17678 = getelementptr %JType, ptr %t17677, i32 0, i32 1
+  %t17679 = load i64, ptr %t17678
+  %t17680 = load i64, ptr @TY_INT
+  %t17681 = icmp eq i64 %t17679, %t17680
+  br i1 %t17681, label %if.then.2866, label %if.else.2867
+if.then.2866:
+  %t17682 = call ptr @jerry_string_new(ptr @.str.1438, i64 3)
+  ret ptr %t17682
+if.else.2867:
+  br label %if.merge.2868
+if.merge.2868:
+  %t17683 = load ptr, ptr %this.17670
+  %t17684 = getelementptr %JType, ptr %t17683, i32 0, i32 1
+  %t17685 = load i64, ptr %t17684
+  %t17686 = load i64, ptr @TY_FLOAT
+  %t17687 = icmp eq i64 %t17685, %t17686
+  br i1 %t17687, label %if.then.2869, label %if.else.2870
+if.then.2869:
+  %t17688 = call ptr @jerry_string_new(ptr @.str.1439, i64 5)
+  ret ptr %t17688
+if.else.2870:
+  br label %if.merge.2871
+if.merge.2871:
+  %t17689 = load ptr, ptr %this.17670
+  %t17690 = getelementptr %JType, ptr %t17689, i32 0, i32 1
+  %t17691 = load i64, ptr %t17690
+  %t17692 = load i64, ptr @TY_BOOL
+  %t17693 = icmp eq i64 %t17691, %t17692
+  br i1 %t17693, label %if.then.2872, label %if.else.2873
+if.then.2872:
+  %t17694 = call ptr @jerry_string_new(ptr @.str.1440, i64 4)
+  ret ptr %t17694
+if.else.2873:
+  br label %if.merge.2874
+if.merge.2874:
+  %t17695 = load ptr, ptr %this.17670
+  %t17696 = getelementptr %JType, ptr %t17695, i32 0, i32 1
+  %t17697 = load i64, ptr %t17696
+  %t17698 = load i64, ptr @TY_STRING
+  %t17699 = icmp eq i64 %t17697, %t17698
+  br i1 %t17699, label %if.then.2875, label %if.else.2876
+if.then.2875:
+  %t17700 = call ptr @jerry_string_new(ptr @.str.1441, i64 6)
+  ret ptr %t17700
+if.else.2876:
+  br label %if.merge.2877
+if.merge.2877:
+  %t17701 = load ptr, ptr %this.17670
+  %t17702 = getelementptr %JType, ptr %t17701, i32 0, i32 1
+  %t17703 = load i64, ptr %t17702
+  %t17704 = load i64, ptr @TY_NULL
+  %t17705 = icmp eq i64 %t17703, %t17704
+  br i1 %t17705, label %if.then.2878, label %if.else.2879
+if.then.2878:
+  %t17706 = call ptr @jerry_string_new(ptr @.str.1442, i64 4)
+  ret ptr %t17706
+if.else.2879:
+  br label %if.merge.2880
+if.merge.2880:
+  %t17707 = load ptr, ptr %this.17670
+  %t17708 = getelementptr %JType, ptr %t17707, i32 0, i32 1
+  %t17709 = load i64, ptr %t17708
+  %t17710 = load i64, ptr @TY_ARRAY
+  %t17711 = icmp eq i64 %t17709, %t17710
+  br i1 %t17711, label %if.then.2881, label %if.else.2882
+if.then.2881:
+  %t17712 = load ptr, ptr %this.17670
+  %t17713 = getelementptr %JType, ptr %t17712, i32 0, i32 2
+  %t17714 = load ptr, ptr %t17713
+  %t17715 = call ptr @JType_to_string_jerry(ptr %t17714)
+  %t17716 = call ptr @jerry_string_new(ptr @.str.1443, i64 2)
+  %t17717 = call ptr @jerry_string_concat(ptr %t17715, ptr %t17716)
+  ret ptr %t17717
+if.else.2882:
+  br label %if.merge.2883
+if.merge.2883:
+  %t17718 = load ptr, ptr %this.17670
+  %t17719 = getelementptr %JType, ptr %t17718, i32 0, i32 1
+  %t17720 = load i64, ptr %t17719
+  %t17721 = load i64, ptr @TY_MAP
+  %t17722 = icmp eq i64 %t17720, %t17721
+  br i1 %t17722, label %if.then.2884, label %if.else.2885
+if.then.2884:
+  %t17723 = call ptr @jerry_string_new(ptr @.str.1444, i64 4)
+  %t17724 = load ptr, ptr %this.17670
+  %t17725 = getelementptr %JType, ptr %t17724, i32 0, i32 3
+  %t17726 = load ptr, ptr %t17725
+  %t17727 = call ptr @JType_to_string_jerry(ptr %t17726)
+  %t17728 = call ptr @jerry_string_concat(ptr %t17723, ptr %t17727)
+  %t17729 = call ptr @jerry_string_new(ptr @.str.1445, i64 2)
+  %t17730 = call ptr @jerry_string_concat(ptr %t17728, ptr %t17729)
+  %t17731 = load ptr, ptr %this.17670
+  %t17732 = getelementptr %JType, ptr %t17731, i32 0, i32 4
+  %t17733 = load ptr, ptr %t17732
+  %t17734 = call ptr @JType_to_string_jerry(ptr %t17733)
+  %t17735 = call ptr @jerry_string_concat(ptr %t17730, ptr %t17734)
+  %t17736 = call ptr @jerry_string_new(ptr @.str.1446, i64 1)
+  %t17737 = call ptr @jerry_string_concat(ptr %t17735, ptr %t17736)
+  ret ptr %t17737
+if.else.2885:
+  br label %if.merge.2886
+if.merge.2886:
+  %t17738 = load ptr, ptr %this.17670
+  %t17739 = getelementptr %JType, ptr %t17738, i32 0, i32 1
+  %t17740 = load i64, ptr %t17739
+  %t17741 = load i64, ptr @TY_CLASS
+  %t17742 = icmp eq i64 %t17740, %t17741
+  br i1 %t17742, label %if.then.2887, label %if.else.2888
+if.then.2887:
+  %t17743 = load ptr, ptr %this.17670
+  %t17744 = getelementptr %JType, ptr %t17743, i32 0, i32 7
+  %t17745 = load ptr, ptr %t17744
+  call void @jerry_retain(ptr %t17745)
+  ret ptr %t17745
+if.else.2888:
+  br label %if.merge.2889
+if.merge.2889:
+  %t17746 = load ptr, ptr %this.17670
+  %t17747 = getelementptr %JType, ptr %t17746, i32 0, i32 1
+  %t17748 = load i64, ptr %t17747
+  %t17749 = load i64, ptr @TY_FN
+  %t17750 = icmp eq i64 %t17748, %t17749
+  br i1 %t17750, label %if.then.2890, label %if.else.2891
+if.then.2890:
+  %t17751 = call ptr @jerry_string_new(ptr @.str.1447, i64 3)
+  %s.17752 = alloca ptr
+  store ptr %t17751, ptr %s.17752
+  %i.17753 = alloca i64
+  store i64 0, ptr %i.17753
+  br label %while.cond.2893
+while.cond.2893:
+  %t17754 = load i64, ptr %i.17753
+  %t17755 = load ptr, ptr %this.17670
+  %t17756 = getelementptr %JType, ptr %t17755, i32 0, i32 5
+  %t17757 = load ptr, ptr %t17756
+  %t17758 = call i64 @jerry_array_len(ptr %t17757)
+  %t17759 = icmp slt i64 %t17754, %t17758
+  br i1 %t17759, label %while.body.2894, label %while.end.2895
+while.body.2894:
+  %t17760 = load i64, ptr %i.17753
+  %t17761 = icmp sgt i64 %t17760, 0
+  br i1 %t17761, label %if.then.2896, label %if.else.2897
+if.then.2896:
+  %t17762 = load ptr, ptr %s.17752
+  %t17763 = call ptr @jerry_string_new(ptr @.str.1448, i64 2)
+  %t17764 = call ptr @jerry_string_concat(ptr %t17762, ptr %t17763)
+  %t17765 = load ptr, ptr %s.17752
+  call void @jerry_retain(ptr %t17764)
+  store ptr %t17764, ptr %s.17752
+  call void @jerry_release(ptr %t17765)
+  br label %if.merge.2898
+if.else.2897:
+  br label %if.merge.2898
+if.merge.2898:
+  %t17766 = load ptr, ptr %s.17752
+  %t17767 = load ptr, ptr %this.17670
+  %t17768 = getelementptr %JType, ptr %t17767, i32 0, i32 5
+  %t17769 = load ptr, ptr %t17768
+  %t17770 = load i64, ptr %i.17753
+  %t17771 = call ptr @jerry_array_get(ptr %t17769, i64 %t17770)
+  %t17772 = load ptr, ptr %t17771
+  %t17773 = call ptr @JType_to_string_jerry(ptr %t17772)
+  %t17774 = call ptr @jerry_string_concat(ptr %t17766, ptr %t17773)
+  %t17775 = load ptr, ptr %s.17752
+  call void @jerry_retain(ptr %t17774)
+  store ptr %t17774, ptr %s.17752
+  call void @jerry_release(ptr %t17775)
+  %t17776 = load i64, ptr %i.17753
+  %t17777 = add i64 %t17776, 1
+  store i64 %t17777, ptr %i.17753
+  br label %while.cond.2893
+while.end.2895:
+  %t17778 = load ptr, ptr %s.17752
+  %t17779 = call ptr @jerry_string_new(ptr @.str.1449, i64 1)
+  %t17780 = call ptr @jerry_string_concat(ptr %t17778, ptr %t17779)
+  %t17781 = load ptr, ptr %s.17752
+  call void @jerry_retain(ptr %t17780)
+  store ptr %t17780, ptr %s.17752
+  call void @jerry_release(ptr %t17781)
+  %t17782 = load ptr, ptr %this.17670
+  %t17783 = getelementptr %JType, ptr %t17782, i32 0, i32 6
+  %t17784 = load ptr, ptr %t17783
+  %t17785 = icmp ne ptr %t17784, null
+  br i1 %t17785, label %and.rhs.2903, label %and.false.2902
+and.rhs.2903:
+  %t17786 = load ptr, ptr %this.17670
+  %t17787 = getelementptr %JType, ptr %t17786, i32 0, i32 6
+  %t17788 = load ptr, ptr %t17787
+  %t17789 = getelementptr %JType, ptr %t17788, i32 0, i32 1
+  %t17790 = load i64, ptr %t17789
+  %t17791 = load i64, ptr @TY_VOID
+  %t17792 = icmp ne i64 %t17790, %t17791
+  br label %and.merge.2904
+and.false.2902:
+  br label %and.merge.2904
+and.merge.2904:
+  %t17793 = phi i1 [ %t17792, %and.rhs.2903 ], [ false, %and.false.2902 ]
+  br i1 %t17793, label %if.then.2899, label %if.else.2900
+if.then.2899:
+  %t17794 = load ptr, ptr %s.17752
+  %t17795 = call ptr @jerry_string_new(ptr @.str.1450, i64 2)
+  %t17796 = call ptr @jerry_string_concat(ptr %t17794, ptr %t17795)
+  %t17797 = load ptr, ptr %this.17670
+  %t17798 = getelementptr %JType, ptr %t17797, i32 0, i32 6
+  %t17799 = load ptr, ptr %t17798
+  %t17800 = call ptr @JType_to_string_jerry(ptr %t17799)
+  %t17801 = call ptr @jerry_string_concat(ptr %t17796, ptr %t17800)
+  %t17802 = load ptr, ptr %s.17752
+  call void @jerry_retain(ptr %t17801)
+  store ptr %t17801, ptr %s.17752
+  call void @jerry_release(ptr %t17802)
+  br label %if.merge.2901
+if.else.2900:
+  br label %if.merge.2901
+if.merge.2901:
+  %t17803 = load ptr, ptr %s.17752
+  ret ptr %t17803
+if.else.2891:
+  br label %if.merge.2892
+if.merge.2892:
+  %t17804 = call ptr @jerry_string_new(ptr @.str.1451, i64 7)
+  ret ptr %t17804
 }
 
 define i1 @jtype_equals_jerry(ptr %a.arg, ptr %b.arg) {
 entry:
-  %a.17273 = alloca ptr
-  store ptr %a.arg, ptr %a.17273
-  %b.17274 = alloca ptr
-  store ptr %b.arg, ptr %b.17274
-  %t17275 = load ptr, ptr %a.17273
-  %t17276 = icmp eq ptr %t17275, null
-  br i1 %t17276, label %and.rhs.2756, label %and.false.2755
-and.rhs.2756:
-  %t17277 = load ptr, ptr %b.17274
-  %t17278 = icmp eq ptr %t17277, null
-  br label %and.merge.2757
-and.false.2755:
-  br label %and.merge.2757
-and.merge.2757:
-  %t17279 = phi i1 [ %t17278, %and.rhs.2756 ], [ false, %and.false.2755 ]
-  br i1 %t17279, label %if.then.2752, label %if.else.2753
-if.then.2752:
+  %a.17805 = alloca ptr
+  store ptr %a.arg, ptr %a.17805
+  %b.17806 = alloca ptr
+  store ptr %b.arg, ptr %b.17806
+  %t17807 = load ptr, ptr %a.17805
+  %t17808 = icmp eq ptr %t17807, null
+  br i1 %t17808, label %and.rhs.2909, label %and.false.2908
+and.rhs.2909:
+  %t17809 = load ptr, ptr %b.17806
+  %t17810 = icmp eq ptr %t17809, null
+  br label %and.merge.2910
+and.false.2908:
+  br label %and.merge.2910
+and.merge.2910:
+  %t17811 = phi i1 [ %t17810, %and.rhs.2909 ], [ false, %and.false.2908 ]
+  br i1 %t17811, label %if.then.2905, label %if.else.2906
+if.then.2905:
   ret i1 true
-if.else.2753:
-  br label %if.merge.2754
-if.merge.2754:
-  %t17280 = load ptr, ptr %a.17273
-  %t17281 = icmp eq ptr %t17280, null
-  br i1 %t17281, label %or.true.2761, label %or.rhs.2762
-or.rhs.2762:
-  %t17282 = load ptr, ptr %b.17274
-  %t17283 = icmp eq ptr %t17282, null
-  br label %or.merge.2763
-or.true.2761:
-  br label %or.merge.2763
-or.merge.2763:
-  %t17284 = phi i1 [ true, %or.true.2761 ], [ %t17283, %or.rhs.2762 ]
-  br i1 %t17284, label %if.then.2758, label %if.else.2759
-if.then.2758:
+if.else.2906:
+  br label %if.merge.2907
+if.merge.2907:
+  %t17812 = load ptr, ptr %a.17805
+  %t17813 = icmp eq ptr %t17812, null
+  br i1 %t17813, label %or.true.2914, label %or.rhs.2915
+or.rhs.2915:
+  %t17814 = load ptr, ptr %b.17806
+  %t17815 = icmp eq ptr %t17814, null
+  br label %or.merge.2916
+or.true.2914:
+  br label %or.merge.2916
+or.merge.2916:
+  %t17816 = phi i1 [ true, %or.true.2914 ], [ %t17815, %or.rhs.2915 ]
+  br i1 %t17816, label %if.then.2911, label %if.else.2912
+if.then.2911:
   ret i1 false
-if.else.2759:
-  br label %if.merge.2760
-if.merge.2760:
-  %t17285 = load ptr, ptr %a.17273
-  %t17286 = load ptr, ptr %b.17274
-  %t17287 = icmp eq ptr %t17285, %t17286
-  br i1 %t17287, label %if.then.2764, label %if.else.2765
-if.then.2764:
+if.else.2912:
+  br label %if.merge.2913
+if.merge.2913:
+  %t17817 = load ptr, ptr %a.17805
+  %t17818 = load ptr, ptr %b.17806
+  %t17819 = icmp eq ptr %t17817, %t17818
+  br i1 %t17819, label %if.then.2917, label %if.else.2918
+if.then.2917:
   ret i1 true
-if.else.2765:
-  br label %if.merge.2766
-if.merge.2766:
-  %t17288 = load ptr, ptr %a.17273
-  %t17289 = getelementptr %JType, ptr %t17288, i32 0, i32 1
-  %t17290 = load i64, ptr %t17289
-  %t17291 = load ptr, ptr %b.17274
-  %t17292 = getelementptr %JType, ptr %t17291, i32 0, i32 1
-  %t17293 = load i64, ptr %t17292
-  %t17294 = icmp ne i64 %t17290, %t17293
-  br i1 %t17294, label %if.then.2767, label %if.else.2768
-if.then.2767:
-  %t17295 = load ptr, ptr %b.17274
-  %t17296 = getelementptr %JType, ptr %t17295, i32 0, i32 1
-  %t17297 = load i64, ptr %t17296
-  %t17298 = load i64, ptr @TY_NULL
-  %t17299 = icmp eq i64 %t17297, %t17298
-  br i1 %t17299, label %and.rhs.2774, label %and.false.2773
-and.rhs.2774:
-  %t17300 = load ptr, ptr %a.17273
-  %t17301 = getelementptr %JType, ptr %t17300, i32 0, i32 1
-  %t17302 = load i64, ptr %t17301
-  %t17303 = load i64, ptr @TY_CLASS
-  %t17304 = icmp eq i64 %t17302, %t17303
-  br i1 %t17304, label %or.true.2776, label %or.rhs.2777
-or.rhs.2777:
-  %t17305 = load ptr, ptr %a.17273
-  %t17306 = getelementptr %JType, ptr %t17305, i32 0, i32 1
-  %t17307 = load i64, ptr %t17306
-  %t17308 = load i64, ptr @TY_STRING
-  %t17309 = icmp eq i64 %t17307, %t17308
-  br label %or.merge.2778
-or.true.2776:
-  br label %or.merge.2778
-or.merge.2778:
-  %t17310 = phi i1 [ true, %or.true.2776 ], [ %t17309, %or.rhs.2777 ]
-  br label %and.merge.2775
-and.false.2773:
-  br label %and.merge.2775
-and.merge.2775:
-  %t17311 = phi i1 [ %t17310, %or.merge.2778 ], [ false, %and.false.2773 ]
-  br i1 %t17311, label %if.then.2770, label %if.else.2771
-if.then.2770:
+if.else.2918:
+  br label %if.merge.2919
+if.merge.2919:
+  %t17820 = load ptr, ptr %a.17805
+  %t17821 = getelementptr %JType, ptr %t17820, i32 0, i32 1
+  %t17822 = load i64, ptr %t17821
+  %t17823 = load ptr, ptr %b.17806
+  %t17824 = getelementptr %JType, ptr %t17823, i32 0, i32 1
+  %t17825 = load i64, ptr %t17824
+  %t17826 = icmp ne i64 %t17822, %t17825
+  br i1 %t17826, label %if.then.2920, label %if.else.2921
+if.then.2920:
+  %t17827 = load ptr, ptr %b.17806
+  %t17828 = getelementptr %JType, ptr %t17827, i32 0, i32 1
+  %t17829 = load i64, ptr %t17828
+  %t17830 = load i64, ptr @TY_NULL
+  %t17831 = icmp eq i64 %t17829, %t17830
+  br i1 %t17831, label %and.rhs.2927, label %and.false.2926
+and.rhs.2927:
+  %t17832 = load ptr, ptr %a.17805
+  %t17833 = getelementptr %JType, ptr %t17832, i32 0, i32 1
+  %t17834 = load i64, ptr %t17833
+  %t17835 = load i64, ptr @TY_CLASS
+  %t17836 = icmp eq i64 %t17834, %t17835
+  br i1 %t17836, label %or.true.2929, label %or.rhs.2930
+or.rhs.2930:
+  %t17837 = load ptr, ptr %a.17805
+  %t17838 = getelementptr %JType, ptr %t17837, i32 0, i32 1
+  %t17839 = load i64, ptr %t17838
+  %t17840 = load i64, ptr @TY_STRING
+  %t17841 = icmp eq i64 %t17839, %t17840
+  br label %or.merge.2931
+or.true.2929:
+  br label %or.merge.2931
+or.merge.2931:
+  %t17842 = phi i1 [ true, %or.true.2929 ], [ %t17841, %or.rhs.2930 ]
+  br label %and.merge.2928
+and.false.2926:
+  br label %and.merge.2928
+and.merge.2928:
+  %t17843 = phi i1 [ %t17842, %or.merge.2931 ], [ false, %and.false.2926 ]
+  br i1 %t17843, label %if.then.2923, label %if.else.2924
+if.then.2923:
   ret i1 true
-if.else.2771:
-  br label %if.merge.2772
-if.merge.2772:
-  %t17312 = load ptr, ptr %a.17273
-  %t17313 = getelementptr %JType, ptr %t17312, i32 0, i32 1
-  %t17314 = load i64, ptr %t17313
-  %t17315 = load i64, ptr @TY_NULL
-  %t17316 = icmp eq i64 %t17314, %t17315
-  br i1 %t17316, label %and.rhs.2783, label %and.false.2782
-and.rhs.2783:
-  %t17317 = load ptr, ptr %b.17274
-  %t17318 = getelementptr %JType, ptr %t17317, i32 0, i32 1
-  %t17319 = load i64, ptr %t17318
-  %t17320 = load i64, ptr @TY_CLASS
-  %t17321 = icmp eq i64 %t17319, %t17320
-  br i1 %t17321, label %or.true.2785, label %or.rhs.2786
-or.rhs.2786:
-  %t17322 = load ptr, ptr %b.17274
-  %t17323 = getelementptr %JType, ptr %t17322, i32 0, i32 1
-  %t17324 = load i64, ptr %t17323
-  %t17325 = load i64, ptr @TY_STRING
-  %t17326 = icmp eq i64 %t17324, %t17325
-  br label %or.merge.2787
-or.true.2785:
-  br label %or.merge.2787
-or.merge.2787:
-  %t17327 = phi i1 [ true, %or.true.2785 ], [ %t17326, %or.rhs.2786 ]
-  br label %and.merge.2784
-and.false.2782:
-  br label %and.merge.2784
-and.merge.2784:
-  %t17328 = phi i1 [ %t17327, %or.merge.2787 ], [ false, %and.false.2782 ]
-  br i1 %t17328, label %if.then.2779, label %if.else.2780
-if.then.2779:
+if.else.2924:
+  br label %if.merge.2925
+if.merge.2925:
+  %t17844 = load ptr, ptr %a.17805
+  %t17845 = getelementptr %JType, ptr %t17844, i32 0, i32 1
+  %t17846 = load i64, ptr %t17845
+  %t17847 = load i64, ptr @TY_NULL
+  %t17848 = icmp eq i64 %t17846, %t17847
+  br i1 %t17848, label %and.rhs.2936, label %and.false.2935
+and.rhs.2936:
+  %t17849 = load ptr, ptr %b.17806
+  %t17850 = getelementptr %JType, ptr %t17849, i32 0, i32 1
+  %t17851 = load i64, ptr %t17850
+  %t17852 = load i64, ptr @TY_CLASS
+  %t17853 = icmp eq i64 %t17851, %t17852
+  br i1 %t17853, label %or.true.2938, label %or.rhs.2939
+or.rhs.2939:
+  %t17854 = load ptr, ptr %b.17806
+  %t17855 = getelementptr %JType, ptr %t17854, i32 0, i32 1
+  %t17856 = load i64, ptr %t17855
+  %t17857 = load i64, ptr @TY_STRING
+  %t17858 = icmp eq i64 %t17856, %t17857
+  br label %or.merge.2940
+or.true.2938:
+  br label %or.merge.2940
+or.merge.2940:
+  %t17859 = phi i1 [ true, %or.true.2938 ], [ %t17858, %or.rhs.2939 ]
+  br label %and.merge.2937
+and.false.2935:
+  br label %and.merge.2937
+and.merge.2937:
+  %t17860 = phi i1 [ %t17859, %or.merge.2940 ], [ false, %and.false.2935 ]
+  br i1 %t17860, label %if.then.2932, label %if.else.2933
+if.then.2932:
   ret i1 true
-if.else.2780:
-  br label %if.merge.2781
-if.merge.2781:
+if.else.2933:
+  br label %if.merge.2934
+if.merge.2934:
   ret i1 false
-if.else.2768:
-  br label %if.merge.2769
-if.merge.2769:
-  %t17329 = load ptr, ptr %a.17273
-  %t17330 = getelementptr %JType, ptr %t17329, i32 0, i32 1
-  %t17331 = load i64, ptr %t17330
-  %t17332 = load i64, ptr @TY_ARRAY
-  %t17333 = icmp eq i64 %t17331, %t17332
-  br i1 %t17333, label %if.then.2788, label %if.else.2789
-if.then.2788:
-  %t17334 = load ptr, ptr %a.17273
-  %t17335 = getelementptr %JType, ptr %t17334, i32 0, i32 2
-  %t17336 = load ptr, ptr %t17335
-  %t17337 = load ptr, ptr %b.17274
-  %t17338 = getelementptr %JType, ptr %t17337, i32 0, i32 2
-  %t17339 = load ptr, ptr %t17338
-  %t17340 = call i1 @jtype_equals_jerry(ptr %t17336, ptr %t17339)
-  ret i1 %t17340
-if.else.2789:
-  br label %if.merge.2790
-if.merge.2790:
-  %t17341 = load ptr, ptr %a.17273
-  %t17342 = getelementptr %JType, ptr %t17341, i32 0, i32 1
-  %t17343 = load i64, ptr %t17342
-  %t17344 = load i64, ptr @TY_MAP
-  %t17345 = icmp eq i64 %t17343, %t17344
-  br i1 %t17345, label %if.then.2791, label %if.else.2792
-if.then.2791:
-  %t17346 = load ptr, ptr %a.17273
-  %t17347 = getelementptr %JType, ptr %t17346, i32 0, i32 3
-  %t17348 = load ptr, ptr %t17347
-  %t17349 = load ptr, ptr %b.17274
-  %t17350 = getelementptr %JType, ptr %t17349, i32 0, i32 3
-  %t17351 = load ptr, ptr %t17350
-  %t17352 = call i1 @jtype_equals_jerry(ptr %t17348, ptr %t17351)
-  br i1 %t17352, label %and.rhs.2795, label %and.false.2794
-and.rhs.2795:
-  %t17353 = load ptr, ptr %a.17273
-  %t17354 = getelementptr %JType, ptr %t17353, i32 0, i32 4
-  %t17355 = load ptr, ptr %t17354
-  %t17356 = load ptr, ptr %b.17274
-  %t17357 = getelementptr %JType, ptr %t17356, i32 0, i32 4
-  %t17358 = load ptr, ptr %t17357
-  %t17359 = call i1 @jtype_equals_jerry(ptr %t17355, ptr %t17358)
-  br label %and.merge.2796
-and.false.2794:
-  br label %and.merge.2796
-and.merge.2796:
-  %t17360 = phi i1 [ %t17359, %and.rhs.2795 ], [ false, %and.false.2794 ]
-  ret i1 %t17360
-if.else.2792:
-  br label %if.merge.2793
-if.merge.2793:
-  %t17361 = load ptr, ptr %a.17273
-  %t17362 = getelementptr %JType, ptr %t17361, i32 0, i32 1
-  %t17363 = load i64, ptr %t17362
-  %t17364 = load i64, ptr @TY_CLASS
-  %t17365 = icmp eq i64 %t17363, %t17364
-  br i1 %t17365, label %if.then.2797, label %if.else.2798
-if.then.2797:
-  %t17366 = load ptr, ptr %a.17273
-  %t17367 = getelementptr %JType, ptr %t17366, i32 0, i32 7
-  %t17368 = load ptr, ptr %t17367
-  %t17369 = load ptr, ptr %b.17274
-  %t17370 = getelementptr %JType, ptr %t17369, i32 0, i32 7
-  %t17371 = load ptr, ptr %t17370
-  %t17372 = call i8 @jerry_string_eq(ptr %t17368, ptr %t17371)
-  %t17373 = icmp ne i8 %t17372, 0
-  ret i1 %t17373
-if.else.2798:
-  br label %if.merge.2799
-if.merge.2799:
-  %t17374 = load ptr, ptr %a.17273
-  %t17375 = getelementptr %JType, ptr %t17374, i32 0, i32 1
-  %t17376 = load i64, ptr %t17375
-  %t17377 = load i64, ptr @TY_FN
-  %t17378 = icmp eq i64 %t17376, %t17377
-  br i1 %t17378, label %if.then.2800, label %if.else.2801
-if.then.2800:
-  %t17379 = load ptr, ptr %a.17273
-  %t17380 = getelementptr %JType, ptr %t17379, i32 0, i32 5
-  %t17381 = load ptr, ptr %t17380
-  %t17382 = call i64 @jerry_array_len(ptr %t17381)
-  %t17383 = load ptr, ptr %b.17274
-  %t17384 = getelementptr %JType, ptr %t17383, i32 0, i32 5
-  %t17385 = load ptr, ptr %t17384
-  %t17386 = call i64 @jerry_array_len(ptr %t17385)
-  %t17387 = icmp ne i64 %t17382, %t17386
-  br i1 %t17387, label %if.then.2803, label %if.else.2804
-if.then.2803:
+if.else.2921:
+  br label %if.merge.2922
+if.merge.2922:
+  %t17861 = load ptr, ptr %a.17805
+  %t17862 = getelementptr %JType, ptr %t17861, i32 0, i32 1
+  %t17863 = load i64, ptr %t17862
+  %t17864 = load i64, ptr @TY_ARRAY
+  %t17865 = icmp eq i64 %t17863, %t17864
+  br i1 %t17865, label %if.then.2941, label %if.else.2942
+if.then.2941:
+  %t17866 = load ptr, ptr %a.17805
+  %t17867 = getelementptr %JType, ptr %t17866, i32 0, i32 2
+  %t17868 = load ptr, ptr %t17867
+  %t17869 = load ptr, ptr %b.17806
+  %t17870 = getelementptr %JType, ptr %t17869, i32 0, i32 2
+  %t17871 = load ptr, ptr %t17870
+  %t17872 = call i1 @jtype_equals_jerry(ptr %t17868, ptr %t17871)
+  ret i1 %t17872
+if.else.2942:
+  br label %if.merge.2943
+if.merge.2943:
+  %t17873 = load ptr, ptr %a.17805
+  %t17874 = getelementptr %JType, ptr %t17873, i32 0, i32 1
+  %t17875 = load i64, ptr %t17874
+  %t17876 = load i64, ptr @TY_MAP
+  %t17877 = icmp eq i64 %t17875, %t17876
+  br i1 %t17877, label %if.then.2944, label %if.else.2945
+if.then.2944:
+  %t17878 = load ptr, ptr %a.17805
+  %t17879 = getelementptr %JType, ptr %t17878, i32 0, i32 3
+  %t17880 = load ptr, ptr %t17879
+  %t17881 = load ptr, ptr %b.17806
+  %t17882 = getelementptr %JType, ptr %t17881, i32 0, i32 3
+  %t17883 = load ptr, ptr %t17882
+  %t17884 = call i1 @jtype_equals_jerry(ptr %t17880, ptr %t17883)
+  br i1 %t17884, label %and.rhs.2948, label %and.false.2947
+and.rhs.2948:
+  %t17885 = load ptr, ptr %a.17805
+  %t17886 = getelementptr %JType, ptr %t17885, i32 0, i32 4
+  %t17887 = load ptr, ptr %t17886
+  %t17888 = load ptr, ptr %b.17806
+  %t17889 = getelementptr %JType, ptr %t17888, i32 0, i32 4
+  %t17890 = load ptr, ptr %t17889
+  %t17891 = call i1 @jtype_equals_jerry(ptr %t17887, ptr %t17890)
+  br label %and.merge.2949
+and.false.2947:
+  br label %and.merge.2949
+and.merge.2949:
+  %t17892 = phi i1 [ %t17891, %and.rhs.2948 ], [ false, %and.false.2947 ]
+  ret i1 %t17892
+if.else.2945:
+  br label %if.merge.2946
+if.merge.2946:
+  %t17893 = load ptr, ptr %a.17805
+  %t17894 = getelementptr %JType, ptr %t17893, i32 0, i32 1
+  %t17895 = load i64, ptr %t17894
+  %t17896 = load i64, ptr @TY_CLASS
+  %t17897 = icmp eq i64 %t17895, %t17896
+  br i1 %t17897, label %if.then.2950, label %if.else.2951
+if.then.2950:
+  %t17898 = load ptr, ptr %a.17805
+  %t17899 = getelementptr %JType, ptr %t17898, i32 0, i32 7
+  %t17900 = load ptr, ptr %t17899
+  %t17901 = load ptr, ptr %b.17806
+  %t17902 = getelementptr %JType, ptr %t17901, i32 0, i32 7
+  %t17903 = load ptr, ptr %t17902
+  %t17904 = call i8 @jerry_string_eq(ptr %t17900, ptr %t17903)
+  %t17905 = icmp ne i8 %t17904, 0
+  ret i1 %t17905
+if.else.2951:
+  br label %if.merge.2952
+if.merge.2952:
+  %t17906 = load ptr, ptr %a.17805
+  %t17907 = getelementptr %JType, ptr %t17906, i32 0, i32 1
+  %t17908 = load i64, ptr %t17907
+  %t17909 = load i64, ptr @TY_FN
+  %t17910 = icmp eq i64 %t17908, %t17909
+  br i1 %t17910, label %if.then.2953, label %if.else.2954
+if.then.2953:
+  %t17911 = load ptr, ptr %a.17805
+  %t17912 = getelementptr %JType, ptr %t17911, i32 0, i32 5
+  %t17913 = load ptr, ptr %t17912
+  %t17914 = call i64 @jerry_array_len(ptr %t17913)
+  %t17915 = load ptr, ptr %b.17806
+  %t17916 = getelementptr %JType, ptr %t17915, i32 0, i32 5
+  %t17917 = load ptr, ptr %t17916
+  %t17918 = call i64 @jerry_array_len(ptr %t17917)
+  %t17919 = icmp ne i64 %t17914, %t17918
+  br i1 %t17919, label %if.then.2956, label %if.else.2957
+if.then.2956:
   ret i1 false
-if.else.2804:
-  br label %if.merge.2805
-if.merge.2805:
-  %i.17388 = alloca i64
-  store i64 0, ptr %i.17388
-  br label %while.cond.2806
-while.cond.2806:
-  %t17389 = load i64, ptr %i.17388
-  %t17390 = load ptr, ptr %a.17273
-  %t17391 = getelementptr %JType, ptr %t17390, i32 0, i32 5
-  %t17392 = load ptr, ptr %t17391
-  %t17393 = call i64 @jerry_array_len(ptr %t17392)
-  %t17394 = icmp slt i64 %t17389, %t17393
-  br i1 %t17394, label %while.body.2807, label %while.end.2808
-while.body.2807:
-  %t17395 = load ptr, ptr %a.17273
-  %t17396 = getelementptr %JType, ptr %t17395, i32 0, i32 5
-  %t17397 = load ptr, ptr %t17396
-  %t17398 = load i64, ptr %i.17388
-  %t17399 = call ptr @jerry_array_get(ptr %t17397, i64 %t17398)
-  %t17400 = load ptr, ptr %t17399
-  %t17401 = load ptr, ptr %b.17274
-  %t17402 = getelementptr %JType, ptr %t17401, i32 0, i32 5
-  %t17403 = load ptr, ptr %t17402
-  %t17404 = load i64, ptr %i.17388
-  %t17405 = call ptr @jerry_array_get(ptr %t17403, i64 %t17404)
-  %t17406 = load ptr, ptr %t17405
-  %t17407 = call i1 @jtype_equals_jerry(ptr %t17400, ptr %t17406)
-  %t17408 = xor i1 %t17407, true
-  br i1 %t17408, label %if.then.2809, label %if.else.2810
-if.then.2809:
+if.else.2957:
+  br label %if.merge.2958
+if.merge.2958:
+  %i.17920 = alloca i64
+  store i64 0, ptr %i.17920
+  br label %while.cond.2959
+while.cond.2959:
+  %t17921 = load i64, ptr %i.17920
+  %t17922 = load ptr, ptr %a.17805
+  %t17923 = getelementptr %JType, ptr %t17922, i32 0, i32 5
+  %t17924 = load ptr, ptr %t17923
+  %t17925 = call i64 @jerry_array_len(ptr %t17924)
+  %t17926 = icmp slt i64 %t17921, %t17925
+  br i1 %t17926, label %while.body.2960, label %while.end.2961
+while.body.2960:
+  %t17927 = load ptr, ptr %a.17805
+  %t17928 = getelementptr %JType, ptr %t17927, i32 0, i32 5
+  %t17929 = load ptr, ptr %t17928
+  %t17930 = load i64, ptr %i.17920
+  %t17931 = call ptr @jerry_array_get(ptr %t17929, i64 %t17930)
+  %t17932 = load ptr, ptr %t17931
+  %t17933 = load ptr, ptr %b.17806
+  %t17934 = getelementptr %JType, ptr %t17933, i32 0, i32 5
+  %t17935 = load ptr, ptr %t17934
+  %t17936 = load i64, ptr %i.17920
+  %t17937 = call ptr @jerry_array_get(ptr %t17935, i64 %t17936)
+  %t17938 = load ptr, ptr %t17937
+  %t17939 = call i1 @jtype_equals_jerry(ptr %t17932, ptr %t17938)
+  %t17940 = xor i1 %t17939, true
+  br i1 %t17940, label %if.then.2962, label %if.else.2963
+if.then.2962:
   ret i1 false
-if.else.2810:
-  br label %if.merge.2811
-if.merge.2811:
-  %t17409 = load i64, ptr %i.17388
-  %t17410 = add i64 %t17409, 1
-  store i64 %t17410, ptr %i.17388
-  br label %while.cond.2806
-while.end.2808:
-  %t17411 = load ptr, ptr %a.17273
-  %t17412 = getelementptr %JType, ptr %t17411, i32 0, i32 6
-  %t17413 = load ptr, ptr %t17412
-  %t17414 = load ptr, ptr %b.17274
-  %t17415 = getelementptr %JType, ptr %t17414, i32 0, i32 6
-  %t17416 = load ptr, ptr %t17415
-  %t17417 = call i1 @jtype_equals_jerry(ptr %t17413, ptr %t17416)
-  ret i1 %t17417
-if.else.2801:
-  br label %if.merge.2802
-if.merge.2802:
+if.else.2963:
+  br label %if.merge.2964
+if.merge.2964:
+  %t17941 = load i64, ptr %i.17920
+  %t17942 = add i64 %t17941, 1
+  store i64 %t17942, ptr %i.17920
+  br label %while.cond.2959
+while.end.2961:
+  %t17943 = load ptr, ptr %a.17805
+  %t17944 = getelementptr %JType, ptr %t17943, i32 0, i32 6
+  %t17945 = load ptr, ptr %t17944
+  %t17946 = load ptr, ptr %b.17806
+  %t17947 = getelementptr %JType, ptr %t17946, i32 0, i32 6
+  %t17948 = load ptr, ptr %t17947
+  %t17949 = call i1 @jtype_equals_jerry(ptr %t17945, ptr %t17948)
+  ret i1 %t17949
+if.else.2954:
+  br label %if.merge.2955
+if.merge.2955:
   ret i1 true
 }
 
 define ptr @make_void_jerry() {
 entry:
-  %t17418 = getelementptr %JType, ptr null, i32 1
-  %t17419 = ptrtoint ptr %t17418 to i64
-  %t17420 = call ptr @jerry_alloc(i64 %t17419)
-  %t17421 = getelementptr i8, ptr %t17420, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17421
-  %t17422 = getelementptr %JType, ptr %t17420, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17422
-  call void @JType_new_jerry(ptr %t17420)
-  %t.17423 = alloca ptr
-  store ptr %t17420, ptr %t.17423
-  %t17424 = load i64, ptr @TY_VOID
-  %t17425 = load ptr, ptr %t.17423
-  %t17426 = getelementptr %JType, ptr %t17425, i32 0, i32 1
-  store i64 %t17424, ptr %t17426
-  %t17427 = load ptr, ptr %t.17423
-  ret ptr %t17427
+  %t17950 = getelementptr %JType, ptr null, i32 1
+  %t17951 = ptrtoint ptr %t17950 to i64
+  %t17952 = call ptr @jerry_alloc(i64 %t17951)
+  %t17953 = getelementptr i8, ptr %t17952, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t17953
+  %t17954 = getelementptr %JType, ptr %t17952, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t17954
+  call void @JType_new_jerry(ptr %t17952)
+  %t.17955 = alloca ptr
+  store ptr %t17952, ptr %t.17955
+  %t17956 = load i64, ptr @TY_VOID
+  %t17957 = load ptr, ptr %t.17955
+  %t17958 = getelementptr %JType, ptr %t17957, i32 0, i32 1
+  store i64 %t17956, ptr %t17958
+  %t17959 = load ptr, ptr %t.17955
+  ret ptr %t17959
 }
 
 define ptr @make_int_jerry() {
 entry:
-  %t17428 = getelementptr %JType, ptr null, i32 1
-  %t17429 = ptrtoint ptr %t17428 to i64
-  %t17430 = call ptr @jerry_alloc(i64 %t17429)
-  %t17431 = getelementptr i8, ptr %t17430, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17431
-  %t17432 = getelementptr %JType, ptr %t17430, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17432
-  call void @JType_new_jerry(ptr %t17430)
-  %t.17433 = alloca ptr
-  store ptr %t17430, ptr %t.17433
-  %t17434 = load i64, ptr @TY_INT
-  %t17435 = load ptr, ptr %t.17433
-  %t17436 = getelementptr %JType, ptr %t17435, i32 0, i32 1
-  store i64 %t17434, ptr %t17436
-  %t17437 = load ptr, ptr %t.17433
-  ret ptr %t17437
+  %t17960 = getelementptr %JType, ptr null, i32 1
+  %t17961 = ptrtoint ptr %t17960 to i64
+  %t17962 = call ptr @jerry_alloc(i64 %t17961)
+  %t17963 = getelementptr i8, ptr %t17962, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t17963
+  %t17964 = getelementptr %JType, ptr %t17962, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t17964
+  call void @JType_new_jerry(ptr %t17962)
+  %t.17965 = alloca ptr
+  store ptr %t17962, ptr %t.17965
+  %t17966 = load i64, ptr @TY_INT
+  %t17967 = load ptr, ptr %t.17965
+  %t17968 = getelementptr %JType, ptr %t17967, i32 0, i32 1
+  store i64 %t17966, ptr %t17968
+  %t17969 = load ptr, ptr %t.17965
+  ret ptr %t17969
 }
 
 define ptr @make_float_jerry() {
 entry:
-  %t17438 = getelementptr %JType, ptr null, i32 1
-  %t17439 = ptrtoint ptr %t17438 to i64
-  %t17440 = call ptr @jerry_alloc(i64 %t17439)
-  %t17441 = getelementptr i8, ptr %t17440, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17441
-  %t17442 = getelementptr %JType, ptr %t17440, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17442
-  call void @JType_new_jerry(ptr %t17440)
-  %t.17443 = alloca ptr
-  store ptr %t17440, ptr %t.17443
-  %t17444 = load i64, ptr @TY_FLOAT
-  %t17445 = load ptr, ptr %t.17443
-  %t17446 = getelementptr %JType, ptr %t17445, i32 0, i32 1
-  store i64 %t17444, ptr %t17446
-  %t17447 = load ptr, ptr %t.17443
-  ret ptr %t17447
+  %t17970 = getelementptr %JType, ptr null, i32 1
+  %t17971 = ptrtoint ptr %t17970 to i64
+  %t17972 = call ptr @jerry_alloc(i64 %t17971)
+  %t17973 = getelementptr i8, ptr %t17972, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t17973
+  %t17974 = getelementptr %JType, ptr %t17972, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t17974
+  call void @JType_new_jerry(ptr %t17972)
+  %t.17975 = alloca ptr
+  store ptr %t17972, ptr %t.17975
+  %t17976 = load i64, ptr @TY_FLOAT
+  %t17977 = load ptr, ptr %t.17975
+  %t17978 = getelementptr %JType, ptr %t17977, i32 0, i32 1
+  store i64 %t17976, ptr %t17978
+  %t17979 = load ptr, ptr %t.17975
+  ret ptr %t17979
 }
 
 define ptr @make_bool_jerry() {
 entry:
-  %t17448 = getelementptr %JType, ptr null, i32 1
-  %t17449 = ptrtoint ptr %t17448 to i64
-  %t17450 = call ptr @jerry_alloc(i64 %t17449)
-  %t17451 = getelementptr i8, ptr %t17450, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17451
-  %t17452 = getelementptr %JType, ptr %t17450, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17452
-  call void @JType_new_jerry(ptr %t17450)
-  %t.17453 = alloca ptr
-  store ptr %t17450, ptr %t.17453
-  %t17454 = load i64, ptr @TY_BOOL
-  %t17455 = load ptr, ptr %t.17453
-  %t17456 = getelementptr %JType, ptr %t17455, i32 0, i32 1
-  store i64 %t17454, ptr %t17456
-  %t17457 = load ptr, ptr %t.17453
-  ret ptr %t17457
+  %t17980 = getelementptr %JType, ptr null, i32 1
+  %t17981 = ptrtoint ptr %t17980 to i64
+  %t17982 = call ptr @jerry_alloc(i64 %t17981)
+  %t17983 = getelementptr i8, ptr %t17982, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t17983
+  %t17984 = getelementptr %JType, ptr %t17982, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t17984
+  call void @JType_new_jerry(ptr %t17982)
+  %t.17985 = alloca ptr
+  store ptr %t17982, ptr %t.17985
+  %t17986 = load i64, ptr @TY_BOOL
+  %t17987 = load ptr, ptr %t.17985
+  %t17988 = getelementptr %JType, ptr %t17987, i32 0, i32 1
+  store i64 %t17986, ptr %t17988
+  %t17989 = load ptr, ptr %t.17985
+  ret ptr %t17989
 }
 
 define ptr @make_string_jerry() {
 entry:
-  %t17458 = getelementptr %JType, ptr null, i32 1
-  %t17459 = ptrtoint ptr %t17458 to i64
-  %t17460 = call ptr @jerry_alloc(i64 %t17459)
-  %t17461 = getelementptr i8, ptr %t17460, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17461
-  %t17462 = getelementptr %JType, ptr %t17460, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17462
-  call void @JType_new_jerry(ptr %t17460)
-  %t.17463 = alloca ptr
-  store ptr %t17460, ptr %t.17463
-  %t17464 = load i64, ptr @TY_STRING
-  %t17465 = load ptr, ptr %t.17463
-  %t17466 = getelementptr %JType, ptr %t17465, i32 0, i32 1
-  store i64 %t17464, ptr %t17466
-  %t17467 = load ptr, ptr %t.17463
-  ret ptr %t17467
+  %t17990 = getelementptr %JType, ptr null, i32 1
+  %t17991 = ptrtoint ptr %t17990 to i64
+  %t17992 = call ptr @jerry_alloc(i64 %t17991)
+  %t17993 = getelementptr i8, ptr %t17992, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t17993
+  %t17994 = getelementptr %JType, ptr %t17992, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t17994
+  call void @JType_new_jerry(ptr %t17992)
+  %t.17995 = alloca ptr
+  store ptr %t17992, ptr %t.17995
+  %t17996 = load i64, ptr @TY_STRING
+  %t17997 = load ptr, ptr %t.17995
+  %t17998 = getelementptr %JType, ptr %t17997, i32 0, i32 1
+  store i64 %t17996, ptr %t17998
+  %t17999 = load ptr, ptr %t.17995
+  ret ptr %t17999
 }
 
 define ptr @make_null_jerry() {
 entry:
-  %t17468 = getelementptr %JType, ptr null, i32 1
-  %t17469 = ptrtoint ptr %t17468 to i64
-  %t17470 = call ptr @jerry_alloc(i64 %t17469)
-  %t17471 = getelementptr i8, ptr %t17470, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17471
-  %t17472 = getelementptr %JType, ptr %t17470, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17472
-  call void @JType_new_jerry(ptr %t17470)
-  %t.17473 = alloca ptr
-  store ptr %t17470, ptr %t.17473
-  %t17474 = load i64, ptr @TY_NULL
-  %t17475 = load ptr, ptr %t.17473
-  %t17476 = getelementptr %JType, ptr %t17475, i32 0, i32 1
-  store i64 %t17474, ptr %t17476
-  %t17477 = load ptr, ptr %t.17473
-  ret ptr %t17477
+  %t18000 = getelementptr %JType, ptr null, i32 1
+  %t18001 = ptrtoint ptr %t18000 to i64
+  %t18002 = call ptr @jerry_alloc(i64 %t18001)
+  %t18003 = getelementptr i8, ptr %t18002, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t18003
+  %t18004 = getelementptr %JType, ptr %t18002, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t18004
+  call void @JType_new_jerry(ptr %t18002)
+  %t.18005 = alloca ptr
+  store ptr %t18002, ptr %t.18005
+  %t18006 = load i64, ptr @TY_NULL
+  %t18007 = load ptr, ptr %t.18005
+  %t18008 = getelementptr %JType, ptr %t18007, i32 0, i32 1
+  store i64 %t18006, ptr %t18008
+  %t18009 = load ptr, ptr %t.18005
+  ret ptr %t18009
 }
 
 define ptr @make_array_jerry(ptr %elem.arg) {
 entry:
-  %elem.17478 = alloca ptr
-  store ptr %elem.arg, ptr %elem.17478
-  %t17479 = getelementptr %JType, ptr null, i32 1
-  %t17480 = ptrtoint ptr %t17479 to i64
-  %t17481 = call ptr @jerry_alloc(i64 %t17480)
-  %t17482 = getelementptr i8, ptr %t17481, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17482
-  %t17483 = getelementptr %JType, ptr %t17481, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17483
-  call void @JType_new_jerry(ptr %t17481)
-  %t.17484 = alloca ptr
-  store ptr %t17481, ptr %t.17484
-  %t17485 = load i64, ptr @TY_ARRAY
-  %t17486 = load ptr, ptr %t.17484
-  %t17487 = getelementptr %JType, ptr %t17486, i32 0, i32 1
-  store i64 %t17485, ptr %t17487
-  %t17488 = load ptr, ptr %elem.17478
-  %t17489 = load ptr, ptr %t.17484
-  %t17490 = getelementptr %JType, ptr %t17489, i32 0, i32 2
-  %t17491 = load ptr, ptr %t17490
-  call void @jerry_retain(ptr %t17488)
-  store ptr %t17488, ptr %t17490
-  call void @jerry_release(ptr %t17491)
-  %t17492 = load ptr, ptr %t.17484
-  ret ptr %t17492
+  %elem.18010 = alloca ptr
+  store ptr %elem.arg, ptr %elem.18010
+  %t18011 = getelementptr %JType, ptr null, i32 1
+  %t18012 = ptrtoint ptr %t18011 to i64
+  %t18013 = call ptr @jerry_alloc(i64 %t18012)
+  %t18014 = getelementptr i8, ptr %t18013, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t18014
+  %t18015 = getelementptr %JType, ptr %t18013, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t18015
+  call void @JType_new_jerry(ptr %t18013)
+  %t.18016 = alloca ptr
+  store ptr %t18013, ptr %t.18016
+  %t18017 = load i64, ptr @TY_ARRAY
+  %t18018 = load ptr, ptr %t.18016
+  %t18019 = getelementptr %JType, ptr %t18018, i32 0, i32 1
+  store i64 %t18017, ptr %t18019
+  %t18020 = load ptr, ptr %elem.18010
+  %t18021 = load ptr, ptr %t.18016
+  %t18022 = getelementptr %JType, ptr %t18021, i32 0, i32 2
+  %t18023 = load ptr, ptr %t18022
+  call void @jerry_retain(ptr %t18020)
+  store ptr %t18020, ptr %t18022
+  call void @jerry_release(ptr %t18023)
+  %t18024 = load ptr, ptr %t.18016
+  ret ptr %t18024
 }
 
 define ptr @make_map_type_jerry(ptr %key.arg, ptr %val.arg) {
 entry:
-  %key.17493 = alloca ptr
-  store ptr %key.arg, ptr %key.17493
-  %val.17494 = alloca ptr
-  store ptr %val.arg, ptr %val.17494
-  %t17495 = getelementptr %JType, ptr null, i32 1
-  %t17496 = ptrtoint ptr %t17495 to i64
-  %t17497 = call ptr @jerry_alloc(i64 %t17496)
-  %t17498 = getelementptr i8, ptr %t17497, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17498
-  %t17499 = getelementptr %JType, ptr %t17497, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17499
-  call void @JType_new_jerry(ptr %t17497)
-  %t.17500 = alloca ptr
-  store ptr %t17497, ptr %t.17500
-  %t17501 = load i64, ptr @TY_MAP
-  %t17502 = load ptr, ptr %t.17500
-  %t17503 = getelementptr %JType, ptr %t17502, i32 0, i32 1
-  store i64 %t17501, ptr %t17503
-  %t17504 = load ptr, ptr %key.17493
-  %t17505 = load ptr, ptr %t.17500
-  %t17506 = getelementptr %JType, ptr %t17505, i32 0, i32 3
-  %t17507 = load ptr, ptr %t17506
-  call void @jerry_retain(ptr %t17504)
-  store ptr %t17504, ptr %t17506
-  call void @jerry_release(ptr %t17507)
-  %t17508 = load ptr, ptr %val.17494
-  %t17509 = load ptr, ptr %t.17500
-  %t17510 = getelementptr %JType, ptr %t17509, i32 0, i32 4
-  %t17511 = load ptr, ptr %t17510
-  call void @jerry_retain(ptr %t17508)
-  store ptr %t17508, ptr %t17510
-  call void @jerry_release(ptr %t17511)
-  %t17512 = load ptr, ptr %t.17500
-  ret ptr %t17512
+  %key.18025 = alloca ptr
+  store ptr %key.arg, ptr %key.18025
+  %val.18026 = alloca ptr
+  store ptr %val.arg, ptr %val.18026
+  %t18027 = getelementptr %JType, ptr null, i32 1
+  %t18028 = ptrtoint ptr %t18027 to i64
+  %t18029 = call ptr @jerry_alloc(i64 %t18028)
+  %t18030 = getelementptr i8, ptr %t18029, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t18030
+  %t18031 = getelementptr %JType, ptr %t18029, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t18031
+  call void @JType_new_jerry(ptr %t18029)
+  %t.18032 = alloca ptr
+  store ptr %t18029, ptr %t.18032
+  %t18033 = load i64, ptr @TY_MAP
+  %t18034 = load ptr, ptr %t.18032
+  %t18035 = getelementptr %JType, ptr %t18034, i32 0, i32 1
+  store i64 %t18033, ptr %t18035
+  %t18036 = load ptr, ptr %key.18025
+  %t18037 = load ptr, ptr %t.18032
+  %t18038 = getelementptr %JType, ptr %t18037, i32 0, i32 3
+  %t18039 = load ptr, ptr %t18038
+  call void @jerry_retain(ptr %t18036)
+  store ptr %t18036, ptr %t18038
+  call void @jerry_release(ptr %t18039)
+  %t18040 = load ptr, ptr %val.18026
+  %t18041 = load ptr, ptr %t.18032
+  %t18042 = getelementptr %JType, ptr %t18041, i32 0, i32 4
+  %t18043 = load ptr, ptr %t18042
+  call void @jerry_retain(ptr %t18040)
+  store ptr %t18040, ptr %t18042
+  call void @jerry_release(ptr %t18043)
+  %t18044 = load ptr, ptr %t.18032
+  ret ptr %t18044
 }
 
 define ptr @make_class_type_jerry(ptr %name.arg) {
 entry:
-  %name.17513 = alloca ptr
-  store ptr %name.arg, ptr %name.17513
-  %t17514 = getelementptr %JType, ptr null, i32 1
-  %t17515 = ptrtoint ptr %t17514 to i64
-  %t17516 = call ptr @jerry_alloc(i64 %t17515)
-  %t17517 = getelementptr i8, ptr %t17516, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17517
-  %t17518 = getelementptr %JType, ptr %t17516, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17518
-  call void @JType_new_jerry(ptr %t17516)
-  %t.17519 = alloca ptr
-  store ptr %t17516, ptr %t.17519
-  %t17520 = load i64, ptr @TY_CLASS
-  %t17521 = load ptr, ptr %t.17519
-  %t17522 = getelementptr %JType, ptr %t17521, i32 0, i32 1
-  store i64 %t17520, ptr %t17522
-  %t17523 = load ptr, ptr %name.17513
-  %t17524 = load ptr, ptr %t.17519
-  %t17525 = getelementptr %JType, ptr %t17524, i32 0, i32 7
-  %t17526 = load ptr, ptr %t17525
-  call void @jerry_retain(ptr %t17523)
-  store ptr %t17523, ptr %t17525
-  call void @jerry_release(ptr %t17526)
-  %t17527 = load ptr, ptr %t.17519
-  ret ptr %t17527
+  %name.18045 = alloca ptr
+  store ptr %name.arg, ptr %name.18045
+  %t18046 = getelementptr %JType, ptr null, i32 1
+  %t18047 = ptrtoint ptr %t18046 to i64
+  %t18048 = call ptr @jerry_alloc(i64 %t18047)
+  %t18049 = getelementptr i8, ptr %t18048, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t18049
+  %t18050 = getelementptr %JType, ptr %t18048, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t18050
+  call void @JType_new_jerry(ptr %t18048)
+  %t.18051 = alloca ptr
+  store ptr %t18048, ptr %t.18051
+  %t18052 = load i64, ptr @TY_CLASS
+  %t18053 = load ptr, ptr %t.18051
+  %t18054 = getelementptr %JType, ptr %t18053, i32 0, i32 1
+  store i64 %t18052, ptr %t18054
+  %t18055 = load ptr, ptr %name.18045
+  %t18056 = load ptr, ptr %t.18051
+  %t18057 = getelementptr %JType, ptr %t18056, i32 0, i32 7
+  %t18058 = load ptr, ptr %t18057
+  call void @jerry_retain(ptr %t18055)
+  store ptr %t18055, ptr %t18057
+  call void @jerry_release(ptr %t18058)
+  %t18059 = load ptr, ptr %t.18051
+  ret ptr %t18059
 }
 
 define ptr @make_fn_type_jerry(ptr %params.arg, ptr %ret.arg) {
 entry:
-  %params.17528 = alloca ptr
-  store ptr %params.arg, ptr %params.17528
-  %ret.17529 = alloca ptr
-  store ptr %ret.arg, ptr %ret.17529
-  %t17530 = getelementptr %JType, ptr null, i32 1
-  %t17531 = ptrtoint ptr %t17530 to i64
-  %t17532 = call ptr @jerry_alloc(i64 %t17531)
-  %t17533 = getelementptr i8, ptr %t17532, i64 -8
-  store ptr @JType_destroy_jerry, ptr %t17533
-  %t17534 = getelementptr %JType, ptr %t17532, i32 0, i32 0
-  store ptr @vtable.JType, ptr %t17534
-  call void @JType_new_jerry(ptr %t17532)
-  %t.17535 = alloca ptr
-  store ptr %t17532, ptr %t.17535
-  %t17536 = load i64, ptr @TY_FN
-  %t17537 = load ptr, ptr %t.17535
-  %t17538 = getelementptr %JType, ptr %t17537, i32 0, i32 1
-  store i64 %t17536, ptr %t17538
-  %t17539 = load ptr, ptr %params.17528
-  %t17540 = load ptr, ptr %t.17535
-  %t17541 = getelementptr %JType, ptr %t17540, i32 0, i32 5
-  %t17542 = load ptr, ptr %t17541
-  call void @jerry_retain(ptr %t17539)
-  store ptr %t17539, ptr %t17541
-  call void @jerry_release(ptr %t17542)
-  %t17543 = load ptr, ptr %ret.17529
-  %t17544 = load ptr, ptr %t.17535
-  %t17545 = getelementptr %JType, ptr %t17544, i32 0, i32 6
-  %t17546 = load ptr, ptr %t17545
-  call void @jerry_retain(ptr %t17543)
-  store ptr %t17543, ptr %t17545
-  call void @jerry_release(ptr %t17546)
-  %t17547 = load ptr, ptr %t.17535
-  ret ptr %t17547
-}
-
-define ptr @expand_src_jerry(ptr %arg.arg) {
-entry:
-  %arg.17548 = alloca ptr
-  store ptr %arg.arg, ptr %arg.17548
-  %t17549 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %result.17550 = alloca ptr
-  store ptr %t17549, ptr %result.17550
-  call void @jerry_array_mark_heap(ptr %t17549)
-  %t17551 = load ptr, ptr %arg.17548
-  %t17552 = call i8 @jerry_is_dir(ptr %t17551)
-  %t17553 = icmp ne i8 %t17552, 0
-  br i1 %t17553, label %if.then.2812, label %if.else.2813
-if.then.2812:
-  %t17554 = load ptr, ptr %arg.17548
-  %t17555 = call ptr @jerry_list_dir(ptr %t17554)
-  %names.17556 = alloca ptr
-  store ptr %t17555, ptr %names.17556
-  %i.17557 = alloca i64
-  store i64 0, ptr %i.17557
-  br label %while.cond.2815
-while.cond.2815:
-  %t17558 = load i64, ptr %i.17557
-  %t17559 = load ptr, ptr %names.17556
-  %t17560 = call i64 @jerry_array_len(ptr %t17559)
-  %t17561 = icmp slt i64 %t17558, %t17560
-  br i1 %t17561, label %while.body.2816, label %while.end.2817
-while.body.2816:
-  %t17562 = load ptr, ptr %names.17556
-  %t17563 = load i64, ptr %i.17557
-  %t17564 = call ptr @jerry_array_get(ptr %t17562, i64 %t17563)
-  %t17565 = load ptr, ptr %t17564
-  %name.17566 = alloca ptr
-  store ptr %t17565, ptr %name.17566
-  call void @jerry_retain(ptr %t17565)
-  %t17567 = load ptr, ptr %name.17566
-  %t17568 = call ptr @jerry_string_new(ptr @.str.1417, i64 4)
-  %t17569 = call i8 @jerry_string_ends_with(ptr %t17567, ptr %t17568)
-  %t17570 = icmp ne i8 %t17569, 0
-  br i1 %t17570, label %and.rhs.2822, label %and.false.2821
-and.rhs.2822:
-  %t17571 = load ptr, ptr %name.17566
-  %t17572 = call ptr @jerry_string_new(ptr @.str.1418, i64 9)
-  %t17573 = call i8 @jerry_string_ends_with(ptr %t17571, ptr %t17572)
-  %t17574 = icmp ne i8 %t17573, 0
-  %t17575 = xor i1 %t17574, true
-  br label %and.merge.2823
-and.false.2821:
-  br label %and.merge.2823
-and.merge.2823:
-  %t17576 = phi i1 [ %t17575, %and.rhs.2822 ], [ false, %and.false.2821 ]
-  br i1 %t17576, label %if.then.2818, label %if.else.2819
-if.then.2818:
-  %t17577 = load ptr, ptr %result.17550
-  %t17578 = load ptr, ptr %arg.17548
-  %t17579 = call ptr @jerry_string_new(ptr @.str.1419, i64 1)
-  %t17580 = call ptr @jerry_string_concat(ptr %t17578, ptr %t17579)
-  %t17581 = load ptr, ptr %name.17566
-  %t17582 = call ptr @jerry_string_concat(ptr %t17580, ptr %t17581)
-  %t17583.slot = alloca ptr
-  store ptr %t17582, ptr %t17583.slot
-  call void @jerry_array_push(ptr %t17577, ptr %t17583.slot)
-  br label %if.merge.2820
-if.else.2819:
-  br label %if.merge.2820
-if.merge.2820:
-  %t17584 = load i64, ptr %i.17557
-  %t17585 = add i64 %t17584, 1
-  store i64 %t17585, ptr %i.17557
-  %t17586 = load ptr, ptr %name.17566
-  call void @jerry_release(ptr %t17586)
-  br label %while.cond.2815
-while.end.2817:
-  %t17587 = load ptr, ptr %names.17556
-  call void @jerry_release(ptr %t17587)
-  br label %if.merge.2814
-if.else.2813:
-  %t17588 = load ptr, ptr %result.17550
-  %t17589 = load ptr, ptr %arg.17548
-  %t17590.slot = alloca ptr
-  store ptr %t17589, ptr %t17590.slot
-  call void @jerry_array_push(ptr %t17588, ptr %t17590.slot)
-  br label %if.merge.2814
-if.merge.2814:
-  %t17591 = load ptr, ptr %result.17550
-  ret ptr %t17591
-}
-
-define ptr @collect_stdlib_names_jerry(ptr %src.arg) {
-entry:
-  %src.17592 = alloca ptr
-  store ptr %src.arg, ptr %src.17592
-  %t17593 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %names.17594 = alloca ptr
-  store ptr %t17593, ptr %names.17594
-  call void @jerry_array_mark_heap(ptr %t17593)
-  %t17595 = load ptr, ptr %src.17592
-  %t17596 = call i64 @jerry_string_len(ptr %t17595)
-  %n.17597 = alloca i64
-  store i64 %t17596, ptr %n.17597
-  %i.17598 = alloca i64
-  store i64 0, ptr %i.17598
-  br label %while.cond.2824
-while.cond.2824:
-  %t17599 = load i64, ptr %i.17598
-  %t17600 = load i64, ptr %n.17597
-  %t17601 = icmp slt i64 %t17599, %t17600
-  br i1 %t17601, label %while.body.2825, label %while.end.2826
-while.body.2825:
-  %t17602 = load i64, ptr %i.17598
-  %j.17603 = alloca i64
-  store i64 %t17602, ptr %j.17603
-  br label %while.cond.2827
-while.cond.2827:
-  %t17604 = load i64, ptr %j.17603
-  %t17605 = load i64, ptr %n.17597
-  %t17606 = icmp slt i64 %t17604, %t17605
-  br i1 %t17606, label %and.rhs.2831, label %and.false.2830
-and.rhs.2831:
-  %t17607 = load ptr, ptr %src.17592
-  %t17608 = load i64, ptr %j.17603
-  %t17609 = call i64 @jerry_char_at(ptr %t17607, i64 %t17608)
-  %t17610 = icmp ne i64 %t17609, 10
-  br label %and.merge.2832
-and.false.2830:
-  br label %and.merge.2832
-and.merge.2832:
-  %t17611 = phi i1 [ %t17610, %and.rhs.2831 ], [ false, %and.false.2830 ]
-  br i1 %t17611, label %while.body.2828, label %while.end.2829
-while.body.2828:
-  %t17612 = load i64, ptr %j.17603
-  %t17613 = add i64 %t17612, 1
-  store i64 %t17613, ptr %j.17603
-  br label %while.cond.2827
-while.end.2829:
-  %t17614 = load ptr, ptr %src.17592
-  %t17615 = load i64, ptr %i.17598
-  %t17616 = load i64, ptr %j.17603
-  %t17617 = call ptr @jerry_string_slice(ptr %t17614, i64 %t17615, i64 %t17616)
-  %line.17618 = alloca ptr
-  store ptr %t17617, ptr %line.17618
-  %k.17619 = alloca i64
-  store i64 0, ptr %k.17619
-  %t17620 = load ptr, ptr %line.17618
-  %t17621 = call i64 @jerry_string_len(ptr %t17620)
-  %ll.17622 = alloca i64
-  store i64 %t17621, ptr %ll.17622
-  br label %while.cond.2833
-while.cond.2833:
-  %t17623 = load i64, ptr %k.17619
-  %t17624 = load i64, ptr %ll.17622
-  %t17625 = icmp slt i64 %t17623, %t17624
-  br i1 %t17625, label %and.rhs.2837, label %and.false.2836
-and.rhs.2837:
-  %t17626 = load ptr, ptr %line.17618
-  %t17627 = load i64, ptr %k.17619
-  %t17628 = call i64 @jerry_char_at(ptr %t17626, i64 %t17627)
-  %t17629 = icmp eq i64 %t17628, 32
-  br i1 %t17629, label %or.true.2839, label %or.rhs.2840
-or.rhs.2840:
-  %t17630 = load ptr, ptr %line.17618
-  %t17631 = load i64, ptr %k.17619
-  %t17632 = call i64 @jerry_char_at(ptr %t17630, i64 %t17631)
-  %t17633 = icmp eq i64 %t17632, 9
-  br label %or.merge.2841
-or.true.2839:
-  br label %or.merge.2841
-or.merge.2841:
-  %t17634 = phi i1 [ true, %or.true.2839 ], [ %t17633, %or.rhs.2840 ]
-  br label %and.merge.2838
-and.false.2836:
-  br label %and.merge.2838
-and.merge.2838:
-  %t17635 = phi i1 [ %t17634, %or.merge.2841 ], [ false, %and.false.2836 ]
-  br i1 %t17635, label %while.body.2834, label %while.end.2835
-while.body.2834:
-  %t17636 = load i64, ptr %k.17619
-  %t17637 = add i64 %t17636, 1
-  store i64 %t17637, ptr %k.17619
-  br label %while.cond.2833
-while.end.2835:
-  %t17638 = load ptr, ptr %line.17618
-  %t17639 = load i64, ptr %k.17619
-  %t17640 = load i64, ptr %ll.17622
-  %t17641 = call ptr @jerry_string_slice(ptr %t17638, i64 %t17639, i64 %t17640)
-  %trimmed.17642 = alloca ptr
-  store ptr %t17641, ptr %trimmed.17642
-  %t17643 = load ptr, ptr %trimmed.17642
-  %t17644 = call ptr @jerry_string_new(ptr @.str.1420, i64 9)
-  %t17645 = call i8 @jerry_string_starts_with(ptr %t17643, ptr %t17644)
-  %t17646 = icmp ne i8 %t17645, 0
-  br i1 %t17646, label %if.then.2842, label %if.else.2843
-if.then.2842:
-  %t17647 = load ptr, ptr %trimmed.17642
-  %t17648 = load ptr, ptr %trimmed.17642
-  %t17649 = call i64 @jerry_string_len(ptr %t17648)
-  %t17650 = call ptr @jerry_string_slice(ptr %t17647, i64 9, i64 %t17649)
-  %name.17651 = alloca ptr
-  store ptr %t17650, ptr %name.17651
-  %t17652 = load ptr, ptr %name.17651
-  %t17653 = call i64 @jerry_string_len(ptr %t17652)
-  %nl.17654 = alloca i64
-  store i64 %t17653, ptr %nl.17654
-  br label %while.cond.2845
-while.cond.2845:
-  %t17655 = load i64, ptr %nl.17654
-  %t17656 = icmp sgt i64 %t17655, 0
-  br i1 %t17656, label %and.rhs.2849, label %and.false.2848
-and.rhs.2849:
-  %t17657 = load ptr, ptr %name.17651
-  %t17658 = load i64, ptr %nl.17654
-  %t17659 = sub i64 %t17658, 1
-  %t17660 = call i64 @jerry_char_at(ptr %t17657, i64 %t17659)
-  %t17661 = icmp eq i64 %t17660, 32
-  br i1 %t17661, label %or.true.2851, label %or.rhs.2852
-or.rhs.2852:
-  %t17662 = load ptr, ptr %name.17651
-  %t17663 = load i64, ptr %nl.17654
-  %t17664 = sub i64 %t17663, 1
-  %t17665 = call i64 @jerry_char_at(ptr %t17662, i64 %t17664)
-  %t17666 = icmp eq i64 %t17665, 9
-  br label %or.merge.2853
-or.true.2851:
-  br label %or.merge.2853
-or.merge.2853:
-  %t17667 = phi i1 [ true, %or.true.2851 ], [ %t17666, %or.rhs.2852 ]
-  br i1 %t17667, label %or.true.2854, label %or.rhs.2855
-or.rhs.2855:
-  %t17668 = load ptr, ptr %name.17651
-  %t17669 = load i64, ptr %nl.17654
-  %t17670 = sub i64 %t17669, 1
-  %t17671 = call i64 @jerry_char_at(ptr %t17668, i64 %t17670)
-  %t17672 = icmp eq i64 %t17671, 13
-  br label %or.merge.2856
-or.true.2854:
-  br label %or.merge.2856
-or.merge.2856:
-  %t17673 = phi i1 [ true, %or.true.2854 ], [ %t17672, %or.rhs.2855 ]
-  br label %and.merge.2850
-and.false.2848:
-  br label %and.merge.2850
-and.merge.2850:
-  %t17674 = phi i1 [ %t17673, %or.merge.2856 ], [ false, %and.false.2848 ]
-  br i1 %t17674, label %while.body.2846, label %while.end.2847
-while.body.2846:
-  %t17675 = load i64, ptr %nl.17654
-  %t17676 = sub i64 %t17675, 1
-  store i64 %t17676, ptr %nl.17654
-  br label %while.cond.2845
-while.end.2847:
-  %t17677 = load ptr, ptr %name.17651
-  %t17678 = load i64, ptr %nl.17654
-  %t17679 = call ptr @jerry_string_slice(ptr %t17677, i64 0, i64 %t17678)
-  %t17680 = load ptr, ptr %name.17651
-  call void @jerry_retain(ptr %t17679)
-  store ptr %t17679, ptr %name.17651
-  call void @jerry_release(ptr %t17680)
-  %t17681 = load ptr, ptr %name.17651
-  %t17682 = call ptr @jerry_string_new(ptr @.str.1421, i64 4)
-  %t17683 = call i8 @jerry_string_ne(ptr %t17681, ptr %t17682)
-  %t17684 = icmp ne i8 %t17683, 0
-  br i1 %t17684, label %and.rhs.2861, label %and.false.2860
-and.rhs.2861:
-  %t17685 = load ptr, ptr %name.17651
-  %t17686 = call i64 @jerry_string_len(ptr %t17685)
-  %t17687 = icmp sgt i64 %t17686, 0
-  br label %and.merge.2862
-and.false.2860:
-  br label %and.merge.2862
-and.merge.2862:
-  %t17688 = phi i1 [ %t17687, %and.rhs.2861 ], [ false, %and.false.2860 ]
-  br i1 %t17688, label %if.then.2857, label %if.else.2858
-if.then.2857:
-  %found.17689 = alloca i1
-  store i1 false, ptr %found.17689
-  %m.17690 = alloca i64
-  store i64 0, ptr %m.17690
-  br label %while.cond.2863
-while.cond.2863:
-  %t17691 = load i64, ptr %m.17690
-  %t17692 = load ptr, ptr %names.17594
-  %t17693 = call i64 @jerry_array_len(ptr %t17692)
-  %t17694 = icmp slt i64 %t17691, %t17693
-  br i1 %t17694, label %while.body.2864, label %while.end.2865
-while.body.2864:
-  %t17695 = load ptr, ptr %names.17594
-  %t17696 = load i64, ptr %m.17690
-  %t17697 = call ptr @jerry_array_get(ptr %t17695, i64 %t17696)
-  %t17698 = load ptr, ptr %t17697
-  %t17699 = load ptr, ptr %name.17651
-  %t17700 = call i8 @jerry_string_eq(ptr %t17698, ptr %t17699)
-  %t17701 = icmp ne i8 %t17700, 0
-  br i1 %t17701, label %if.then.2866, label %if.else.2867
-if.then.2866:
-  store i1 true, ptr %found.17689
-  br label %if.merge.2868
-if.else.2867:
-  br label %if.merge.2868
-if.merge.2868:
-  %t17702 = load i64, ptr %m.17690
-  %t17703 = add i64 %t17702, 1
-  store i64 %t17703, ptr %m.17690
-  br label %while.cond.2863
-while.end.2865:
-  %t17704 = load i1, ptr %found.17689
-  %t17705 = xor i1 %t17704, true
-  br i1 %t17705, label %if.then.2869, label %if.else.2870
-if.then.2869:
-  %t17706 = load ptr, ptr %names.17594
-  %t17707 = load ptr, ptr %name.17651
-  %t17708.slot = alloca ptr
-  store ptr %t17707, ptr %t17708.slot
-  call void @jerry_array_push(ptr %t17706, ptr %t17708.slot)
-  br label %if.merge.2871
-if.else.2870:
-  br label %if.merge.2871
-if.merge.2871:
-  br label %if.merge.2859
-if.else.2858:
-  br label %if.merge.2859
-if.merge.2859:
-  %t17709 = load ptr, ptr %name.17651
-  call void @jerry_release(ptr %t17709)
-  br label %if.merge.2844
-if.else.2843:
-  br label %if.merge.2844
-if.merge.2844:
-  %t17710 = load i64, ptr %j.17603
-  %t17711 = add i64 %t17710, 1
-  store i64 %t17711, ptr %i.17598
-  %t17712 = load ptr, ptr %trimmed.17642
-  call void @jerry_release(ptr %t17712)
-  %t17713 = load ptr, ptr %line.17618
-  call void @jerry_release(ptr %t17713)
-  br label %while.cond.2824
-while.end.2826:
-  %t17714 = load ptr, ptr %names.17594
-  ret ptr %t17714
-}
-
-define ptr @strip_includes_jerry(ptr %src.arg) {
-entry:
-  %src.17715 = alloca ptr
-  store ptr %src.arg, ptr %src.17715
-  %t17716 = call ptr @jerry_string_new(ptr @.str.1422, i64 0)
-  %result.17717 = alloca ptr
-  store ptr %t17716, ptr %result.17717
-  %t17718 = load ptr, ptr %src.17715
-  %t17719 = call i64 @jerry_string_len(ptr %t17718)
-  %n.17720 = alloca i64
-  store i64 %t17719, ptr %n.17720
-  %i.17721 = alloca i64
-  store i64 0, ptr %i.17721
-  br label %while.cond.2872
-while.cond.2872:
-  %t17722 = load i64, ptr %i.17721
-  %t17723 = load i64, ptr %n.17720
-  %t17724 = icmp slt i64 %t17722, %t17723
-  br i1 %t17724, label %while.body.2873, label %while.end.2874
-while.body.2873:
-  %t17725 = load i64, ptr %i.17721
-  %j.17726 = alloca i64
-  store i64 %t17725, ptr %j.17726
-  br label %while.cond.2875
-while.cond.2875:
-  %t17727 = load i64, ptr %j.17726
-  %t17728 = load i64, ptr %n.17720
-  %t17729 = icmp slt i64 %t17727, %t17728
-  br i1 %t17729, label %and.rhs.2879, label %and.false.2878
-and.rhs.2879:
-  %t17730 = load ptr, ptr %src.17715
-  %t17731 = load i64, ptr %j.17726
-  %t17732 = call i64 @jerry_char_at(ptr %t17730, i64 %t17731)
-  %t17733 = icmp ne i64 %t17732, 10
-  br label %and.merge.2880
-and.false.2878:
-  br label %and.merge.2880
-and.merge.2880:
-  %t17734 = phi i1 [ %t17733, %and.rhs.2879 ], [ false, %and.false.2878 ]
-  br i1 %t17734, label %while.body.2876, label %while.end.2877
-while.body.2876:
-  %t17735 = load i64, ptr %j.17726
-  %t17736 = add i64 %t17735, 1
-  store i64 %t17736, ptr %j.17726
-  br label %while.cond.2875
-while.end.2877:
-  %t17737 = load ptr, ptr %src.17715
-  %t17738 = load i64, ptr %i.17721
-  %t17739 = load i64, ptr %j.17726
-  %t17740 = call ptr @jerry_string_slice(ptr %t17737, i64 %t17738, i64 %t17739)
-  %line.17741 = alloca ptr
-  store ptr %t17740, ptr %line.17741
-  %k.17742 = alloca i64
-  store i64 0, ptr %k.17742
-  %t17743 = load ptr, ptr %line.17741
-  %t17744 = call i64 @jerry_string_len(ptr %t17743)
-  %ll.17745 = alloca i64
-  store i64 %t17744, ptr %ll.17745
-  br label %while.cond.2881
-while.cond.2881:
-  %t17746 = load i64, ptr %k.17742
-  %t17747 = load i64, ptr %ll.17745
-  %t17748 = icmp slt i64 %t17746, %t17747
-  br i1 %t17748, label %and.rhs.2885, label %and.false.2884
-and.rhs.2885:
-  %t17749 = load ptr, ptr %line.17741
-  %t17750 = load i64, ptr %k.17742
-  %t17751 = call i64 @jerry_char_at(ptr %t17749, i64 %t17750)
-  %t17752 = icmp eq i64 %t17751, 32
-  br i1 %t17752, label %or.true.2887, label %or.rhs.2888
-or.rhs.2888:
-  %t17753 = load ptr, ptr %line.17741
-  %t17754 = load i64, ptr %k.17742
-  %t17755 = call i64 @jerry_char_at(ptr %t17753, i64 %t17754)
-  %t17756 = icmp eq i64 %t17755, 9
-  br label %or.merge.2889
-or.true.2887:
-  br label %or.merge.2889
-or.merge.2889:
-  %t17757 = phi i1 [ true, %or.true.2887 ], [ %t17756, %or.rhs.2888 ]
-  br label %and.merge.2886
-and.false.2884:
-  br label %and.merge.2886
-and.merge.2886:
-  %t17758 = phi i1 [ %t17757, %or.merge.2889 ], [ false, %and.false.2884 ]
-  br i1 %t17758, label %while.body.2882, label %while.end.2883
-while.body.2882:
-  %t17759 = load i64, ptr %k.17742
-  %t17760 = add i64 %t17759, 1
-  store i64 %t17760, ptr %k.17742
-  br label %while.cond.2881
-while.end.2883:
-  %t17761 = load ptr, ptr %line.17741
-  %t17762 = load i64, ptr %k.17742
-  %t17763 = load i64, ptr %ll.17745
-  %t17764 = call ptr @jerry_string_slice(ptr %t17761, i64 %t17762, i64 %t17763)
-  %trimmed.17765 = alloca ptr
-  store ptr %t17764, ptr %trimmed.17765
-  %t17766 = load ptr, ptr %trimmed.17765
-  %t17767 = call ptr @jerry_string_new(ptr @.str.1423, i64 9)
-  %t17768 = call i8 @jerry_string_starts_with(ptr %t17766, ptr %t17767)
-  %t17769 = icmp ne i8 %t17768, 0
-  %t17770 = xor i1 %t17769, true
-  br i1 %t17770, label %and.rhs.2894, label %and.false.2893
-and.rhs.2894:
-  %t17771 = load ptr, ptr %trimmed.17765
-  %t17772 = call ptr @jerry_string_new(ptr @.str.1424, i64 9)
-  %t17773 = call i8 @jerry_string_starts_with(ptr %t17771, ptr %t17772)
-  %t17774 = icmp ne i8 %t17773, 0
-  %t17775 = xor i1 %t17774, true
-  br label %and.merge.2895
-and.false.2893:
-  br label %and.merge.2895
-and.merge.2895:
-  %t17776 = phi i1 [ %t17775, %and.rhs.2894 ], [ false, %and.false.2893 ]
-  br i1 %t17776, label %if.then.2890, label %if.else.2891
-if.then.2890:
-  %t17777 = load ptr, ptr %result.17717
-  %t17778 = load ptr, ptr %line.17741
-  %t17779 = call ptr @jerry_string_concat(ptr %t17777, ptr %t17778)
-  %t17780 = call ptr @jerry_string_new(ptr @.str.1425, i64 1)
-  %t17781 = call ptr @jerry_string_concat(ptr %t17779, ptr %t17780)
-  %t17782 = load ptr, ptr %result.17717
-  call void @jerry_retain(ptr %t17781)
-  store ptr %t17781, ptr %result.17717
-  call void @jerry_release(ptr %t17782)
-  br label %if.merge.2892
-if.else.2891:
-  br label %if.merge.2892
-if.merge.2892:
-  %t17783 = load i64, ptr %j.17726
-  %t17784 = add i64 %t17783, 1
-  store i64 %t17784, ptr %i.17721
-  %t17785 = load ptr, ptr %trimmed.17765
-  call void @jerry_release(ptr %t17785)
-  %t17786 = load ptr, ptr %line.17741
-  call void @jerry_release(ptr %t17786)
-  br label %while.cond.2872
-while.end.2874:
-  %t17787 = load ptr, ptr %result.17717
-  ret ptr %t17787
-}
-
-define void @main_jerry() {
-entry:
-  %t17788 = call ptr @jerry_args()
-  %argv.17789 = alloca ptr
-  store ptr %t17788, ptr %argv.17789
-  %t17790 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %src_args.17791 = alloca ptr
-  store ptr %t17790, ptr %src_args.17791
-  call void @jerry_array_mark_heap(ptr %t17790)
-  %t17792 = call ptr @jerry_string_new(ptr @.str.1426, i64 5)
-  %out_path.17793 = alloca ptr
-  store ptr %t17792, ptr %out_path.17793
-  %ir_only.17794 = alloca i1
-  store i1 false, ptr %ir_only.17794
-  %check_only.17795 = alloca i1
-  store i1 false, ptr %check_only.17795
-  %t17796 = call ptr @jerry_string_new(ptr @.str.1427, i64 0)
-  %target_triple.17797 = alloca ptr
-  store ptr %t17796, ptr %target_triple.17797
-  %i.17798 = alloca i64
-  store i64 0, ptr %i.17798
-  br label %while.cond.2896
-while.cond.2896:
-  %t17799 = load i64, ptr %i.17798
-  %t17800 = load ptr, ptr %argv.17789
-  %t17801 = call i64 @jerry_array_len(ptr %t17800)
-  %t17802 = icmp slt i64 %t17799, %t17801
-  br i1 %t17802, label %while.body.2897, label %while.end.2898
-while.body.2897:
-  %t17803 = load ptr, ptr %argv.17789
-  %t17804 = load i64, ptr %i.17798
-  %t17805 = call ptr @jerry_array_get(ptr %t17803, i64 %t17804)
-  %t17806 = load ptr, ptr %t17805
-  %a.17807 = alloca ptr
-  store ptr %t17806, ptr %a.17807
-  call void @jerry_retain(ptr %t17806)
-  %t17808 = load ptr, ptr %a.17807
-  %t17809 = call ptr @jerry_string_new(ptr @.str.1428, i64 2)
-  %t17810 = call i8 @jerry_string_eq(ptr %t17808, ptr %t17809)
-  %t17811 = icmp ne i8 %t17810, 0
-  br i1 %t17811, label %if.then.2899, label %if.else.2900
-if.then.2899:
-  %t17812 = load i64, ptr %i.17798
-  %t17813 = add i64 %t17812, 1
-  store i64 %t17813, ptr %i.17798
-  %t17814 = load i64, ptr %i.17798
-  %t17815 = load ptr, ptr %argv.17789
-  %t17816 = call i64 @jerry_array_len(ptr %t17815)
-  %t17817 = icmp slt i64 %t17814, %t17816
-  br i1 %t17817, label %if.then.2902, label %if.else.2903
-if.then.2902:
-  %t17818 = load ptr, ptr %argv.17789
-  %t17819 = load i64, ptr %i.17798
-  %t17820 = call ptr @jerry_array_get(ptr %t17818, i64 %t17819)
-  %t17821 = load ptr, ptr %t17820
-  %t17822 = load ptr, ptr %out_path.17793
-  call void @jerry_retain(ptr %t17821)
-  store ptr %t17821, ptr %out_path.17793
-  call void @jerry_release(ptr %t17822)
-  br label %if.merge.2904
-if.else.2903:
-  br label %if.merge.2904
-if.merge.2904:
-  br label %if.merge.2901
-if.else.2900:
-  %t17823 = load ptr, ptr %a.17807
-  %t17824 = call ptr @jerry_string_new(ptr @.str.1429, i64 4)
-  %t17825 = call i8 @jerry_string_eq(ptr %t17823, ptr %t17824)
-  %t17826 = icmp ne i8 %t17825, 0
-  br i1 %t17826, label %if.then.2905, label %if.else.2906
-if.then.2905:
-  store i1 true, ptr %ir_only.17794
-  br label %if.merge.2907
-if.else.2906:
-  %t17827 = load ptr, ptr %a.17807
-  %t17828 = call ptr @jerry_string_new(ptr @.str.1430, i64 7)
-  %t17829 = call i8 @jerry_string_eq(ptr %t17827, ptr %t17828)
-  %t17830 = icmp ne i8 %t17829, 0
-  br i1 %t17830, label %if.then.2908, label %if.else.2909
-if.then.2908:
-  store i1 true, ptr %check_only.17795
-  br label %if.merge.2910
-if.else.2909:
-  %t17831 = load ptr, ptr %a.17807
-  %t17832 = call ptr @jerry_string_new(ptr @.str.1431, i64 7)
-  %t17833 = call i8 @jerry_string_eq(ptr %t17831, ptr %t17832)
-  %t17834 = icmp ne i8 %t17833, 0
-  br i1 %t17834, label %if.then.2911, label %if.else.2912
-if.then.2911:
-  %t17835 = load i64, ptr %i.17798
-  %t17836 = add i64 %t17835, 1
-  store i64 %t17836, ptr %i.17798
-  %t17837 = load i64, ptr %i.17798
-  %t17838 = load ptr, ptr %argv.17789
-  %t17839 = call i64 @jerry_array_len(ptr %t17838)
-  %t17840 = icmp slt i64 %t17837, %t17839
-  br i1 %t17840, label %if.then.2914, label %if.else.2915
-if.then.2914:
-  %t17841 = load ptr, ptr %argv.17789
-  %t17842 = load i64, ptr %i.17798
-  %t17843 = call ptr @jerry_array_get(ptr %t17841, i64 %t17842)
-  %t17844 = load ptr, ptr %t17843
-  %t17845 = load ptr, ptr %target_triple.17797
-  call void @jerry_retain(ptr %t17844)
-  store ptr %t17844, ptr %target_triple.17797
-  call void @jerry_release(ptr %t17845)
-  br label %if.merge.2916
-if.else.2915:
-  br label %if.merge.2916
-if.merge.2916:
-  br label %if.merge.2913
-if.else.2912:
-  %t17846 = load ptr, ptr %src_args.17791
-  %t17847 = load ptr, ptr %a.17807
-  %t17848.slot = alloca ptr
-  store ptr %t17847, ptr %t17848.slot
-  call void @jerry_array_push(ptr %t17846, ptr %t17848.slot)
-  br label %if.merge.2913
-if.merge.2913:
-  br label %if.merge.2910
-if.merge.2910:
-  br label %if.merge.2907
-if.merge.2907:
-  br label %if.merge.2901
-if.merge.2901:
-  %t17849 = load i64, ptr %i.17798
-  %t17850 = add i64 %t17849, 1
-  store i64 %t17850, ptr %i.17798
-  %t17851 = load ptr, ptr %a.17807
-  call void @jerry_release(ptr %t17851)
-  br label %while.cond.2896
-while.end.2898:
-  %t17852 = load ptr, ptr %src_args.17791
-  %t17853 = call i64 @jerry_array_len(ptr %t17852)
-  %t17854 = icmp eq i64 %t17853, 0
-  br i1 %t17854, label %if.then.2917, label %if.else.2918
-if.then.2917:
-  %t17855 = call ptr @jerry_string_new(ptr @.str.1432, i64 78)
-  call void @jerry_print_err(ptr %t17855)
-  call void @jerry_release(ptr %t17855)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2918:
-  br label %if.merge.2919
-if.merge.2919:
-  %t17856 = call ptr @jerry_array_new(i64 8, i64 0, i8 0)
-  %src_files.17857 = alloca ptr
-  store ptr %t17856, ptr %src_files.17857
-  call void @jerry_array_mark_heap(ptr %t17856)
-  %j.17858 = alloca i64
-  store i64 0, ptr %j.17858
-  br label %while.cond.2920
-while.cond.2920:
-  %t17859 = load i64, ptr %j.17858
-  %t17860 = load ptr, ptr %src_args.17791
-  %t17861 = call i64 @jerry_array_len(ptr %t17860)
-  %t17862 = icmp slt i64 %t17859, %t17861
-  br i1 %t17862, label %while.body.2921, label %while.end.2922
-while.body.2921:
-  %t17863 = load ptr, ptr %src_args.17791
-  %t17864 = load i64, ptr %j.17858
-  %t17865 = call ptr @jerry_array_get(ptr %t17863, i64 %t17864)
-  %t17866 = load ptr, ptr %t17865
-  %t17867 = call ptr @expand_src_jerry(ptr %t17866)
-  %expanded.17868 = alloca ptr
-  store ptr %t17867, ptr %expanded.17868
-  %k.17869 = alloca i64
-  store i64 0, ptr %k.17869
-  br label %while.cond.2923
-while.cond.2923:
-  %t17870 = load i64, ptr %k.17869
-  %t17871 = load ptr, ptr %expanded.17868
-  %t17872 = call i64 @jerry_array_len(ptr %t17871)
-  %t17873 = icmp slt i64 %t17870, %t17872
-  br i1 %t17873, label %while.body.2924, label %while.end.2925
-while.body.2924:
-  %t17874 = load ptr, ptr %src_files.17857
-  %t17875 = load ptr, ptr %expanded.17868
-  %t17876 = load i64, ptr %k.17869
-  %t17877 = call ptr @jerry_array_get(ptr %t17875, i64 %t17876)
-  %t17878 = load ptr, ptr %t17877
-  %t17879.slot = alloca ptr
-  store ptr %t17878, ptr %t17879.slot
-  call void @jerry_array_push(ptr %t17874, ptr %t17879.slot)
-  %t17880 = load i64, ptr %k.17869
-  %t17881 = add i64 %t17880, 1
-  store i64 %t17881, ptr %k.17869
-  br label %while.cond.2923
-while.end.2925:
-  %t17882 = load i64, ptr %j.17858
-  %t17883 = add i64 %t17882, 1
-  store i64 %t17883, ptr %j.17858
-  %t17884 = load ptr, ptr %expanded.17868
-  call void @jerry_release(ptr %t17884)
-  br label %while.cond.2920
-while.end.2922:
-  %t17885 = load ptr, ptr %src_files.17857
-  %t17886 = call i64 @jerry_array_len(ptr %t17885)
-  %t17887 = icmp eq i64 %t17886, 0
-  br i1 %t17887, label %if.then.2926, label %if.else.2927
-if.then.2926:
-  %t17888 = call ptr @jerry_string_new(ptr @.str.1433, i64 35)
-  call void @jerry_print_err(ptr %t17888)
-  call void @jerry_release(ptr %t17888)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2927:
-  br label %if.merge.2928
-if.merge.2928:
-  %t17889 = call ptr @jerry_string_new(ptr @.str.1434, i64 0)
-  %src.17890 = alloca ptr
-  store ptr %t17889, ptr %src.17890
-  %fi.17891 = alloca i64
-  store i64 0, ptr %fi.17891
-  br label %while.cond.2929
-while.cond.2929:
-  %t17892 = load i64, ptr %fi.17891
-  %t17893 = load ptr, ptr %src_files.17857
-  %t17894 = call i64 @jerry_array_len(ptr %t17893)
-  %t17895 = icmp slt i64 %t17892, %t17894
-  br i1 %t17895, label %while.body.2930, label %while.end.2931
-while.body.2930:
-  %t17896 = load ptr, ptr %src.17890
-  %t17897 = load ptr, ptr %src_files.17857
-  %t17898 = load i64, ptr %fi.17891
-  %t17899 = call ptr @jerry_array_get(ptr %t17897, i64 %t17898)
-  %t17900 = load ptr, ptr %t17899
-  %t17901 = call ptr @jerry_read_file(ptr %t17900)
-  %t17902 = call ptr @jerry_string_concat(ptr %t17896, ptr %t17901)
-  %t17903 = load ptr, ptr %src.17890
-  call void @jerry_retain(ptr %t17902)
-  store ptr %t17902, ptr %src.17890
-  call void @jerry_release(ptr %t17903)
-  %t17904 = load i64, ptr %fi.17891
-  %t17905 = add i64 %t17904, 1
-  store i64 %t17905, ptr %fi.17891
-  br label %while.cond.2929
-while.end.2931:
-  %t17906 = load ptr, ptr %src.17890
-  %t17907 = call ptr @collect_stdlib_names_jerry(ptr %t17906)
-  %stdlib_names.17908 = alloca ptr
-  store ptr %t17907, ptr %stdlib_names.17908
-  %t17909 = load ptr, ptr %stdlib_names.17908
-  %t17910 = call i64 @jerry_array_len(ptr %t17909)
-  %t17911 = icmp sgt i64 %t17910, 0
-  %needs_stdlib.17912 = alloca i1
-  store i1 %t17911, ptr %needs_stdlib.17912
-  %t17913 = call ptr @jerry_string_new(ptr @.str.1435, i64 0)
-  %stdlib_dir.17914 = alloca ptr
-  store ptr %t17913, ptr %stdlib_dir.17914
-  %t17915 = load i1, ptr %needs_stdlib.17912
-  br i1 %t17915, label %if.then.2932, label %if.else.2933
-if.then.2932:
-  %t17916 = call ptr @jerry_stdlib_dir_path()
-  %t17917 = load ptr, ptr %stdlib_dir.17914
-  call void @jerry_retain(ptr %t17916)
-  store ptr %t17916, ptr %stdlib_dir.17914
-  call void @jerry_release(ptr %t17917)
-  %t17918 = load ptr, ptr %stdlib_dir.17914
-  %t17919 = call i64 @jerry_string_len(ptr %t17918)
-  %t17920 = icmp eq i64 %t17919, 0
-  br i1 %t17920, label %if.then.2935, label %if.else.2936
-if.then.2935:
-  %t17921 = call ptr @jerry_string_new(ptr @.str.1436, i64 42)
-  call void @jerry_print_err(ptr %t17921)
-  call void @jerry_release(ptr %t17921)
-  %t17922 = call ptr @jerry_string_new(ptr @.str.1437, i64 69)
-  call void @jerry_print_err(ptr %t17922)
-  call void @jerry_release(ptr %t17922)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2936:
-  br label %if.merge.2937
-if.merge.2937:
-  br label %if.merge.2934
-if.else.2933:
-  br label %if.merge.2934
-if.merge.2934:
-  %t17923 = load ptr, ptr %src.17890
-  %t17924 = call ptr @strip_includes_jerry(ptr %t17923)
-  %src_clean.17925 = alloca ptr
-  store ptr %t17924, ptr %src_clean.17925
-  %t17926 = call ptr @jerry_string_new(ptr @.str.1438, i64 0)
-  %prelude.17927 = alloca ptr
-  store ptr %t17926, ptr %prelude.17927
-  %t17928 = call ptr @jerry_stdlib_dir_path()
-  %t17929 = call ptr @jerry_string_new(ptr @.str.1439, i64 9)
-  %t17930 = call ptr @jerry_string_concat(ptr %t17928, ptr %t17929)
-  %core_path.17931 = alloca ptr
-  store ptr %t17930, ptr %core_path.17931
-  %t17932 = call ptr @jerry_stdlib_dir_path()
-  %t17933 = call i8 @jerry_is_dir(ptr %t17932)
-  %t17934 = icmp ne i8 %t17933, 0
-  br i1 %t17934, label %if.then.2938, label %if.else.2939
-if.then.2938:
-  %t17935 = load ptr, ptr %core_path.17931
-  %t17936 = call ptr @jerry_read_file(ptr %t17935)
-  %t17937 = load ptr, ptr %prelude.17927
-  call void @jerry_retain(ptr %t17936)
-  store ptr %t17936, ptr %prelude.17927
-  call void @jerry_release(ptr %t17937)
-  br label %if.merge.2940
-if.else.2939:
-  br label %if.merge.2940
-if.merge.2940:
-  %si.17938 = alloca i64
-  store i64 0, ptr %si.17938
-  br label %while.cond.2941
-while.cond.2941:
-  %t17939 = load i64, ptr %si.17938
-  %t17940 = load ptr, ptr %stdlib_names.17908
-  %t17941 = call i64 @jerry_array_len(ptr %t17940)
-  %t17942 = icmp slt i64 %t17939, %t17941
-  br i1 %t17942, label %while.body.2942, label %while.end.2943
-while.body.2942:
-  %t17943 = load ptr, ptr %stdlib_dir.17914
-  %t17944 = call ptr @jerry_string_new(ptr @.str.1440, i64 1)
-  %t17945 = call ptr @jerry_string_concat(ptr %t17943, ptr %t17944)
-  %t17946 = load ptr, ptr %stdlib_names.17908
-  %t17947 = load i64, ptr %si.17938
-  %t17948 = call ptr @jerry_array_get(ptr %t17946, i64 %t17947)
-  %t17949 = load ptr, ptr %t17948
-  %t17950 = call ptr @jerry_string_concat(ptr %t17945, ptr %t17949)
-  %t17951 = call ptr @jerry_string_new(ptr @.str.1441, i64 4)
-  %t17952 = call ptr @jerry_string_concat(ptr %t17950, ptr %t17951)
-  %mod_path.17953 = alloca ptr
-  store ptr %t17952, ptr %mod_path.17953
-  %t17954 = load ptr, ptr %prelude.17927
-  %t17955 = load ptr, ptr %mod_path.17953
-  %t17956 = call ptr @jerry_read_file(ptr %t17955)
-  %t17957 = call ptr @jerry_string_concat(ptr %t17954, ptr %t17956)
-  %t17958 = load ptr, ptr %prelude.17927
-  call void @jerry_retain(ptr %t17957)
-  store ptr %t17957, ptr %prelude.17927
-  call void @jerry_release(ptr %t17958)
-  %t17959 = load i64, ptr %si.17938
-  %t17960 = add i64 %t17959, 1
-  store i64 %t17960, ptr %si.17938
-  %t17961 = load ptr, ptr %mod_path.17953
-  call void @jerry_release(ptr %t17961)
-  br label %while.cond.2941
-while.end.2943:
-  %t17962 = load ptr, ptr %prelude.17927
-  %t17963 = load ptr, ptr %src_clean.17925
-  %t17964 = call ptr @jerry_string_concat(ptr %t17962, ptr %t17963)
-  %full_src.17965 = alloca ptr
-  store ptr %t17964, ptr %full_src.17965
-  %t17966 = load ptr, ptr %full_src.17965
-  %t17967 = call ptr @parse_jerry(ptr %t17966)
-  %prog.17968 = alloca ptr
-  store ptr %t17967, ptr %prog.17968
-  %t17969 = load ptr, ptr %prog.17968
-  %t17970 = call ptr @type_check_jerry(ptr %t17969)
-  %result.17971 = alloca ptr
-  store ptr %t17970, ptr %result.17971
-  %t17972 = load i1, ptr %check_only.17795
-  br i1 %t17972, label %if.then.2944, label %if.else.2945
-if.then.2944:
-  %t17973 = load ptr, ptr %result.17971
-  %t17974 = call i1 @CheckResult_has_errors_jerry(ptr %t17973)
-  br i1 %t17974, label %if.then.2947, label %if.else.2948
-if.then.2947:
-  %t17975 = load ptr, ptr %result.17971
-  %t17976 = call ptr @CheckResult_error_string_jerry(ptr %t17975)
-  call void @jerry_print_string(ptr %t17976)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2948:
-  br label %if.merge.2949
-if.merge.2949:
-  call void @jerry_exit(i64 0)
-  unreachable
-if.else.2945:
-  br label %if.merge.2946
-if.merge.2946:
-  %t17977 = load ptr, ptr %result.17971
-  %t17978 = call i1 @CheckResult_has_errors_jerry(ptr %t17977)
-  br i1 %t17978, label %if.then.2950, label %if.else.2951
-if.then.2950:
-  %t17979 = load ptr, ptr %result.17971
-  %t17980 = call ptr @CheckResult_error_string_jerry(ptr %t17979)
-  call void @jerry_print_err(ptr %t17980)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2951:
-  br label %if.merge.2952
-if.merge.2952:
-  %t17981 = load ptr, ptr %prog.17968
-  %t17982 = load ptr, ptr %result.17971
-  %t17983 = getelementptr %CheckResult, ptr %t17982, i32 0, i32 1
-  %t17984 = load ptr, ptr %t17983
-  %t17985 = call ptr @generate_jerry(ptr %t17981, ptr %t17984)
-  %ir.17986 = alloca ptr
-  store ptr %t17985, ptr %ir.17986
-  %t17987 = load i1, ptr %ir_only.17794
-  br i1 %t17987, label %if.then.2953, label %if.else.2954
-if.then.2953:
-  %t17988 = load ptr, ptr %ir.17986
-  call void @jerry_print_string(ptr %t17988)
-  %t17989 = load ptr, ptr %ir.17986
-  call void @jerry_release(ptr %t17989)
-  %t17990 = load ptr, ptr %result.17971
-  call void @jerry_release(ptr %t17990)
-  %t17991 = load ptr, ptr %prog.17968
-  call void @jerry_release(ptr %t17991)
-  %t17992 = load ptr, ptr %full_src.17965
-  call void @jerry_release(ptr %t17992)
-  %t17993 = load ptr, ptr %core_path.17931
-  call void @jerry_release(ptr %t17993)
-  %t17994 = load ptr, ptr %prelude.17927
-  call void @jerry_release(ptr %t17994)
-  %t17995 = load ptr, ptr %src_clean.17925
-  call void @jerry_release(ptr %t17995)
-  %t17996 = load ptr, ptr %stdlib_dir.17914
-  call void @jerry_release(ptr %t17996)
-  %t17997 = load ptr, ptr %stdlib_names.17908
-  call void @jerry_release(ptr %t17997)
-  %t17998 = load ptr, ptr %src.17890
-  call void @jerry_release(ptr %t17998)
-  %t17999 = load ptr, ptr %src_files.17857
-  call void @jerry_release(ptr %t17999)
-  %t18000 = load ptr, ptr %target_triple.17797
-  call void @jerry_release(ptr %t18000)
-  %t18001 = load ptr, ptr %out_path.17793
-  call void @jerry_release(ptr %t18001)
-  %t18002 = load ptr, ptr %src_args.17791
-  call void @jerry_release(ptr %t18002)
-  %t18003 = load ptr, ptr %argv.17789
-  call void @jerry_release(ptr %t18003)
-  ret void
-if.else.2954:
-  br label %if.merge.2955
-if.merge.2955:
-  %t18004 = call ptr @jerry_string_new(ptr @.str.1442, i64 11)
-  %t18005 = call i64 @jerry_now_millis()
-  %t18006 = call ptr @jerry_int_to_string(i64 %t18005)
-  %t18007 = call ptr @jerry_string_concat(ptr %t18004, ptr %t18006)
-  %t18008 = call ptr @jerry_string_new(ptr @.str.1443, i64 3)
-  %t18009 = call ptr @jerry_string_concat(ptr %t18007, ptr %t18008)
-  %tmp.18010 = alloca ptr
-  store ptr %t18009, ptr %tmp.18010
-  %t18011 = load ptr, ptr %tmp.18010
-  %t18012 = load ptr, ptr %ir.17986
-  call void @jerry_write_file(ptr %t18011, ptr %t18012)
-  %t18013 = call ptr @jerry_runtime_lib_path()
-  %runtime_lib.18014 = alloca ptr
-  store ptr %t18013, ptr %runtime_lib.18014
-  %t18015 = load ptr, ptr %runtime_lib.18014
-  %t18016 = call i64 @jerry_string_len(ptr %t18015)
-  %t18017 = icmp eq i64 %t18016, 0
-  br i1 %t18017, label %if.then.2956, label %if.else.2957
-if.then.2956:
-  %t18018 = load ptr, ptr %tmp.18010
-  call void @jerry_delete_file(ptr %t18018)
-  %t18019 = call ptr @jerry_string_new(ptr @.str.1444, i64 41)
-  call void @jerry_print_err(ptr %t18019)
-  call void @jerry_release(ptr %t18019)
-  %t18020 = call ptr @jerry_string_new(ptr @.str.1445, i64 66)
-  call void @jerry_print_err(ptr %t18020)
-  call void @jerry_release(ptr %t18020)
-  call void @jerry_exit(i64 1)
-  unreachable
-if.else.2957:
-  br label %if.merge.2958
-if.merge.2958:
-  %t18021 = call ptr @jerry_array_new(i64 8, i64 2, i8 1)
-  %t18022 = call ptr @jerry_string_new(ptr @.str.1446, i64 5)
-  %t18023.slot = alloca ptr
-  store ptr %t18022, ptr %t18023.slot
-  call void @jerry_array_push(ptr %t18021, ptr %t18023.slot)
-  %t18024 = call ptr @jerry_string_new(ptr @.str.1447, i64 3)
-  %t18025.slot = alloca ptr
-  store ptr %t18024, ptr %t18025.slot
-  call void @jerry_array_push(ptr %t18021, ptr %t18025.slot)
-  %clang_args.18026 = alloca ptr
-  store ptr %t18021, ptr %clang_args.18026
-  %t18027 = load ptr, ptr %target_triple.17797
-  %t18028 = call i64 @jerry_string_len(ptr %t18027)
-  %t18029 = icmp sgt i64 %t18028, 0
-  br i1 %t18029, label %if.then.2959, label %if.else.2960
-if.then.2959:
-  %t18030 = load ptr, ptr %clang_args.18026
-  %t18031 = call ptr @jerry_string_new(ptr @.str.1448, i64 7)
-  %t18032.slot = alloca ptr
-  store ptr %t18031, ptr %t18032.slot
-  call void @jerry_array_push(ptr %t18030, ptr %t18032.slot)
-  %t18033 = load ptr, ptr %clang_args.18026
-  %t18034 = load ptr, ptr %target_triple.17797
-  %t18035.slot = alloca ptr
-  store ptr %t18034, ptr %t18035.slot
-  call void @jerry_array_push(ptr %t18033, ptr %t18035.slot)
-  br label %if.merge.2961
-if.else.2960:
-  br label %if.merge.2961
-if.merge.2961:
-  %t18036 = load ptr, ptr %clang_args.18026
-  %t18037 = load ptr, ptr %tmp.18010
-  %t18038.slot = alloca ptr
-  store ptr %t18037, ptr %t18038.slot
-  call void @jerry_array_push(ptr %t18036, ptr %t18038.slot)
-  %t18039 = load ptr, ptr %clang_args.18026
-  %t18040 = load ptr, ptr %runtime_lib.18014
-  %t18041.slot = alloca ptr
-  store ptr %t18040, ptr %t18041.slot
-  call void @jerry_array_push(ptr %t18039, ptr %t18041.slot)
-  %t18042 = load ptr, ptr %clang_args.18026
-  %t18043 = call ptr @jerry_string_new(ptr @.str.1449, i64 2)
-  %t18044.slot = alloca ptr
-  store ptr %t18043, ptr %t18044.slot
-  call void @jerry_array_push(ptr %t18042, ptr %t18044.slot)
-  %t18045 = load ptr, ptr %clang_args.18026
-  %t18046 = load ptr, ptr %out_path.17793
-  %t18047.slot = alloca ptr
-  store ptr %t18046, ptr %t18047.slot
-  call void @jerry_array_push(ptr %t18045, ptr %t18047.slot)
-  %t18048 = load ptr, ptr %clang_args.18026
-  %t18049 = call ptr @jerry_string_new(ptr @.str.1450, i64 3)
-  %t18050.slot = alloca ptr
-  store ptr %t18049, ptr %t18050.slot
-  call void @jerry_array_push(ptr %t18048, ptr %t18050.slot)
-  %t18051 = load ptr, ptr %clang_args.18026
-  %t18052 = call i64 @jerry_exec(ptr %t18051)
-  %code.18053 = alloca i64
-  store i64 %t18052, ptr %code.18053
-  %t18054 = load ptr, ptr %tmp.18010
-  call void @jerry_delete_file(ptr %t18054)
-  %t18055 = load i64, ptr %code.18053
-  %t18056 = icmp ne i64 %t18055, 0
-  br i1 %t18056, label %if.then.2962, label %if.else.2963
-if.then.2962:
-  %t18057 = call ptr @jerry_string_new(ptr @.str.1451, i64 39)
-  %t18058 = load i64, ptr %code.18053
-  %t18059 = call ptr @jerry_int_to_string(i64 %t18058)
-  %t18060 = call ptr @jerry_string_concat(ptr %t18057, ptr %t18059)
-  call void @jerry_print_err(ptr %t18060)
-  %t18061 = load i64, ptr %code.18053
-  call void @jerry_exit(i64 %t18061)
-  unreachable
-if.else.2963:
-  br label %if.merge.2964
-if.merge.2964:
-  %t18062 = load ptr, ptr %clang_args.18026
-  call void @jerry_release(ptr %t18062)
-  %t18063 = load ptr, ptr %runtime_lib.18014
-  call void @jerry_release(ptr %t18063)
-  %t18064 = load ptr, ptr %tmp.18010
-  call void @jerry_release(ptr %t18064)
-  %t18065 = load ptr, ptr %ir.17986
-  call void @jerry_release(ptr %t18065)
-  %t18066 = load ptr, ptr %result.17971
-  call void @jerry_release(ptr %t18066)
-  %t18067 = load ptr, ptr %prog.17968
-  call void @jerry_release(ptr %t18067)
-  %t18068 = load ptr, ptr %full_src.17965
-  call void @jerry_release(ptr %t18068)
-  %t18069 = load ptr, ptr %core_path.17931
-  call void @jerry_release(ptr %t18069)
-  %t18070 = load ptr, ptr %prelude.17927
-  call void @jerry_release(ptr %t18070)
-  %t18071 = load ptr, ptr %src_clean.17925
-  call void @jerry_release(ptr %t18071)
-  %t18072 = load ptr, ptr %stdlib_dir.17914
-  call void @jerry_release(ptr %t18072)
-  %t18073 = load ptr, ptr %stdlib_names.17908
-  call void @jerry_release(ptr %t18073)
-  %t18074 = load ptr, ptr %src.17890
+  %params.18060 = alloca ptr
+  store ptr %params.arg, ptr %params.18060
+  %ret.18061 = alloca ptr
+  store ptr %ret.arg, ptr %ret.18061
+  %t18062 = getelementptr %JType, ptr null, i32 1
+  %t18063 = ptrtoint ptr %t18062 to i64
+  %t18064 = call ptr @jerry_alloc(i64 %t18063)
+  %t18065 = getelementptr i8, ptr %t18064, i64 -8
+  store ptr @JType_destroy_jerry, ptr %t18065
+  %t18066 = getelementptr %JType, ptr %t18064, i32 0, i32 0
+  store ptr @vtable.JType, ptr %t18066
+  call void @JType_new_jerry(ptr %t18064)
+  %t.18067 = alloca ptr
+  store ptr %t18064, ptr %t.18067
+  %t18068 = load i64, ptr @TY_FN
+  %t18069 = load ptr, ptr %t.18067
+  %t18070 = getelementptr %JType, ptr %t18069, i32 0, i32 1
+  store i64 %t18068, ptr %t18070
+  %t18071 = load ptr, ptr %params.18060
+  %t18072 = load ptr, ptr %t.18067
+  %t18073 = getelementptr %JType, ptr %t18072, i32 0, i32 5
+  %t18074 = load ptr, ptr %t18073
+  call void @jerry_retain(ptr %t18071)
+  store ptr %t18071, ptr %t18073
   call void @jerry_release(ptr %t18074)
-  %t18075 = load ptr, ptr %src_files.17857
-  call void @jerry_release(ptr %t18075)
-  %t18076 = load ptr, ptr %target_triple.17797
-  call void @jerry_release(ptr %t18076)
-  %t18077 = load ptr, ptr %out_path.17793
-  call void @jerry_release(ptr %t18077)
-  %t18078 = load ptr, ptr %src_args.17791
+  %t18075 = load ptr, ptr %ret.18061
+  %t18076 = load ptr, ptr %t.18067
+  %t18077 = getelementptr %JType, ptr %t18076, i32 0, i32 6
+  %t18078 = load ptr, ptr %t18077
+  call void @jerry_retain(ptr %t18075)
+  store ptr %t18075, ptr %t18077
   call void @jerry_release(ptr %t18078)
-  %t18079 = load ptr, ptr %argv.17789
-  call void @jerry_release(ptr %t18079)
-  ret void
+  %t18079 = load ptr, ptr %t.18067
+  ret ptr %t18079
 }
 
 define void @jerry_global_init() {
