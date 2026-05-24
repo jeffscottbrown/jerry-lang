@@ -1,21 +1,28 @@
-// Jerry Language Grammar
+// Jerry Language — PEG Grammar
 //
-// Format: PEG (Parsing Expression Grammar)
+// This file is the source of truth for Jerry's syntax.  The self-hosted parser
+// (self-host/parser.jer) implements the same grammar; if the two ever diverge
+// this file wins.  `jerry parse <file>` validates a source file against this
+// grammar and exits non-zero on failure.
 //
-// Conventions:
-//   lowercase  = parser rule; whitespace and comments are skipped implicitly
-//                between every element
-//   UPPERCASE  = lexer rule; atomic — no implicit skipping inside
-//   "..."      = literal string terminal (case-sensitive)
-//   [a-z]      = character class
-//   .          = any single character
-//   x?         = optional (zero or one)
-//   x*         = zero or more
-//   x+         = one or more
-//   x | y      = ordered choice — x is tried first; y only attempted if x fails
-//   ( ... )    = grouping
-//   !x         = negative lookahead — succeeds if x does not match; consumes nothing
-//   &x         = positive lookahead — succeeds if x matches; consumes nothing
+// Format conventions
+// ──────────────────
+//   lowercase   parser rule — whitespace / comments skipped between every atom
+//   UPPERCASE   lexer rule  — atomic; no implicit skipping inside
+//   "..."       literal string terminal (case-sensitive)
+//   [a-z]       character class
+//   .           any single character
+//   x?          optional (zero or one)
+//   x*          zero or more
+//   x+          one or more
+//   x | y       ordered choice — x tried first; y only if x fails
+//   ( ... )     grouping
+//   !x          negative lookahead — succeeds when x does NOT match; consumes nothing
+//   &x          positive lookahead — succeeds when x matches; consumes nothing
+//
+// Keywords are listed in the KEYWORD rule and MUST NOT appear where IDENT is
+// expected.  Type names (int, float, bool, string, void) are NOT keywords —
+// they resolve as plain IDENTs.
 
 // ── Program ───────────────────────────────────────────────────────────────────
 
@@ -31,40 +38,41 @@ top_level = include_decl
 
 // ── Includes ──────────────────────────────────────────────────────────────────
 //
-// Stdlib module:   include @string
-// Remote module:   include "github.com/user/repo/path"
+//   include @string            stdlib module
+//   include "github.com/…"    remote module
 
-include_decl = "include" ( "@" IDENT | STRING )
+include_decl = KW_include ( "@" IDENT | STRING )
 
 // ── Variable declarations ─────────────────────────────────────────────────────
 
-var_decl = "let" IDENT ( ":" type_expr )? "=" expr ";"
+var_decl = KW_let IDENT ( ":" type_expr )? "=" expr ";"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 //
-// Ordered so the longest/most-specific prefix is tried first:
-//   map<K,V>           map type (starts with keyword-like ident "map")
-//   fn(T,...): T       function type
-//   T[][]              named type with optional array suffixes
+// Longest / most-specific prefix is tried first:
+//   map<K,V>        starts with the identifier "map"
+//   fn(T…): T       function type
+//   T[]…            named type with zero or more array suffixes
 
 type_expr  = map_type | fn_type | array_type
 map_type   = "map" "<" type_expr "," type_expr ">"
-fn_type    = "fn" "(" ( type_expr ( "," type_expr )* )? ")" ( ":" type_expr )?
+fn_type    = KW_fn "(" ( type_expr ( "," type_expr )* )? ")" ( ":" type_expr )?
 array_type = IDENT ( "[" "]" )*
 
 // ── Classes ───────────────────────────────────────────────────────────────────
 
-class_decl   = "class" IDENT ( "extends" IDENT )? "{" class_member* "}"
+class_decl   = KW_class IDENT ( KW_extends IDENT )? "{" class_member* "}"
 class_member = fn_decl | field_decl
 field_decl   = IDENT ":" type_expr ";"
 
 // ── Functions ─────────────────────────────────────────────────────────────────
 //
-// fn_name allows "new" and "null" as method names in addition to plain identifiers.
+// fn_name permits "new" and "null" as special method names in addition to
+// plain identifiers (used for constructors and null-literal overrides).
 
-fn_decl        = "fn" fn_name "(" param_list? ")" ( ":" type_expr )? block
-extern_fn_decl = "extern" "fn" IDENT "(" param_list? ")" ( ":" type_expr )? ";"
-fn_name        = IDENT | "new" | "null"
+fn_decl        = KW_fn fn_name "(" param_list? ")" ( ":" type_expr )? block
+extern_fn_decl = KW_extern KW_fn IDENT "(" param_list? ")" ( ":" type_expr )? ";"
+fn_name        = IDENT | KW_new | KW_null
 
 param_list = param ( "," param )*
 param      = IDENT ":" type_expr
@@ -78,34 +86,34 @@ stmt = var_decl
      | if_stmt
      | while_stmt
      | for_stmt
-     | "break" ";"
-     | "continue" ";"
+     | ( KW_break    ";" )
+     | ( KW_continue ";" )
      | expr_stmt
 
-return_stmt = "return" expr? ";"
+return_stmt = KW_return expr? ";"
 expr_stmt   = expr ";"
 
-if_stmt    = "if" expr block ( "else" ( if_stmt | block ) )?
-while_stmt = "while" expr block
+if_stmt    = KW_if expr block ( KW_else ( if_stmt | block ) )?
+while_stmt = KW_while expr block
 
 // for ( init? ; cond? ; post? ) body
-// init is either a variable declaration (without trailing ";") or an expression.
-for_stmt = "for" "(" for_init? ";" expr? ";" expr? ")" block
-for_init = ( "let" IDENT ( ":" type_expr )? "=" expr ) | expr
+// init is a var-decl (without its trailing ";") or an expression.
+for_stmt = KW_for "(" for_init? ";" expr? ";" expr? ")" block
+for_init = ( KW_let IDENT ( ":" type_expr )? "=" expr ) | expr
 
 // ── Expressions ───────────────────────────────────────────────────────────────
 //
-// Precedence, lowest to highest:
-//   assign       right-associative    a = b = c
-//   or           left                 a || b || c
-//   and          left                 a && b && c
-//   equality     left                 a == b,  a != b
-//   comparison   left                 a < b,  a <= b,  a > b,  a >= b
-//   addition     left                 a + b,  a - b
-//   multiply     left                 a * b,  a / b,  a % b
-//   unary        right (prefix)       !a,  -a
-//   postfix      left                 a.field,  a(args),  a[i],  a++,  a--
-//   primary                           literals, identifiers, grouped expressions
+// Precedence (lowest → highest):
+//   assign       right-assoc    a = b = c
+//   or           left           a || b || c
+//   and          left           a && b && c
+//   equality     left           a == b,  a != b
+//   comparison   left           a < b,  a <= b,  a > b,  a >= b
+//   addition     left           a + b,  a - b
+//   multiply     left           a * b,  a / b,  a % b
+//   unary        right-prefix   !a,  -a
+//   postfix      left           a.f,  a(…),  a[i],  a++,  a--
+//   primary                     literals, identifiers, grouped expressions
 
 expr        = assign_expr
 assign_expr = or_expr ( "=" assign_expr )?
@@ -124,13 +132,17 @@ postfix      = "." IDENT           // field access:    a.name
              | "++"                // post-increment:  x++
              | "--"                // post-decrement:  x--
 
-// FLOAT is listed before INT so that "3.14" is one token, not "3" then ".14".
+// FLOAT before INT so "3.14" is one token, not "3" then ".14".
+// CHAR_LIT before INT because both lex to TOK_INT; the literal form 'x' must
+// be recognised before the plain digit rule.
+// BOOL before IDENT so "true" / "false" are not consumed as identifiers.
 primary_expr = FLOAT
              | INT
              | STRING
+             | CHAR_LIT
              | BOOL
-             | "null"
-             | "this"
+             | KW_null
+             | KW_this
              | new_expr
              | fn_expr
              | array_lit
@@ -138,39 +150,76 @@ primary_expr = FLOAT
              | "(" expr ")"
              | IDENT
 
-new_expr  = "new" IDENT "(" arg_list? ")"
-fn_expr   = "fn" "(" param_list? ")" ( ":" type_expr )? block
+new_expr  = KW_new IDENT "(" arg_list? ")"
+fn_expr   = KW_fn "(" param_list? ")" ( ":" type_expr )? block
 array_lit = "[" ( expr ( "," expr )* )? "]"
 map_lit   = "{" ( expr ":" expr ( "," expr ":" expr )* )? "}"
 arg_list  = expr ( "," expr )*
 
-// ── Terminals (lexer rules) ───────────────────────────────────────────────────
+// ── Keywords ──────────────────────────────────────────────────────────────────
 //
-// Type names (int, float, bool, string, void) are not keywords — they lex as IDENT.
+// Each KW_* rule matches the keyword text and asserts that it is NOT followed
+// by an identifier character (IDENT_REST), so "fn_name" does not match KW_fn.
 
-IDENT = ( ALPHA | "_" ) ( ALNUM | "_" )*
+IDENT_REST  = ALNUM | "_"
 
-// Numeric literals — FLOAT must be tried before INT in primary_expr.
+KW_break    = "break"    !IDENT_REST
+KW_class    = "class"    !IDENT_REST
+KW_continue = "continue" !IDENT_REST
+KW_else     = "else"     !IDENT_REST
+KW_extends  = "extends"  !IDENT_REST
+KW_extern   = "extern"   !IDENT_REST
+KW_false    = "false"    !IDENT_REST
+KW_fn       = "fn"       !IDENT_REST
+KW_for      = "for"      !IDENT_REST
+KW_if       = "if"       !IDENT_REST
+KW_include  = "include"  !IDENT_REST
+KW_let      = "let"      !IDENT_REST
+KW_new      = "new"      !IDENT_REST
+KW_null     = "null"     !IDENT_REST
+KW_return   = "return"   !IDENT_REST
+KW_this     = "this"     !IDENT_REST
+KW_true     = "true"     !IDENT_REST
+KW_while    = "while"    !IDENT_REST
+
+// KEYWORD is used inside IDENT to prevent reserved words from matching as
+// identifiers.  Type names (int, float, bool, string, void) are absent — they
+// are ordinary identifiers that the checker interprets as types.
+KEYWORD = KW_break | KW_class | KW_continue | KW_else | KW_extends
+        | KW_extern | KW_false | KW_fn | KW_for | KW_if | KW_include
+        | KW_let | KW_new | KW_null | KW_return | KW_this | KW_true
+        | KW_while
+
+// ── Terminals (lexer rules) ───────────────────────────────────────────────────
+
+// IDENT fails on any keyword so that "let x" does not misparse as two
+// identifiers.
+IDENT = !KEYWORD ( ALPHA | "_" ) IDENT_REST*
+
+// Numeric literals
 FLOAT = DIGIT+ "." DIGIT+
 INT   = DIGIT+
 
-// String literal — escape sequences are expanded during lexing, quotes stripped.
+// String literal — escape sequences expanded during lexing, quotes stripped.
 STRING = "\"" ( "\\" ESC_CHAR | !"\"" . )* "\""
 
-// Char literal — desugars to INT containing the Unicode code point.
-// e.g. 'A' → 65,  '\n' → 10
+// Char literal — desugars to the INT holding the Unicode code point.
+//   'A' → 65    '\n' → 10
 CHAR_LIT = "'" ( "\\" ESC_CHAR | !"'" . ) "'"
 
 ESC_CHAR = "n" | "t" | "r" | "\"" | "'" | "\\" | "0"
 
-BOOL = "true" | "false"
+BOOL = ( "true" | "false" ) !IDENT_REST
 
 // Character primitives
 ALPHA = [a-zA-Z]
 DIGIT = [0-9]
 ALNUM = [a-zA-Z0-9]
 
-// Skipped silently between tokens (not part of the parse tree)
+// EOF — no more non-whitespace input remains
+EOF = !.
+
+// Skipped silently between tokens in parser (lowercase) rules
 WHITESPACE    = [ \t\r\n]+
 LINE_COMMENT  = "//" ( !"\n" . )*
 BLOCK_COMMENT = "/*" ( !"*/" . )* "*/"

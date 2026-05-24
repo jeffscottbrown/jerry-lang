@@ -1,0 +1,528 @@
+// peg.jer — PEG grammar engine for Jerry.
+//
+// Loads a .peg grammar file and uses it to recognise (validate) source input.
+// The engine is intentionally split into two phases:
+//
+//   1. Meta-parse   peg_load(path) → PegGrammar
+//      Reads the .peg file and builds an in-memory tree of PegExpr nodes.
+//
+//   2. Recognition  peg_parse(g, input) → int
+//      Applies the first rule of the grammar to the input string.
+//      Returns the end position if the entire input is consumed, or -1.
+//
+// Whitespace / comment skipping
+//   Lowercase (parser) rules skip whitespace and comments before each atom
+//   in a sequence.  Uppercase (LEXER) rules are atomic — no skipping inside.
+//
+// Memoization
+//   A flat map<string, int> keyed by "rule@pos" caches rule results, giving
+//   Packrat O(n·|grammar|) behaviour and preventing exponential backtracking.
+
+include @string
+
+// ── Expression kind constants ─────────────────────────────────────────────────
+
+let PEG_SEQ    = 0;   // sequence:             e1 e2 e3
+let PEG_CHOICE = 1;   // ordered choice:       e1 | e2 | e3
+let PEG_STAR   = 2;   // zero or more:         e*
+let PEG_PLUS   = 3;   // one or more:          e+
+let PEG_OPT    = 4;   // optional:             e?
+let PEG_NEG    = 5;   // negative lookahead:   !e
+let PEG_POS    = 6;   // positive lookahead:   &e
+let PEG_LIT    = 7;   // string literal:       "abc"
+let PEG_CLASS  = 8;   // character class:      [a-z]
+let PEG_ANY    = 9;   // any character:        .
+let PEG_REF    = 10;  // rule reference:       RULE_NAME
+
+// Sentinel returned by the memo table for "this rule failed here".
+let PEG_FAIL   = -2;
+
+// ── Data structures ───────────────────────────────────────────────────────────
+
+class PegExpr {
+    kind:     int;
+    str:      string;      // PEG_LIT: literal text
+                           // PEG_CLASS: class content (between [ ])
+                           // PEG_REF: rule name
+    children: PegExpr[];   // PEG_SEQ, PEG_CHOICE: all children
+                           // PEG_STAR/PLUS/OPT/NEG/POS: children[0]
+}
+
+class PegGrammar {
+    names: string[];       // rule names in declaration order
+    exprs: PegExpr[];      // corresponding PegExpr (parallel array)
+}
+
+// ── Grammar utilities ─────────────────────────────────────────────────────────
+
+// True when the rule name is all-uppercase (lexer rule → no WS skipping).
+fn peg_is_lexer(name: string): bool {
+    if len(name) == 0 { return false; }
+    let i: int = 0;
+    while i < len(name) {
+        let c: int = char_at(name, i);
+        // Allow uppercase letters, digits, and underscores; any lowercase fails.
+        if c >= 97 && c <= 122 { return false; }   // 'a'..'z'
+        i = i + 1;
+    }
+    return true;
+}
+
+fn peg_find_rule(g: PegGrammar, name: string): PegExpr {
+    let i: int = 0;
+    while i < len(g.names) {
+        if g.names[i] == name { return g.exprs[i]; }
+        i = i + 1;
+    }
+    return null;
+}
+
+fn peg_make(kind: int, str: string, children: PegExpr[]): PegExpr {
+    let e: PegExpr = new PegExpr();
+    e.kind = kind;
+    e.str = str;
+    e.children = children;
+    return e;
+}
+
+// ── Meta-parser: reads a .peg file into a PegGrammar ─────────────────────────
+
+class MetaState {
+    src: string;
+    pos: int;
+}
+
+fn ms_at_end(ms: MetaState): bool {
+    return ms.pos >= len(ms.src);
+}
+
+fn ms_peek(ms: MetaState): int {
+    if ms.pos >= len(ms.src) { return -1; }
+    return char_at(ms.src, ms.pos);
+}
+
+fn ms_peek2(ms: MetaState): int {
+    if ms.pos + 1 >= len(ms.src) { return -1; }
+    return char_at(ms.src, ms.pos + 1);
+}
+
+// Skip whitespace and // line comments in the grammar file.
+fn ms_skip(ms: MetaState) {
+    while !ms_at_end(ms) {
+        let c: int = ms_peek(ms);
+        if c == 32 || c == 9 || c == 13 || c == 10 {
+            ms.pos = ms.pos + 1;
+        } else if c == 47 && ms_peek2(ms) == 47 {   // "//"
+            while !ms_at_end(ms) && ms_peek(ms) != 10 { ms.pos = ms.pos + 1; }
+        } else {
+            break;
+        }
+    }
+}
+
+fn ms_is_ident_start(c: int): bool {
+    return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
+}
+
+fn ms_is_ident_rest(c: int): bool {
+    return ms_is_ident_start(c) || (c >= 48 && c <= 57);
+}
+
+fn ms_read_ident(ms: MetaState): string {
+    if !ms_is_ident_start(ms_peek(ms)) { return ""; }
+    let start: int = ms.pos;
+    ms.pos = ms.pos + 1;
+    while ms_is_ident_rest(ms_peek(ms)) { ms.pos = ms.pos + 1; }
+    return string_slice(ms.src, start, ms.pos);
+}
+
+// Read a C-style escape character code, with ms.pos pointing at the char after '\'.
+fn ms_read_escape(ms: MetaState): int {
+    let c: int = ms_peek(ms);
+    ms.pos = ms.pos + 1;
+    if c == 110 { return 10; }   // \n
+    if c == 116 { return 9;  }   // \t
+    if c == 114 { return 13; }   // \r
+    if c == 48  { return 0;  }   // \0
+    return c;                     // \" \' \\ → literal char
+}
+
+// Read a string literal from the grammar file (the part after the opening ").
+fn ms_read_string(ms: MetaState): string {
+    ms.pos = ms.pos + 1;  // skip opening "
+    let result: string = "";
+    while !ms_at_end(ms) && ms_peek(ms) != 34 {   // 34 = '"'
+        if ms_peek(ms) == 92 {   // '\'
+            ms.pos = ms.pos + 1;
+            result = result + char_to_string(ms_read_escape(ms));
+        } else {
+            result = result + char_to_string(ms_peek(ms));
+            ms.pos = ms.pos + 1;
+        }
+    }
+    if !ms_at_end(ms) { ms.pos = ms.pos + 1; }  // skip closing "
+    return result;
+}
+
+// Read a character-class body from the grammar file (the part after '[').
+// Returns the raw content between [ and ] with escape sequences resolved.
+fn ms_read_class(ms: MetaState): string {
+    ms.pos = ms.pos + 1;  // skip '['
+    let result: string = "";
+    while !ms_at_end(ms) && ms_peek(ms) != 93 {   // 93 = ']'
+        if ms_peek(ms) == 92 {
+            ms.pos = ms.pos + 1;
+            result = result + char_to_string(ms_read_escape(ms));
+        } else {
+            result = result + char_to_string(ms_peek(ms));
+            ms.pos = ms.pos + 1;
+        }
+    }
+    if !ms_at_end(ms) { ms.pos = ms.pos + 1; }  // skip ']'
+    return result;
+}
+
+// Look ahead to detect the start of a new rule: IDENT "=".
+// Returns true and does NOT consume input.
+fn ms_next_is_rule_start(ms: MetaState): bool {
+    let saved: int = ms.pos;
+    ms_skip(ms);
+    let name: string = ms_read_ident(ms);
+    ms_skip(ms);
+    let is_eq: bool = ms_peek(ms) == 61;   // '='
+    ms.pos = saved;
+    return len(name) > 0 && is_eq;
+}
+
+// Forward declarations (functions call each other).
+fn ms_parse_choice(ms: MetaState): PegExpr;
+
+fn ms_parse_atom(ms: MetaState): PegExpr {
+    ms_skip(ms);
+    let c: int = ms_peek(ms);
+
+    if c == 40 {   // '('
+        ms.pos = ms.pos + 1;
+        let inner: PegExpr = ms_parse_choice(ms);
+        ms_skip(ms);
+        if ms_peek(ms) == 41 { ms.pos = ms.pos + 1; }   // skip ')'
+        return inner;
+    }
+
+    if c == 34 {   // '"'
+        return peg_make(PEG_LIT, ms_read_string(ms), []);
+    }
+
+    if c == 91 {   // '['
+        return peg_make(PEG_CLASS, ms_read_class(ms), []);
+    }
+
+    if c == 46 {   // '.'
+        ms.pos = ms.pos + 1;
+        return peg_make(PEG_ANY, "", []);
+    }
+
+    // Rule reference — but stop if this looks like the start of the next rule.
+    if ms_is_ident_start(c) && !ms_next_is_rule_start(ms) {
+        let name: string = ms_read_ident(ms);
+        return peg_make(PEG_REF, name, []);
+    }
+
+    return null;
+}
+
+fn ms_parse_suffix(ms: MetaState): PegExpr {
+    let inner: PegExpr = ms_parse_atom(ms);
+    if inner == null { return null; }
+    ms_skip(ms);
+    let c: int = ms_peek(ms);
+    if c == 63 { ms.pos = ms.pos + 1; return peg_make(PEG_OPT,  "", [inner]); }  // '?'
+    if c == 42 { ms.pos = ms.pos + 1; return peg_make(PEG_STAR, "", [inner]); }  // '*'
+    if c == 43 { ms.pos = ms.pos + 1; return peg_make(PEG_PLUS, "", [inner]); }  // '+'
+    return inner;
+}
+
+fn ms_parse_prefix(ms: MetaState): PegExpr {
+    ms_skip(ms);
+    let c: int = ms_peek(ms);
+    if c == 33 {   // '!'
+        ms.pos = ms.pos + 1;
+        return peg_make(PEG_NEG, "", [ms_parse_suffix(ms)]);
+    }
+    if c == 38 {   // '&'
+        ms.pos = ms.pos + 1;
+        return peg_make(PEG_POS, "", [ms_parse_suffix(ms)]);
+    }
+    return ms_parse_suffix(ms);
+}
+
+fn ms_parse_seq(ms: MetaState): PegExpr {
+    let items: PegExpr[] = [];
+    let item: PegExpr = ms_parse_prefix(ms);
+    while item != null {
+        push(items, item);
+        ms_skip(ms);
+        // Stop at: '|'  ')'  EOF  or start of next rule definition
+        let c: int = ms_peek(ms);
+        if c == 124 || c == 41 || c == -1 { break; }   // '|', ')', EOF
+        if ms_next_is_rule_start(ms) { break; }
+        // Stop if no valid atom start ahead
+        if c != 34 && c != 91 && c != 40 && c != 46 && c != 33 && c != 38 {
+            if !ms_is_ident_start(c) { break; }
+        }
+        item = ms_parse_prefix(ms);
+    }
+    if len(items) == 1 { return items[0]; }
+    if len(items) == 0 { return null; }
+    return peg_make(PEG_SEQ, "", items);
+}
+
+fn ms_parse_choice(ms: MetaState): PegExpr {
+    let alts: PegExpr[] = [];
+    let seq: PegExpr = ms_parse_seq(ms);
+    if seq != null { push(alts, seq); }
+    ms_skip(ms);
+    while ms_peek(ms) == 124 {   // '|'
+        ms.pos = ms.pos + 1;
+        seq = ms_parse_seq(ms);
+        if seq != null { push(alts, seq); }
+        ms_skip(ms);
+    }
+    if len(alts) == 1 { return alts[0]; }
+    if len(alts) == 0 { return null; }
+    return peg_make(PEG_CHOICE, "", alts);
+}
+
+// Parse an entire .peg file and return the grammar.
+fn peg_load(path: string): PegGrammar {
+    let src: string = read_file(path);
+    let ms: MetaState = new MetaState();
+    ms.src = src;
+    ms.pos = 0;
+
+    let g: PegGrammar = new PegGrammar();
+    g.names = [];
+    g.exprs = [];
+
+    ms_skip(ms);
+    while !ms_at_end(ms) {
+        let name: string = ms_read_ident(ms);
+        if len(name) == 0 { break; }
+        ms_skip(ms);
+        if ms_peek(ms) != 61 {   // '='
+            print_err("peg_load: expected '=' after rule name '" + name + "'");
+            break;
+        }
+        ms.pos = ms.pos + 1;   // consume '='
+        let expr: PegExpr = ms_parse_choice(ms);
+        if expr == null {
+            print_err("peg_load: empty expression for rule '" + name + "'");
+        } else {
+            push(g.names, name);
+            push(g.exprs, expr);
+        }
+        ms_skip(ms);
+    }
+    return g;
+}
+
+// ── PEG recogniser ────────────────────────────────────────────────────────────
+
+// Skip whitespace and comments in the source input being parsed.
+fn peg_skip_ws(s: string, pos: int): int {
+    let n: int = len(s);
+    while pos < n {
+        let c: int = char_at(s, pos);
+        if c == 32 || c == 9 || c == 13 || c == 10 {
+            pos = pos + 1;
+        } else if c == 47 && pos + 1 < n && char_at(s, pos + 1) == 47 {
+            while pos < n && char_at(s, pos) != 10 { pos = pos + 1; }
+        } else if c == 47 && pos + 1 < n && char_at(s, pos + 1) == 42 {
+            pos = pos + 2;
+            while pos + 1 < n && !(char_at(s, pos) == 42 && char_at(s, pos + 1) == 47) {
+                pos = pos + 1;
+            }
+            if pos + 1 < n { pos = pos + 2; }
+        } else {
+            break;
+        }
+    }
+    return pos;
+}
+
+// True when ch falls inside the class described by cls (content between [ ]).
+fn peg_char_in_class(cls: string, ch: int): bool {
+    let i: int = 0;
+    let n: int = len(cls);
+    while i < n {
+        let lo: int = char_at(cls, i);
+        if i + 2 < n && char_at(cls, i + 1) == 45 {   // 45 = '-'
+            let hi: int = char_at(cls, i + 2);
+            if ch >= lo && ch <= hi { return true; }
+            i = i + 3;
+        } else {
+            if ch == lo { return true; }
+            i = i + 1;
+        }
+    }
+    return false;
+}
+
+fn peg_str_eq_at(s: string, pos: int, lit: string): bool {
+    let n: int = len(lit);
+    if pos + n > len(s) { return false; }
+    let i: int = 0;
+    while i < n {
+        if char_at(s, pos + i) != char_at(lit, i) { return false; }
+        i = i + 1;
+    }
+    return true;
+}
+
+// Match expression e against s at pos.
+// ws=true: skip whitespace before atoms (parser rule context).
+// Returns end position on success, PEG_FAIL on failure.
+// memo: map key "rule_name@pos" → PEG_FAIL or end_pos (Packrat cache).
+fn peg_match_e(g: PegGrammar, e: PegExpr, s: string, pos: int, ws: bool, memo: map<string, int>): int;
+
+fn peg_match_r(g: PegGrammar, name: string, s: string, pos: int, memo: map<string, int>): int {
+    // Packrat: check memo before doing work.
+    let key: string = name + "@" + int_to_string(pos);
+    if map_has(memo, key) {
+        return map_get(memo, key);
+    }
+
+    let e: PegExpr = peg_find_rule(g, name);
+    if e == null {
+        print_err("peg: unknown rule '" + name + "'");
+        map_set(memo, key, PEG_FAIL);
+        return PEG_FAIL;
+    }
+
+    // Lexer rules are atomic; parser rules allow WS skipping.
+    let ws: bool = !peg_is_lexer(name);
+    let result: int = peg_match_e(g, e, s, pos, ws, memo);
+    map_set(memo, key, result);
+    return result;
+}
+
+fn peg_match_e(g: PegGrammar, e: PegExpr, s: string, pos: int, ws: bool, memo: map<string, int>): int {
+    let n: int = len(s);
+
+    if e.kind == PEG_LIT {
+        if ws { pos = peg_skip_ws(s, pos); }
+        if peg_str_eq_at(s, pos, e.str) { return pos + len(e.str); }
+        return PEG_FAIL;
+    }
+
+    if e.kind == PEG_ANY {
+        if ws { pos = peg_skip_ws(s, pos); }
+        if pos < n { return pos + 1; }
+        return PEG_FAIL;
+    }
+
+    if e.kind == PEG_CLASS {
+        if ws { pos = peg_skip_ws(s, pos); }
+        if pos < n && peg_char_in_class(e.str, char_at(s, pos)) { return pos + 1; }
+        return PEG_FAIL;
+    }
+
+    if e.kind == PEG_REF {
+        // Don't skip WS before a rule call — the called rule handles its own WS.
+        return peg_match_r(g, e.str, s, pos, memo);
+    }
+
+    if e.kind == PEG_SEQ {
+        let cur: int = pos;
+        let i: int = 0;
+        while i < len(e.children) {
+            cur = peg_match_e(g, e.children[i], s, cur, ws, memo);
+            if cur == PEG_FAIL { return PEG_FAIL; }
+            i = i + 1;
+        }
+        return cur;
+    }
+
+    if e.kind == PEG_CHOICE {
+        let i: int = 0;
+        while i < len(e.children) {
+            let r: int = peg_match_e(g, e.children[i], s, pos, ws, memo);
+            if r != PEG_FAIL { return r; }
+            i = i + 1;
+        }
+        return PEG_FAIL;
+    }
+
+    if e.kind == PEG_STAR {
+        let cur: int = pos;
+        while true {
+            let r: int = peg_match_e(g, e.children[0], s, cur, ws, memo);
+            if r == PEG_FAIL || r == cur { break; }
+            cur = r;
+        }
+        return cur;
+    }
+
+    if e.kind == PEG_PLUS {
+        let first: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        if first == PEG_FAIL { return PEG_FAIL; }
+        let cur: int = first;
+        while true {
+            let r: int = peg_match_e(g, e.children[0], s, cur, ws, memo);
+            if r == PEG_FAIL || r == cur { break; }
+            cur = r;
+        }
+        return cur;
+    }
+
+    if e.kind == PEG_OPT {
+        let r: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        if r == PEG_FAIL { return pos; }
+        return r;
+    }
+
+    if e.kind == PEG_NEG {
+        let r: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        if r == PEG_FAIL { return pos; }   // lookahead failed → negation succeeds
+        return PEG_FAIL;
+    }
+
+    if e.kind == PEG_POS {
+        let r: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        if r != PEG_FAIL { return pos; }   // lookahead succeeded → consume nothing
+        return PEG_FAIL;
+    }
+
+    return PEG_FAIL;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+// Attempt to parse the entire input using the first rule in the grammar.
+// Returns the final position on success (should equal len(input)), or -1.
+fn peg_parse(g: PegGrammar, input: string): int {
+    if len(g.names) == 0 {
+        print_err("peg_parse: grammar has no rules");
+        return -1;
+    }
+    let memo: map<string, int> = {};
+    let end: int = peg_match_r(g, g.names[0], input, 0, memo);
+    return end;
+}
+
+// Convert a byte offset in input to "line:col" for error messages.
+fn peg_pos_to_line_col(input: string, pos: int): string {
+    let line: int = 1;
+    let col:  int = 1;
+    let i: int = 0;
+    while i < pos && i < len(input) {
+        if char_at(input, i) == 10 {   // '\n'
+            line = line + 1;
+            col = 1;
+        } else {
+            col = col + 1;
+        }
+        i = i + 1;
+    }
+    return int_to_string(line) + ":" + int_to_string(col);
+}

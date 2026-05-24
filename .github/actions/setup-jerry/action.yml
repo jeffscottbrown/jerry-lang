@@ -76,17 +76,26 @@ runs:
         if [ -f jerry-get ]; then
           chmod +x jerry-get
         fi
+        if [ -f jerry-parse ]; then
+          chmod +x jerry-parse
+        fi
 
         echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
-        # Expose compiler, runtime, and stdlib paths so consumer projects can
-        # compile Jerry programs without any additional setup.
+        # Expose compiler, runtime, stdlib, and grammar paths so consumer projects
+        # can compile and validate Jerry programs without any additional setup.
         echo "JERRY_COMPILER=$RUNNER_TEMP/jerry-compiler" >> "$GITHUB_ENV"
         if [ -f "$RUNNER_TEMP/jerry_runtime.a" ]; then
           echo "JERRY_RUNTIME=$RUNNER_TEMP/jerry_runtime.a" >> "$GITHUB_ENV"
         fi
         if [ -d "$RUNNER_TEMP/stdlib" ]; then
           echo "JERRY_STDLIB=$RUNNER_TEMP/stdlib" >> "$GITHUB_ENV"
+        fi
+        if [ -f "$RUNNER_TEMP/grammar/jerry.peg" ]; then
+          echo "JERRY_GRAMMAR=$RUNNER_TEMP/grammar/jerry.peg" >> "$GITHUB_ENV"
+        fi
+        if [ -f "$RUNNER_TEMP/jerry-parse" ]; then
+          echo "JERRY_PARSE=$RUNNER_TEMP/jerry-parse" >> "$GITHUB_ENV"
         fi
 
     - name: Verify

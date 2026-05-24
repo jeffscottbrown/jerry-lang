@@ -177,6 +177,17 @@ jobs:
           fi
           ./jerry-compiler cmd/jerry-lsp/ -o jerry-lsp $TARGET_FLAG
 
+      - name: Build jerry-parse
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          TARGET_FLAG=""
+          if [ -n "${{ matrix.jerry_target }}" ]; then
+            TARGET_FLAG="-target ${{ matrix.jerry_target }}"
+          fi
+          ./jerry-compiler self-host/peg.jer cmd/jerry-parse/ -o jerry-parse $TARGET_FLAG
+
       - name: Build jerry-main (native Jerry dispatcher)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
@@ -202,11 +213,14 @@ jobs:
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
           JERRY_GET: ${{ github.workspace }}/jerry-get
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp
+          JERRY_PARSE: ${{ github.workspace }}/jerry-parse
+          JERRY_GRAMMAR: ${{ github.workspace }}/grammar/jerry.peg
         run: |
           ./${{ matrix.asset_name }} --version
           ./${{ matrix.asset_name }} run examples/hello.jer
           ./${{ matrix.asset_name }} run examples/fibonacci.jer
           ./${{ matrix.asset_name }} run examples/strings.jer
+          ./${{ matrix.asset_name }} parse examples/hello.jer examples/fibonacci.jer examples/strings.jer
 
       - name: Create archive
         run: |
@@ -217,11 +231,12 @@ jobs:
           [ -f jerry-sweep ]    && EXTRAS="$EXTRAS jerry-sweep"
           [ -f jerry-lsp ]      && EXTRAS="$EXTRAS jerry-lsp"
           [ -f jerry-get ]      && EXTRAS="$EXTRAS jerry-get"
+          [ -f jerry-parse ]    && EXTRAS="$EXTRAS jerry-parse"
           [ -f jerry_runtime.a ] && EXTRAS="$EXTRAS jerry_runtime.a"
-          # Include stdlib so consumer projects (and setup-jerry) have everything
-          # needed to compile Jerry programs without building from source.
+          # Include stdlib and grammar so consumer projects (and setup-jerry)
+          # have everything needed to compile and validate Jerry programs.
           cp -r stdlib-dist stdlib
-          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS stdlib
+          tar -czf ${{ matrix.asset_name }}.tar.gz ${{ matrix.asset_name }} $EXTRAS stdlib grammar
           rm -rf stdlib
 
       - name: Upload build artifact

@@ -125,6 +125,13 @@ jobs:
         run: |
           ./jerry-compiler cmd/jerry-lsp/ -o jerry-lsp-bin
 
+      - name: Build jerry-parse (self-hosted)
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
+        run: |
+          ./jerry-compiler self-host/peg.jer cmd/jerry-parse/ -o jerry-parse
+
       - name: Build jerry-main (self-hosted Jerry dispatcher)
         env:
           JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
@@ -142,6 +149,8 @@ jobs:
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
           JERRY_GET: ${{ github.workspace }}/jerry-get-bin
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
+          JERRY_PARSE: ${{ github.workspace }}/jerry-parse
+          JERRY_GRAMMAR: ${{ github.workspace }}/grammar/jerry.peg
         run: |
           ./jerry-native --version
           ./jerry-native run examples/hello.jer
@@ -154,6 +163,7 @@ jobs:
           ./jerry-native run hello-smoke-test/main.jer
           (cd hello-smoke-test && JERRY_SWEEP=${{ github.workspace }}/jerry-sweep JERRY_COMPILER=${{ github.workspace }}/jerry-compiler ../jerry-native sweep)
           rm -rf hello-smoke-test
+          ./jerry-native parse examples/hello.jer examples/fibonacci.jer examples/strings.jer
 
       - name: Jerry tests (via self-hosted compiler)
         env:
@@ -165,6 +175,8 @@ jobs:
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep
           JERRY_GET: ${{ github.workspace }}/jerry-get-bin
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp-bin
+          JERRY_PARSE: ${{ github.workspace }}/jerry-parse
+          JERRY_GRAMMAR: ${{ github.workspace }}/grammar/jerry.peg
         run: |
           ./jerry-native test tests/arrays_test.jer
           ./jerry-native test tests/char_literal_test.jer
@@ -210,6 +222,7 @@ jobs:
           ./jerry-compiler-v2 cmd/jerry-create/ -o jerry-create-v2
           ./jerry-compiler-v2 cmd/jerry-sweep/ -o jerry-sweep-v2
           ./jerry-compiler-v2 cmd/jerry-lsp/ -o jerry-lsp-v2
+          ./jerry-compiler-v2 self-host/peg.jer cmd/jerry-parse/ -o jerry-parse-v2
           ./jerry-compiler-v2 cmd/jerry-main/ -o jerry-native-v2
           ./jerry-compiler-v2 examples/hello.jer -o hello-v2
           ./hello-v2
@@ -227,6 +240,8 @@ jobs:
           JERRY_SWEEP: ${{ github.workspace }}/jerry-sweep-v2
           JERRY_GET: ${{ github.workspace }}/jerry-get-bin
           JERRY_LSP: ${{ github.workspace }}/jerry-lsp-v2
+          JERRY_PARSE: ${{ github.workspace }}/jerry-parse-v2
+          JERRY_GRAMMAR: ${{ github.workspace }}/grammar/jerry.peg
         run: |
           ./jerry-native-v2 test tests/strings_test.jer
           ./jerry-native-v2 test tests/arrays_test.jer

@@ -203,7 +203,14 @@ fn main() {
         run_tool("jerry-lsp", lsp_args);
     }
 
+    if cmd == "parse" {
+        let parse_args: string[] = [];
+        let i: int = 1;
+        while i < len(argv) { push(parse_args, argv[i]); i = i + 1; }
+        run_tool("jerry-parse", parse_args);
+    }
+
     print_err("jerry: unknown command: " + cmd);
-    print_err("  compile  run  ir  test  get  sweep  create  lsp  --version");
+    print_err("  compile  run  ir  test  get  sweep  create  lsp  parse  --version");
     exit(1);
 }

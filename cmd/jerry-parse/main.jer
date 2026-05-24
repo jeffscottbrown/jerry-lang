@@ -1,0 +1,93 @@
+// jerry-parse — validate Jerry source files against grammar/jerry.peg.
+//
+// Usage:
+//   jerry parse <file.jer> [file2.jer ...]
+//   jerry-parse <file.jer> [file2.jer ...]
+//
+// Exit codes:
+//   0  all files matched the grammar
+//   1  one or more files failed, or bad usage
+//
+// The grammar file is located via (first match wins):
+//   $JERRY_GRAMMAR          explicit path to a .peg file
+//   $JERRY_STDLIB/../grammar/jerry.peg   relative to the stdlib dir
+
+include @string
+
+// peg.jer is compiled into this binary by passing self-host/peg.jer as an
+// explicit source argument to jerry-compiler alongside this directory.
+
+fn find_grammar(): string {
+    let explicit: string = getenv("JERRY_GRAMMAR");
+    if len(explicit) > 0 { return explicit; }
+
+    let stdlib: string = getenv("JERRY_STDLIB");
+    if len(stdlib) > 0 {
+        // Strip trailing slash if present.
+        if ends_with(stdlib, "/") {
+            stdlib = string_slice(stdlib, 0, len(stdlib) - 1);
+        }
+        // Walk up one directory from the stdlib dir.
+        let slash: int = len(stdlib) - 1;
+        while slash > 0 && char_at(stdlib, slash) != 47 { slash = slash - 1; }  // 47='/'
+        let repo_root: string = string_slice(stdlib, 0, slash);
+        return repo_root + "/grammar/jerry.peg";
+    }
+
+    return "";
+}
+
+fn main() {
+    let argv: string[] = args();
+
+    // When invoked as `jerry parse`, argv[0] is the source path passed by the
+    // driver (not the binary path), so we use all of argv as file arguments.
+    if len(argv) == 0 {
+        print_err("jerry parse: usage: jerry parse <file.jer> [...]");
+        exit(1);
+    }
+
+    let grammar_path: string = find_grammar();
+    if len(grammar_path) == 0 {
+        print_err("jerry parse: cannot locate grammar/jerry.peg");
+        print_err("  Set JERRY_GRAMMAR=/path/to/grammar/jerry.peg, or");
+        print_err("  ensure JERRY_STDLIB points to the Jerry stdlib directory.");
+        exit(1);
+    }
+
+    let g: PegGrammar = peg_load(grammar_path);
+    if len(g.names) == 0 {
+        print_err("jerry parse: failed to load grammar from " + grammar_path);
+        exit(1);
+    }
+
+    let failed: int = 0;
+    let i: int = 0;
+    while i < len(argv) {
+        let path: string = argv[i];
+        let src: string = read_file(path);
+
+        let end: int = peg_parse(g, src);
+        let expected: int = len(src);
+
+        // peg_parse returns the position after the "program" rule, which
+        // includes a trailing EOF rule, so a full match means end == expected
+        // (or end == expected after trailing whitespace — the EOF rule handles
+        // this since it is defined as !. which matches only at end-of-input
+        // after all whitespace has been consumed by the preceding rules).
+        if end == expected {
+            println("OK: " + path);
+        } else {
+            let report_pos: int = end;
+            if report_pos < 0 { report_pos = 0; }
+            let loc: string = peg_pos_to_line_col(src, report_pos);
+            println("FAIL: " + path + ":" + loc + ": unexpected input");
+            failed = failed + 1;
+        }
+        i = i + 1;
+    }
+
+    if failed > 0 {
+        exit(1);
+    }
+}
