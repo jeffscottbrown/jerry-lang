@@ -236,7 +236,25 @@ fn main() {
         exit(1);
     }
 
+    // Determine target OS for linker dead-strip flags.
+    // target_triple (when set) overrides host detection.
+    let target_is_macos: bool = false;
+    if len(target_triple) > 0 {
+        let has_apple: bool = string_contains(target_triple, "apple");
+        let has_darwin: bool = string_contains(target_triple, "darwin");
+        target_is_macos = has_apple || has_darwin;
+    } else {
+        target_is_macos = is_dir("/System/Library");
+    }
+
     let clang_args: string[] = ["clang", "-O1"];
+    if target_is_macos {
+        push(clang_args, "-Wl,-dead_strip");
+    } else {
+        push(clang_args, "-ffunction-sections");
+        push(clang_args, "-fdata-sections");
+        push(clang_args, "-Wl,--gc-sections");
+    }
     if len(target_triple) > 0 {
         push(clang_args, "-target");
         push(clang_args, target_triple);
