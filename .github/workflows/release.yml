@@ -86,7 +86,8 @@ jobs:
             Darwin-arm64)  ASSET="jerry-macos-arm64" ;;
             Darwin-x86_64) ASSET="jerry-macos-x86_64" ;;
           esac
-          gh release download --repo jeffscottbrown/jerry-lang --latest --pattern "${ASSET}.tar.gz"
+          LATEST=$(gh release list --repo jeffscottbrown/jerry-lang --limit 1 --json tagName --jq '.[0].tagName')
+          gh release download "$LATEST" --repo jeffscottbrown/jerry-lang --pattern "${ASSET}.tar.gz"
           tar xf "${ASSET}.tar.gz" jerry-compiler
           chmod +x jerry-compiler
 
