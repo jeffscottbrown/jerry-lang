@@ -23,7 +23,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build runtime library
         run: |
@@ -69,7 +69,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, macos-15]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install clang (Linux)
         if: runner.os == 'Linux'
