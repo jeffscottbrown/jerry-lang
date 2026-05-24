@@ -97,7 +97,7 @@ sudo mv jerry jerry-compiler /usr/local/bin/
 
 ### Build from source
 
-Requires **clang**. The compiler is fully self-hosted — `jerry-compiler` is bootstrapped directly from the checked-in LLVM IR (`self-host/bootstrap.ll`). No Go or seed binary required.
+Requires **clang**. The compiler is self-hosted — `jerry-compiler` is bootstrapped directly from the checked-in LLVM IR (`self-host/bootstrap.ll`). No seed binary required.
 
 ```sh
 git clone https://github.com/jeffscottbrown/jerry-lang.git
