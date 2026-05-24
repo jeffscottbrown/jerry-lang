@@ -1,5 +1,5 @@
 .PHONY: build-compiler build-test-runner build-create build-sweep build-get build-lsp build-main \
-        test install install-runtime install-stdlib check-deps regen-bootstrap \
+        test install install-runtime install-stdlib check-deps \
         run-hello run-logging run-files run-fibonacci run-arrays run-classes run-closures run-strings \
         ir-hello ir-fibonacci ir-arrays ir-classes ir-strings \
         clean
@@ -188,33 +188,6 @@ ir-classes:
 ir-strings:
 	$(call require,$(JERRY),$(JERRY_HINT))
 	$(JERRY) ir examples/strings.jer
-
-# ── Bootstrap IR regeneration ─────────────────────────────────────────────────
-#
-# Regenerates self-host/bootstrap.ll from the current self-host/ sources.
-# Uses the existing bootstrap.ll as a stage-1 seed — no external compiler needed.
-#
-#   make regen-bootstrap
-#
-# Run this after changing any file under self-host/, then commit the result.
-
-_BTMP = /tmp/jerry-regen-bootstrap
-
-regen-bootstrap:
-	$(call require,clang,$(CLANG_HINT))
-	$(call require,ar,$(AR_HINT))
-	@echo "==> Stage 1: build runtime"
-	@mkdir -p $(_BTMP)
-	clang -O2 -c runtime/src/runtime.c -Iruntime/src -o $(_BTMP)/runtime.o
-	ar rcs $(_BTMP)/runtime.a $(_BTMP)/runtime.o
-	@echo "==> Stage 1: build compiler from current self-host/bootstrap.ll"
-	clang -O0 self-host/bootstrap.ll $(_BTMP)/runtime.a -o $(_BTMP)/jerry-compiler -lm
-	@echo "==> Stage 2: compile self-host/ → self-host/bootstrap.ll"
-	JERRY_RUNTIME=$(_BTMP)/runtime.a JERRY_STDLIB=$(CURDIR)/stdlib \
-		$(_BTMP)/jerry-compiler self-host/ --ir > $(_BTMP)/bootstrap.ll
-	mv $(_BTMP)/bootstrap.ll self-host/bootstrap.ll
-	@rm -rf $(_BTMP)
-	@echo "==> Done: self-host/bootstrap.ll ($$(wc -l < self-host/bootstrap.ll | tr -d ' ') lines)"
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 

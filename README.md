@@ -97,20 +97,26 @@ sudo mv jerry jerry-compiler /usr/local/bin/
 
 ### Build from source
 
-Requires **clang**. The compiler is self-hosted — `jerry-compiler` is bootstrapped directly from the checked-in LLVM IR (`self-host/bootstrap.ll`). No seed binary required.
+Requires **clang** and a seed `jerry-compiler` binary from the [latest release](https://github.com/jeffscottbrown/jerry-lang/releases/latest).
 
 ```sh
 git clone https://github.com/jeffscottbrown/jerry-lang.git
 cd jerry-lang
 
-# 1. Build the C runtime library
+# 1. Download the seed jerry-compiler from the latest release
+curl -fsSL https://github.com/jeffscottbrown/jerry-lang/releases/latest/download/jerry-macos-arm64.tar.gz | tar xz jerry-compiler
+# (use jerry-macos-x86_64 or jerry-linux-x86_64 for other platforms)
+
+# 2. Build the C runtime library
 cc -O2 -c runtime/src/runtime.c -Iruntime/src -o jerry_runtime.o
 ar rcs jerry_runtime.a jerry_runtime.o
 
-# 2. Bootstrap jerry-compiler from the checked-in LLVM IR
-clang -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
+# 3. Compile jerry-compiler from source using the seed
+JERRY_RUNTIME=$(pwd)/jerry_runtime.a JERRY_STDLIB=$(pwd)/stdlib \
+  ./jerry-compiler self-host/ -o jerry-compiler-new
+mv jerry-compiler-new jerry-compiler
 
-# 3. Build the jerry CLI using the bootstrapped compiler
+# 4. Build the jerry CLI
 make install-stdlib
 ./jerry-compiler cmd/jerry-main/ -o jerry
 

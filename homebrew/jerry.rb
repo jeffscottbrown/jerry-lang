@@ -6,6 +6,22 @@ class Jerry < Formula
   license "MIT"
   head "https://github.com/jeffscottbrown/jerry-lang.git", branch: "main"
 
+  # Seed compiler used to bootstrap jerry-compiler from source.
+  # Each release's formula points to the previous release's binaries.
+  on_arm do
+    resource "jerry-compiler-seed" do
+      url "SEED_MACOS_ARM64_URL"
+      sha256 "SEED_MACOS_ARM64_SHA256"
+    end
+  end
+
+  on_intel do
+    resource "jerry-compiler-seed" do
+      url "SEED_MACOS_X86_64_URL"
+      sha256 "SEED_MACOS_X86_64_SHA256"
+    end
+  end
+
   def install
     # Build the C runtime static archive.
     arch_flag = Hardware::CPU.arm? ? ["-arch", "arm64"] : ["-arch", "x86_64"]
@@ -22,14 +38,18 @@ class Jerry < Formula
       "JERRY_STDLIB"  => (pkgshare/"stdlib").to_s,
     }
 
-    # Bootstrap jerry-compiler directly from the checked-in LLVM IR.
-    # self-host/bootstrap.ll is generated from the self-hosted compiler and
-    # is included in the source tarball — no seed binary download needed.
-    target_flag = Hardware::CPU.arm? ? [] : ["-target", "x86_64-apple-darwin"]
-    system ENV.cc, *target_flag, "-O0", "self-host/bootstrap.ll",
-           lib/"jerry_runtime.a", "-o", "jerry-compiler", "-lm"
+    # Extract the seed jerry-compiler from the previous release and use it
+    # to compile jerry-compiler from source.
+    resource("jerry-compiler-seed").stage do
+      cp "jerry-compiler", buildpath/"jerry-compiler-seed"
+    end
+    chmod "+x", buildpath/"jerry-compiler-seed"
 
-    # Build all Jerry tools using the freshly bootstrapped compiler.
+    with_env(env) do
+      system "./jerry-compiler-seed", "self-host/", "-o", "jerry-compiler"
+    end
+
+    # Build all Jerry tools using the freshly compiled compiler.
     with_env(env) do
       system "./jerry-compiler", "cmd/jerry-test/",   "-o", "jerry-test"
       system "./jerry-compiler", "cmd/jerry-create/", "-o", "jerry-create"

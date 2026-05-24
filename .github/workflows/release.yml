@@ -74,18 +74,36 @@ jobs:
           mkdir -p stdlib-dist
           cp stdlib/*.jer stdlib-dist/
 
-      # Bootstrap: compile the checked-in IR directly into jerry-compiler.
-      - name: Build jerry-compiler (bootstrap IR → binary)
+      - name: Download seed jerry-compiler from latest release
         if: |
           (matrix.goos == 'linux' && runner.os == 'Linux') ||
           (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  ASSET="jerry-linux-x86_64" ;;
+            Darwin-arm64)  ASSET="jerry-macos-arm64" ;;
+            Darwin-x86_64) ASSET="jerry-macos-x86_64" ;;
+          esac
+          gh release download --repo jeffscottbrown/jerry-lang --latest --pattern "${ASSET}.tar.gz"
+          tar xf "${ASSET}.tar.gz" jerry-compiler
+          chmod +x jerry-compiler
+
+      - name: Build jerry-compiler from source
+        if: |
+          (matrix.goos == 'linux' && runner.os == 'Linux') ||
+          (matrix.goos == 'darwin' && runner.os == 'macOS')
+        env:
+          JERRY_RUNTIME: ${{ github.workspace }}/jerry_runtime.a
+          JERRY_STDLIB: ${{ github.workspace }}/stdlib-dist
         run: |
           TARGET_FLAG=""
           if [ -n "${{ matrix.jerry_target }}" ]; then
             TARGET_FLAG="-target ${{ matrix.jerry_target }}"
           fi
-          clang $TARGET_FLAG -O0 self-host/bootstrap.ll jerry_runtime.a -o jerry-compiler -lm
-          chmod +x jerry-compiler
+          ./jerry-compiler self-host/ -o jerry-compiler-new $TARGET_FLAG
+          mv jerry-compiler-new jerry-compiler
 
       - name: Build jerry-test (native only)
         if: |
@@ -255,7 +273,16 @@ jobs:
           # Using the template (not sed on the existing file) ensures the formula body
           # is always up to date with the source.
           mkdir -p tap/Formula
-          sed "s|URL_PLACEHOLDER|${TARBALL_URL}|; s|SHA256_PLACEHOLDER|${SHA256}|" \
+          SEED_ARM64_SHA=$(awk '/jerry-macos-arm64\.tar\.gz/{print $1}' dist/checksums.txt)
+          SEED_X86_64_SHA=$(awk '/jerry-macos-x86_64\.tar\.gz/{print $1}' dist/checksums.txt)
+          SEED_ARM64_URL="https://github.com/jeffscottbrown/jerry-lang/releases/download/${TAG}/jerry-macos-arm64.tar.gz"
+          SEED_X86_64_URL="https://github.com/jeffscottbrown/jerry-lang/releases/download/${TAG}/jerry-macos-x86_64.tar.gz"
+          sed "s|URL_PLACEHOLDER|${TARBALL_URL}|; \
+               s|SHA256_PLACEHOLDER|${SHA256}|; \
+               s|SEED_MACOS_ARM64_URL|${SEED_ARM64_URL}|; \
+               s|SEED_MACOS_ARM64_SHA256|${SEED_ARM64_SHA}|; \
+               s|SEED_MACOS_X86_64_URL|${SEED_X86_64_URL}|; \
+               s|SEED_MACOS_X86_64_SHA256|${SEED_X86_64_SHA}|" \
             homebrew/jerry.rb > tap/Formula/jerry.rb
           cd tap
           git config user.name  "github-actions[bot]"
