@@ -76,12 +76,12 @@ fn main() {
         // this since it is defined as !. which matches only at end-of-input
         // after all whitespace has been consumed by the preceding rules).
         if end == expected {
-            println("OK: " + path);
+            print("OK: " + path);
         } else {
             let report_pos: int = end;
             if report_pos < 0 { report_pos = 0; }
             let loc: string = peg_pos_to_line_col(src, report_pos);
-            println("FAIL: " + path + ":" + loc + ": unexpected input");
+            print("FAIL: " + path + ":" + loc + ": unexpected input");
             failed = failed + 1;
         }
         i = i + 1;

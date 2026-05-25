@@ -687,6 +687,7 @@ static void jerry_map_destructor(void* self) {
         JerryMapNode* node = m->buckets[i];
         while (node) {
             JerryMapNode* next = node->next;
+            if (m->string_keys) { jerry_release(*(void**)node->key); }
             free(node->value);
             free(node);
             node = next;
@@ -724,6 +725,7 @@ void jerry_map_set(JerryMap* m, void* key, void* value) {
     JerryMapNode* node = malloc(sizeof(JerryMapNode));
     if (!node) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
     memcpy(node->key, key, 8);
+    if (m->string_keys) { jerry_retain(*(void**)key); }
     node->value = malloc((size_t)m->value_size);
     if (!node->value) { fprintf(stderr, "jerry: out of memory\n"); exit(1); }
     memcpy(node->value, value, (size_t)m->value_size);
@@ -781,6 +783,7 @@ void jerry_map_delete(JerryMap* m, void* key) {
     for (JerryMapNode* n = *prev; n; prev = &n->next, n = n->next) {
         if (map_key_eq(n->key, key, m->string_keys)) {
             *prev = n->next;
+            if (m->string_keys) { jerry_release(*(void**)n->key); }
             free(n->value);
             free(n);
             m->len--;

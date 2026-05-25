@@ -425,8 +425,13 @@ fn peg_match_e(g: PegGrammar, e: PegExpr, s: string, pos: int, ws: bool, memo: m
     }
 
     if e.kind == PEG_REF {
-        // Don't skip WS before a rule call — the called rule handles its own WS.
-        return peg_match_r(g, e.str, s, pos, memo);
+        // In a parser-rule context, skip whitespace before calling a lexer rule.
+        // Lexer rules match exact characters without implicit WS skipping, so the
+        // caller must consume any intervening whitespace first.  Parser-rule
+        // references are left as-is: they handle their own internal WS skipping.
+        let ref_pos: int = pos;
+        if ws && peg_is_lexer(e.str) { ref_pos = peg_skip_ws(s, ref_pos); }
+        return peg_match_r(g, e.str, s, ref_pos, memo);
     }
 
     if e.kind == PEG_SEQ {
@@ -479,13 +484,15 @@ fn peg_match_e(g: PegGrammar, e: PegExpr, s: string, pos: int, ws: bool, memo: m
     }
 
     if e.kind == PEG_NEG {
-        let r: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        // Lookahead: check at the exact position without consuming WS.
+        let r: int = peg_match_e(g, e.children[0], s, pos, false, memo);
         if r == PEG_FAIL { return pos; }   // lookahead failed → negation succeeds
         return PEG_FAIL;
     }
 
     if e.kind == PEG_POS {
-        let r: int = peg_match_e(g, e.children[0], s, pos, ws, memo);
+        // Lookahead: check at the exact position without consuming WS.
+        let r: int = peg_match_e(g, e.children[0], s, pos, false, memo);
         if r != PEG_FAIL { return pos; }   // lookahead succeeded → consume nothing
         return PEG_FAIL;
     }
