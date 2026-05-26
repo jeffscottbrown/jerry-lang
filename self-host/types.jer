@@ -5,16 +5,18 @@ include @string
 
 // ── Type kind constants ───────────────────────────────────────────────────────
 
-let TY_VOID:   int = 0;
-let TY_INT:    int = 1;
-let TY_FLOAT:  int = 2;
-let TY_BOOL:   int = 3;
-let TY_STRING: int = 4;
-let TY_ARRAY:  int = 5;
-let TY_MAP:    int = 6;
-let TY_FN:     int = 7;
-let TY_CLASS:  int = 8;
-let TY_NULL:   int = 9;
+let TY_VOID:     int = 0;
+let TY_INT:      int = 1;
+let TY_FLOAT:    int = 2;
+let TY_BOOL:     int = 3;
+let TY_STRING:   int = 4;
+let TY_ARRAY:    int = 5;
+let TY_MAP:      int = 6;
+let TY_FN:       int = 7;
+let TY_CLASS:    int = 8;
+let TY_NULL:     int = 9;
+let TY_ENUM:     int = 10;  // value of a specific enum type; class_name holds enum name
+let TY_ENUM_REF: int = 11;  // compile-time only: an enum type used as expression base (e.g. Direction in Direction.North)
 
 // ── JType ─────────────────────────────────────────────────────────────────────
 
@@ -33,17 +35,19 @@ class JType {
     }
 
     fn to_string(): string {
-        if this.kind == TY_VOID   { return "void"; }
-        if this.kind == TY_INT    { return "int"; }
-        if this.kind == TY_FLOAT  { return "float"; }
-        if this.kind == TY_BOOL   { return "bool"; }
-        if this.kind == TY_STRING { return "string"; }
-        if this.kind == TY_NULL   { return "null"; }
-        if this.kind == TY_ARRAY  { return this.elem.to_string() + "[]"; }
+        if this.kind == TY_VOID     { return "void"; }
+        if this.kind == TY_INT      { return "int"; }
+        if this.kind == TY_FLOAT    { return "float"; }
+        if this.kind == TY_BOOL     { return "bool"; }
+        if this.kind == TY_STRING   { return "string"; }
+        if this.kind == TY_NULL     { return "null"; }
+        if this.kind == TY_ARRAY    { return this.elem.to_string() + "[]"; }
         if this.kind == TY_MAP {
             return "map<" + this.key.to_string() + ", " + this.value.to_string() + ">";
         }
-        if this.kind == TY_CLASS { return this.class_name; }
+        if this.kind == TY_CLASS    { return this.class_name; }
+        if this.kind == TY_ENUM     { return this.class_name; }
+        if this.kind == TY_ENUM_REF { return "<enum:" + this.class_name + ">"; }
         if this.kind == TY_FN {
             let s: string = "fn(";
             let i: int = 0;
@@ -77,6 +81,7 @@ fn jtype_equals(a: JType, b: JType): bool {
         return jtype_equals(a.key, b.key) && jtype_equals(a.value, b.value);
     }
     if a.kind == TY_CLASS { return a.class_name == b.class_name; }
+    if a.kind == TY_ENUM  { return a.class_name == b.class_name; }
     if a.kind == TY_FN {
         if len(a.params) != len(b.params) { return false; }
         let i: int = 0;
@@ -137,5 +142,19 @@ fn make_fn_type(params: JType[], ret: JType): JType {
     t.kind = TY_FN;
     t.params = params;
     t.ret = ret;
+    return t;
+}
+
+fn make_enum_type(name: string): JType {
+    let t: JType = new JType();
+    t.kind = TY_ENUM;
+    t.class_name = name;
+    return t;
+}
+
+fn make_enum_ref(name: string): JType {
+    let t: JType = new JType();
+    t.kind = TY_ENUM_REF;
+    t.class_name = name;
     return t;
 }

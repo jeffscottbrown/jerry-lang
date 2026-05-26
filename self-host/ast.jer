@@ -47,6 +47,7 @@ let TL_INCLUDE: int = 0;
 let TL_FN:      int = 1;
 let TL_CLASS:   int = 2;
 let TL_VAR:     int = 3;
+let TL_ENUM:    int = 4;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TypeExpr
@@ -459,6 +460,36 @@ class ClassDecl {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// EnumDecl
+// ══════════════════════════════════════════════════════════════════════════════
+
+class EnumDecl {
+    name:     string;
+    variants: string[];
+    line:     int;
+    col:      int;
+
+    fn new(n: string, l: int, c: int) {
+        this.name = n;
+        this.line = l;
+        this.col  = c;
+        let v: string[] = [];
+        this.variants = v;
+    }
+
+    fn to_string(): string {
+        let s: string = "(enum " + this.name + " [";
+        let i: int = 0;
+        while i < len(this.variants) {
+            if i > 0 { s = s + " "; }
+            s = s + this.variants[i];
+            i = i + 1;
+        }
+        return s + "])";
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // TopLevel and Program
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -471,6 +502,8 @@ class TopLevel {
     fn_decl: FnDecl;
     // TL_CLASS
     class_decl: ClassDecl;
+    // TL_ENUM
+    enum_decl: EnumDecl;
     // TL_VAR: reuse Stmt fields via embedding? No — just duplicate.
     var_name:  string;
     var_type:  TypeExpr;
@@ -491,6 +524,7 @@ class TopLevel {
         }
         if this.kind == TL_FN    { return this.fn_decl.to_string(); }
         if this.kind == TL_CLASS { return this.class_decl.to_string(); }
+        if this.kind == TL_ENUM  { return this.enum_decl.to_string(); }
         // TL_VAR
         let s: string = "(let " + this.var_name;
         if this.var_type  != null { s = s + " " + this.var_type.to_string(); }

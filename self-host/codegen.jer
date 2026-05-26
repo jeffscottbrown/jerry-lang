@@ -149,6 +149,7 @@ class Generator {
         if ty.kind == TY_INT      { return "i64"; }
         if ty.kind == TY_FLOAT    { return "double"; }
         if ty.kind == TY_BOOL     { return "i1"; }
+        if ty.kind == TY_ENUM     { return "i64"; }
         return "ptr";  // string, array, map, class, fn, null
     }
 
@@ -157,6 +158,7 @@ class Generator {
         if ty.kind == TY_INT   { return "0"; }
         if ty.kind == TY_FLOAT { return "0.0"; }
         if ty.kind == TY_BOOL  { return "false"; }
+        if ty.kind == TY_ENUM  { return "0"; }
         return "null";
     }
 
@@ -418,6 +420,7 @@ class Generator {
             "declare void @jerry_print_float(double)\n" +
             "declare void @jerry_print_bool(i8)\n" +
             "declare void @jerry_print_string(ptr)\n" +
+            "declare void @jerry_print_string_range(ptr, i64, i64)\n" +
             "declare void @jerry_print_array(ptr)\n" +
             "declare void @jerry_println()\n" +
             "declare ptr  @jerry_array_new(i64, i64, i8)\n" +
@@ -450,6 +453,7 @@ class Generator {
             "declare i64  @jerry_now_seconds()\n" +
             "declare ptr  @jerry_now_string()\n" +
             "declare i8   @jerry_string_contains(ptr, ptr)\n" +
+            "declare i8   @jerry_string_contains_range(ptr, i64, i64, ptr)\n" +
             "declare i8   @jerry_string_starts_with(ptr, ptr)\n" +
             "declare i8   @jerry_string_ends_with(ptr, ptr)\n" +
             "declare i64  @jerry_string_index_of(ptr, ptr)\n" +
@@ -736,6 +740,8 @@ class Generator {
             if te.name == "float"  { return make_float(); }
             if te.name == "bool"   { return make_bool(); }
             if te.name == "string" { return make_string(); }
+            let ei: EnumInfo = this.info.find_enum(te.name);
+            if ei != null { return make_enum_type(te.name); }
             return make_class_type(te.name);
         }
         if te.kind == TYPE_ARRAY { return make_array(this.resolve_te(te.elem)); }
@@ -1333,6 +1339,17 @@ class Generator {
     }
 
     fn gen_field_load(e: Expr): string {
+        // Enum variant access: Direction.North → integer constant for the variant ordinal.
+        // The checker annotates the base expression with TY_ENUM_REF.
+        let obj_ty_early: JType = e.left.jtype;
+        if obj_ty_early != null && obj_ty_early.kind == TY_ENUM_REF {
+            let ei: EnumInfo = this.info.find_enum(obj_ty_early.class_name);
+            if ei != null {
+                let idx: int = ei.find_variant(e.sval);
+                if idx >= 0 { return int_to_string(idx); }
+            }
+            return "0";
+        }
         let obj_val: string = this.gen_expr(e.left);
         let obj_ty: JType = e.left.jtype;
         if obj_ty == null || obj_ty.kind != TY_CLASS { return "0"; }
@@ -1762,6 +1779,32 @@ class Generator {
             return res;
         }
 
+        if name == "string_contains_range" {
+            let sv:    string = this.gen_expr(e.args[0]);
+            let startv: string = this.gen_expr(e.args[1]);
+            let endv:   string = this.gen_expr(e.args[2]);
+            let sub:    string = this.gen_expr(e.args[3]);
+            startv = this.coerce_to_i64(startv, e.args[1].jtype);
+            endv   = this.coerce_to_i64(endv,   e.args[2].jtype);
+            let raw: string = this.new_tmp();
+            let res: string = this.new_tmp();
+            this.eml("  " + raw + " = call i8 @jerry_string_contains_range(ptr " + sv +
+                ", i64 " + startv + ", i64 " + endv + ", ptr " + sub + ")");
+            this.eml("  " + res + " = icmp ne i8 " + raw + ", 0");
+            return res;
+        }
+
+        if name == "print_range" {
+            let sv:    string = this.gen_expr(e.args[0]);
+            let startv: string = this.gen_expr(e.args[1]);
+            let endv:   string = this.gen_expr(e.args[2]);
+            startv = this.coerce_to_i64(startv, e.args[1].jtype);
+            endv   = this.coerce_to_i64(endv,   e.args[2].jtype);
+            this.eml("  call void @jerry_print_string_range(ptr " + sv +
+                ", i64 " + startv + ", i64 " + endv + ")");
+            return "0";
+        }
+
         if name == "string_index_of" {
             let sv:  string = this.gen_expr(e.args[0]);
             let sub: string = this.gen_expr(e.args[1]);
@@ -2053,7 +2096,7 @@ class Generator {
     fn emit_print(val: string, ty: JType, no_newline: bool) {
         if ty == null {
             this.eml("  call void @jerry_print_int(i64 0)");
-        } else if ty.kind == TY_INT {
+        } else if ty.kind == TY_INT || ty.kind == TY_ENUM {
             this.eml("  call void @jerry_print_int(i64 " + val + ")");
         } else if ty.kind == TY_FLOAT {
             this.eml("  call void @jerry_print_float(double " + val + ")");

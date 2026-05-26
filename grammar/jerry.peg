@@ -62,6 +62,7 @@ program = top_level* EOF
 // ── Top-level declarations ────────────────────────────────────────────────────
 
 top_level = include_decl
+          | enum_decl
           | class_decl
           | extern_fn_decl
           | fn_decl
@@ -89,6 +90,17 @@ type_expr  = map_type | fn_type | array_type
 map_type   = "map" "<" type_expr "," type_expr ">"
 fn_type    = KW_fn "(" ( type_expr ( "," type_expr )* )? ")" ( ":" type_expr )?
 array_type = IDENT ( "[" "]" )*
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+//
+// Enums are sets of named integer constants.  Each variant gets an auto-assigned
+// ordinal starting at 0.  Variants are accessed as EnumName.Variant.
+//
+//   enum Direction { North, South, East, West }
+//   let d: Direction = Direction.North;
+
+enum_decl    = KW_enum IDENT "{" enum_variant_list? "}"
+enum_variant_list = IDENT ( "," IDENT )* ","?
 
 // ── Classes ───────────────────────────────────────────────────────────────────
 
@@ -196,6 +208,7 @@ IDENT_REST  = ALNUM | "_"
 
 KW_break    = "break"    !IDENT_REST
 KW_class    = "class"    !IDENT_REST
+KW_enum     = "enum"     !IDENT_REST
 KW_continue = "continue" !IDENT_REST
 KW_else     = "else"     !IDENT_REST
 KW_extends  = "extends"  !IDENT_REST
@@ -216,10 +229,10 @@ KW_while    = "while"    !IDENT_REST
 // KEYWORD is used inside IDENT to prevent reserved words from matching as
 // identifiers.  Type names (int, float, bool, string, void) are absent — they
 // are ordinary identifiers that the checker interprets as types.
-KEYWORD = KW_break | KW_class | KW_continue | KW_else | KW_extends
-        | KW_extern | KW_false | KW_fn | KW_for | KW_if | KW_include
-        | KW_let | KW_new | KW_null | KW_return | KW_this | KW_true
-        | KW_while
+KEYWORD = KW_break | KW_class | KW_continue | KW_else | KW_enum
+        | KW_extends | KW_extern | KW_false | KW_fn | KW_for | KW_if
+        | KW_include | KW_let | KW_new | KW_null | KW_return | KW_this
+        | KW_true | KW_while
 
 // ── Terminals (lexer rules) ───────────────────────────────────────────────────
 

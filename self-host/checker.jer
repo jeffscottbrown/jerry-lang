@@ -52,6 +52,29 @@ class Scope {
     }
 }
 
+// ── EnumInfo ──────────────────────────────────────────────────────────────────
+
+class EnumInfo {
+    name:     string;
+    variants: string[];
+
+    fn new(n: string) {
+        this.name = n;
+        let v: string[] = [];
+        this.variants = v;
+    }
+
+    // Returns the 0-based ordinal of the variant, or -1 if not found.
+    fn find_variant(vname: string): int {
+        let i: int = 0;
+        while i < len(this.variants) {
+            if this.variants[i] == vname { return i; }
+            i = i + 1;
+        }
+        return -1;
+    }
+}
+
 // ── ClassInfo ─────────────────────────────────────────────────────────────────
 
 class FieldInfo {
@@ -112,12 +135,15 @@ class ClassInfo {
 
 class CheckInfo {
     classes:      ClassInfo[];
+    enums:        EnumInfo[];   // enum declarations
     funcs:        Symbol[];    // top-level function name → fn JType
     extern_funcs: string[];    // names of extern fn declarations (called without _jerry suffix)
 
     fn new() {
         let c: ClassInfo[] = [];
         this.classes = c;
+        let en: EnumInfo[] = [];
+        this.enums = en;
         let f: Symbol[] = [];
         this.funcs = f;
         let e: string[] = [];
@@ -147,6 +173,17 @@ class CheckInfo {
     }
 
     fn add_class(ci: ClassInfo) { push(this.classes, ci); }
+
+    fn find_enum(name: string): EnumInfo {
+        let i: int = 0;
+        while i < len(this.enums) {
+            if this.enums[i].name == name { return this.enums[i]; }
+            i = i + 1;
+        }
+        return null;
+    }
+
+    fn add_enum(ei: EnumInfo) { push(this.enums, ei); }
 
     fn find_func(name: string): JType {
         let i: int = 0;
@@ -228,6 +265,8 @@ class Checker {
             if te.name == "string" { return make_string(); }
             let ci: ClassInfo = this.info.find_class(te.name);
             if ci != null { return make_class_type(te.name); }
+            let ei: EnumInfo = this.info.find_enum(te.name);
+            if ei != null { return make_enum_type(te.name); }
             this.error("unknown type '" + te.name + "'", te.line, te.col);
             return make_void();
         }
@@ -248,6 +287,17 @@ class Checker {
     }
 
     // ── First-pass registration ───────────────────────────────────────────────
+
+    // Register an enum declaration so its name is known as a type.
+    fn pre_register_enum(ed: EnumDecl) {
+        let ei: EnumInfo = new EnumInfo(ed.name);
+        let i: int = 0;
+        while i < len(ed.variants) {
+            push(ei.variants, ed.variants[i]);
+            i = i + 1;
+        }
+        this.info.add_enum(ei);
+    }
 
     // Pre-register just the class name so forward references work.
     fn pre_register_class(cd: ClassDecl) {
@@ -596,6 +646,21 @@ class Checker {
     }
 
     fn check_field(e: Expr): JType {
+        // Special case: enum variant access e.g. Direction.North
+        // The base is a bare identifier naming an enum type, not an instance.
+        if e.left.kind == EXPR_IDENT {
+            let ei: EnumInfo = this.info.find_enum(e.left.sval);
+            if ei != null {
+                let idx: int = ei.find_variant(e.sval);
+                if idx < 0 {
+                    this.error("enum " + e.left.sval + " has no variant '" + e.sval + "'", e.line, e.col);
+                    return make_void();
+                }
+                // Annotate the base with TY_ENUM_REF so codegen knows not to load it
+                e.left.jtype = make_enum_ref(e.left.sval);
+                return make_enum_type(e.left.sval);
+            }
+        }
         let base: JType = this.check_expr(e.left);
         if base.kind != TY_CLASS {
             this.error("field access on non-class type " + base.to_string(), e.line, e.col);
@@ -853,6 +918,9 @@ fn make_builtin_scope(): Scope {
     install_fn(s, "string_starts_with",  p_ss, b_ty);
     install_fn(s, "string_ends_with",    p_ss, b_ty);
     install_fn(s, "string_index_of",     p_ss, i_ty);
+    let p_siis: JType[] = []; push(p_siis, s_ty); push(p_siis, i_ty); push(p_siis, i_ty); push(p_siis, s_ty);
+    install_fn(s, "string_contains_range", p_siis, b_ty);
+    install_fn(s, "print_range",           p_sii,  v_ty);
     install_fn(s, "read_bytes",          p1i,  s_ty);
     install_fn(s, "string_to_upper",     p1s, s_ty);
     install_fn(s, "string_to_lower",     p1s, s_ty);
@@ -891,10 +959,11 @@ fn make_builtin_scope(): Scope {
 fn type_check(prog: Program): CheckResult {
     let c: Checker = new Checker();
 
-    // Pre-pass: register all class names so forward/mutual references work.
+    // Pre-pass: register all enum and class names so forward/mutual references work.
     let i: int = 0;
     while i < len(prog.tops) {
         let tl: TopLevel = prog.tops[i];
+        if tl.kind == TL_ENUM  { c.pre_register_enum(tl.enum_decl); }
         if tl.kind == TL_CLASS { c.pre_register_class(tl.class_decl); }
         i = i + 1;
     }

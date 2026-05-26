@@ -34,6 +34,7 @@ fn is_keyword(word: string): bool {
     if word == "let"      { return true; }
     if word == "fn"       { return true; }
     if word == "class"    { return true; }
+    if word == "enum"     { return true; }
     if word == "extends"  { return true; }
     if word == "if"       { return true; }
     if word == "else"     { return true; }

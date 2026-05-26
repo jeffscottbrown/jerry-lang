@@ -1,0 +1,200 @@
+// tests/enums_test.jer — enum declarations, variant access, comparisons, usage in functions/classes
+include @testing
+
+// ── Basic enums ───────────────────────────────────────────────────────────────
+
+enum Direction {
+    North,
+    South,
+    East,
+    West
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+enum Weekday {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday
+}
+
+// Single-variant enum
+enum Unit {
+    Only
+}
+
+// ── Functions that take enum parameters ───────────────────────────────────────
+
+fn is_weekend(day: Weekday): bool {
+    return day == Weekday.Saturday || day == Weekday.Sunday;
+}
+
+fn direction_to_string(d: Direction): string {
+    if d == Direction.North { return "North"; }
+    if d == Direction.South { return "South"; }
+    if d == Direction.East  { return "East"; }
+    return "West";
+}
+
+fn color_ordinal(c: Color): int {
+    if c == Color.Red   { return 0; }
+    if c == Color.Green { return 1; }
+    return 2;
+}
+
+// ── Class with enum fields ────────────────────────────────────────────────────
+
+class Pixel {
+    color: Color;
+    x:     int;
+    y:     int;
+
+    fn new(c: Color, px: int, py: int) {
+        this.color = c;
+        this.x     = px;
+        this.y     = py;
+    }
+
+    fn is_red(): bool {
+        return this.color == Color.Red;
+    }
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+fn test_variant_ordinals() {
+    // Variants are assigned ordinals 0, 1, 2, … in declaration order.
+    let n: Direction = Direction.North;
+    let s: Direction = Direction.South;
+    let e: Direction = Direction.East;
+    let w: Direction = Direction.West;
+    assert_eq_int(int(n), 0, "North ordinal is 0");
+    assert_eq_int(int(s), 1, "South ordinal is 1");
+    assert_eq_int(int(e), 2, "East ordinal is 2");
+    assert_eq_int(int(w), 3, "West ordinal is 3");
+}
+
+fn test_equality() {
+    let a: Direction = Direction.North;
+    let b: Direction = Direction.North;
+    let c: Direction = Direction.South;
+    assert_true(a == b,           "same variant equal");
+    assert_true(a != c,           "different variants not equal");
+    assert_false(a == c,          "different variants not equal (false)");
+    assert_false(Direction.East == Direction.West, "East != West");
+}
+
+fn test_assignment_and_reassignment() {
+    let d: Direction = Direction.East;
+    assert_true(d == Direction.East, "initial assignment East");
+    d = Direction.West;
+    assert_true(d == Direction.West, "after reassignment to West");
+    d = Direction.North;
+    assert_true(d == Direction.North, "after reassignment to North");
+}
+
+fn test_in_if_else() {
+    let col: Color = Color.Green;
+    let result: string = "";
+    if col == Color.Red   { result = "red"; }
+    else if col == Color.Green { result = "green"; }
+    else { result = "blue"; }
+    assert_eq_string(result, "green", "if-else with enum");
+}
+
+fn test_function_parameter() {
+    assert_eq_string(direction_to_string(Direction.North), "North", "fn param North");
+    assert_eq_string(direction_to_string(Direction.South), "South", "fn param South");
+    assert_eq_string(direction_to_string(Direction.East),  "East",  "fn param East");
+    assert_eq_string(direction_to_string(Direction.West),  "West",  "fn param West");
+}
+
+fn test_function_return_type() {
+    // is_weekend returns bool based on enum comparison
+    assert_true(is_weekend(Weekday.Saturday), "Saturday is weekend");
+    assert_true(is_weekend(Weekday.Sunday),   "Sunday is weekend");
+    assert_false(is_weekend(Weekday.Monday),  "Monday is not weekend");
+    assert_false(is_weekend(Weekday.Friday),  "Friday is not weekend");
+}
+
+fn test_color_ordinals() {
+    assert_eq_int(int(Color.Red),   0, "Red=0");
+    assert_eq_int(int(Color.Green), 1, "Green=1");
+    assert_eq_int(int(Color.Blue),  2, "Blue=2");
+}
+
+fn test_weekday_all_variants() {
+    assert_eq_int(int(Weekday.Monday),    0, "Monday=0");
+    assert_eq_int(int(Weekday.Tuesday),   1, "Tuesday=1");
+    assert_eq_int(int(Weekday.Wednesday), 2, "Wednesday=2");
+    assert_eq_int(int(Weekday.Thursday),  3, "Thursday=3");
+    assert_eq_int(int(Weekday.Friday),    4, "Friday=4");
+    assert_eq_int(int(Weekday.Saturday),  5, "Saturday=5");
+    assert_eq_int(int(Weekday.Sunday),    6, "Sunday=6");
+}
+
+fn test_unit_enum() {
+    let u: Unit = Unit.Only;
+    assert_eq_int(int(u), 0, "Unit.Only ordinal is 0");
+    assert_true(u == Unit.Only, "Unit.Only equality");
+}
+
+fn test_enum_in_class_field() {
+    let p: Pixel = new Pixel(Color.Red, 10, 20);
+    assert_true(p.is_red(), "Pixel is red");
+    assert_true(p.color == Color.Red, "color field is Red");
+    assert_false(p.color == Color.Blue, "color field is not Blue");
+    p.color = Color.Blue;
+    assert_false(p.is_red(), "after reassignment not red");
+    assert_true(p.color == Color.Blue, "color field is Blue after reassign");
+}
+
+fn test_enum_in_array() {
+    let dirs: Direction[] = [Direction.North, Direction.South, Direction.East, Direction.West];
+    assert_eq_int(len(dirs), 4, "array length");
+    assert_true(dirs[0] == Direction.North, "dirs[0]=North");
+    assert_true(dirs[1] == Direction.South, "dirs[1]=South");
+    assert_true(dirs[2] == Direction.East,  "dirs[2]=East");
+    assert_true(dirs[3] == Direction.West,  "dirs[3]=West");
+}
+
+fn test_enum_in_while_loop() {
+    let counts: int[] = [0, 0, 0, 0];
+    let dirs: Direction[] = [
+        Direction.North, Direction.East, Direction.North,
+        Direction.West,  Direction.South, Direction.North
+    ];
+    let i: int = 0;
+    while i < len(dirs) {
+        let d: Direction = dirs[i];
+        if d == Direction.North { counts[0] = counts[0] + 1; }
+        if d == Direction.South { counts[1] = counts[1] + 1; }
+        if d == Direction.East  { counts[2] = counts[2] + 1; }
+        if d == Direction.West  { counts[3] = counts[3] + 1; }
+        i = i + 1;
+    }
+    assert_eq_int(counts[0], 3, "North count");
+    assert_eq_int(counts[1], 1, "South count");
+    assert_eq_int(counts[2], 1, "East count");
+    assert_eq_int(counts[3], 1, "West count");
+}
+
+fn test_color_ordinal_fn() {
+    assert_eq_int(color_ordinal(Color.Red),   0, "ordinal(Red)=0");
+    assert_eq_int(color_ordinal(Color.Green), 1, "ordinal(Green)=1");
+    assert_eq_int(color_ordinal(Color.Blue),  2, "ordinal(Blue)=2");
+}
+
+fn test_enum_default_value() {
+    // An enum variable declared but unassigned is 0 (first variant ordinal).
+    let d: Direction = Direction.North;
+    assert_eq_int(int(d), 0, "default-like init is 0");
+}

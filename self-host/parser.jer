@@ -88,6 +88,12 @@ class Parser {
             tl.class_decl = cd;
             return tl;
         }
+        if this.check(TOK_KEYWORD, "enum") {
+            let ed: EnumDecl = this.parse_enum_decl();
+            let tl: TopLevel = new TopLevel(TL_ENUM, ed.line, ed.col);
+            tl.enum_decl = ed;
+            return tl;
+        }
         if this.check(TOK_KEYWORD, "fn") {
             let fd: FnDecl = this.parse_fn_decl();
             let tl: TopLevel = new TopLevel(TL_FN, fd.line, fd.col);
@@ -217,6 +223,22 @@ class Parser {
         }
         this.expect(TOK_OP, "}");
         return cd;
+    }
+
+    fn parse_enum_decl(): EnumDecl {
+        let l: int = this.peek_line();
+        let c: int = this.peek_col();
+        this.advance();  // "enum"
+        let name: Token = this.expect(TOK_IDENT, "");
+        let ed: EnumDecl = new EnumDecl(name.value, l, c);
+        this.expect(TOK_OP, "{");
+        while !this.check(TOK_OP, "}") && this.peek_kind() != TOK_EOF {
+            let variant: Token = this.expect(TOK_IDENT, "");
+            push(ed.variants, variant.value);
+            if !this.eat(TOK_OP, ",") { break; }
+        }
+        this.expect(TOK_OP, "}");
+        return ed;
     }
 
     fn parse_field_decl(): FieldDecl {

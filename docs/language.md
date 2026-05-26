@@ -33,20 +33,21 @@ jerry run foo.jer
 9. [Maps](#maps)
 10. [Strings](#strings)
 11. [Classes](#classes)
-12. [Memory model](#memory-model)
-13. [Testing](#testing)
-14. [Built-in functions](#built-in-functions)
-15. [The always-available core library](#the-always-available-core-library)
-16. [Time and the `Timer` class](#time-and-the-timer-class)
-17. [JSON with `@json`](#json-with-json)
-18. [The `@string` stdlib module](#the-string-stdlib-module)
-19. [Calling native code with `extern fn`](#calling-native-code-with-extern-fn)
-20. [Modules and remote packages](#modules-and-remote-packages)
-21. [The `jerry-string` remote module](#the-jerry-string-remote-module)
-22. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
-23. [Working program: end-to-end example](#working-program-end-to-end-example)
-24. [Showcase: gdgrep](#showcase-gdgrep)
-25. [CLI reference](#cli-reference)
+12. [Enums](#enums)
+13. [Memory model](#memory-model)
+14. [Testing](#testing)
+15. [Built-in functions](#built-in-functions)
+16. [The always-available core library](#the-always-available-core-library)
+17. [Time and the `Timer` class](#time-and-the-timer-class)
+18. [JSON with `@json`](#json-with-json)
+19. [The `@string` stdlib module](#the-string-stdlib-module)
+20. [Calling native code with `extern fn`](#calling-native-code-with-extern-fn)
+21. [Modules and remote packages](#modules-and-remote-packages)
+22. [The `jerry-string` remote module](#the-jerry-string-remote-module)
+23. [The `jerry-logging` remote module](#the-jerry-logging-remote-module)
+24. [Working program: end-to-end example](#working-program-end-to-end-example)
+25. [Showcase: gdgrep](#showcase-gdgrep)
+26. [CLI reference](#cli-reference)
 
 ---
 
@@ -453,6 +454,100 @@ fn main() {
 ```
 
 See [`examples/classes.jer`](../examples/classes.jer).
+
+---
+
+## Enums
+
+Enums define a named set of integer constants called *variants*. They are
+type-safe: you cannot accidentally mix values of different enum types.
+
+```jerry
+enum Direction {
+    North,
+    South,
+    East,
+    West
+}
+```
+
+Access variants with `EnumName.Variant`:
+
+```jerry
+fn main() {
+    let d: Direction = Direction.North;
+
+    if d == Direction.North {
+        print("Going north");
+    }
+}
+```
+
+### Variant ordinals
+
+Variants are automatically assigned integer ordinals starting at 0 in
+declaration order. Use the built-in `int()` cast to get the underlying value:
+
+```jerry
+fn main() {
+    print(int_to_string(int(Direction.North)));  // 0
+    print(int_to_string(int(Direction.South)));  // 1
+    print(int_to_string(int(Direction.East)));   // 2
+    print(int_to_string(int(Direction.West)));   // 3
+}
+```
+
+### Enums in functions and classes
+
+Enums work as parameter types, return types, and class fields:
+
+```jerry
+enum Color { Red, Green, Blue }
+
+class Pixel {
+    color: Color;
+    x:     int;
+    y:     int;
+
+    fn new(c: Color, px: int, py: int) {
+        this.color = c;
+        this.x = px;
+        this.y = py;
+    }
+
+    fn is_red(): bool {
+        return this.color == Color.Red;
+    }
+}
+
+fn color_name(c: Color): string {
+    if c == Color.Red   { return "red"; }
+    if c == Color.Green { return "green"; }
+    return "blue";
+}
+
+fn main() {
+    let p: Pixel = new Pixel(Color.Green, 10, 20);
+    print(color_name(p.color));   // green
+    print(bool_to_string(p.is_red()));  // false
+}
+```
+
+### Supported operations
+
+| Operation | Example | Notes |
+|-----------|---------|-------|
+| Declare   | `enum Suit { Clubs, Diamonds, Hearts, Spades }` | Ordinals auto-assigned from 0 |
+| Read variant | `Suit.Hearts` | Returns the ordinal as an `int`-sized value |
+| Assign | `let s: Suit = Suit.Hearts;` | |
+| Equality | `s == Suit.Hearts` | Same enum type required |
+| Inequality | `s != Suit.Clubs` | Same enum type required |
+| Cast to int | `int(s)` | Returns the ordinal |
+| Store in array | `let suits: Suit[] = [Suit.Hearts, Suit.Spades];` | |
+| Store in class field | `this.suit = Suit.Diamonds;` | |
+
+Enums are stored as 64-bit integers on the stack — they have no heap
+allocation and require no reference counting.
 
 ---
 
