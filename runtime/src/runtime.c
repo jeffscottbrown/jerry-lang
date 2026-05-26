@@ -160,6 +160,19 @@ int8_t jerry_string_contains(JerryStr* s, JerryStr* sub) {
     return 0;
 }
 
+int8_t jerry_string_contains_range(JerryStr* s, int64_t start, int64_t end, JerryStr* sub) {
+    if (s == NULL || sub == NULL) return 0;
+    if (start < 0) start = 0;
+    if (end > s->len) end = s->len;
+    int64_t rlen = end - start;
+    if (sub->len == 0) return 1;
+    if (sub->len > rlen) return 0;
+    for (int64_t i = start; i <= start + rlen - sub->len; i++) {
+        if (memcmp(s->data + i, sub->data, (size_t)sub->len) == 0) return 1;
+    }
+    return 0;
+}
+
 int8_t jerry_string_starts_with(JerryStr* s, JerryStr* prefix) {
     if (s == NULL || prefix == NULL) return 0;
     if (prefix->len == 0) return 1;
@@ -307,6 +320,14 @@ void jerry_print_string(JerryStr* s) {
         return;
     }
     fwrite(s->data, 1, (size_t)s->len, stdout);
+}
+
+void jerry_print_string_range(JerryStr* s, int64_t start, int64_t end) {
+    if (s == NULL) return;
+    if (start < 0) start = 0;
+    if (end > s->len) end = s->len;
+    if (start < end) fwrite(s->data + start, 1, (size_t)(end - start), stdout);
+    putchar('\n');
 }
 
 void jerry_print_array(JerryArray* arr) {

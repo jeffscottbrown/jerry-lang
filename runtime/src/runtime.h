@@ -57,6 +57,7 @@ int64_t    jerry_char_at(JerryStr* s, int64_t i);        /* char code at index  
 JerryStr*  jerry_string_slice(JerryStr* s, int64_t start, int64_t end); /* s[start:end] */
 JerryStr*  jerry_char_to_string(int64_t code);            /* char code → 1-char string */
 int8_t     jerry_string_contains(JerryStr* s, JerryStr* sub);
+int8_t     jerry_string_contains_range(JerryStr* s, int64_t start, int64_t end, JerryStr* sub);
 int8_t     jerry_string_starts_with(JerryStr* s, JerryStr* prefix);
 int8_t     jerry_string_ends_with(JerryStr* s, JerryStr* suffix);
 int64_t    jerry_string_index_of(JerryStr* s, JerryStr* sub);
@@ -74,6 +75,7 @@ void jerry_print_int(int64_t n);
 void jerry_print_float(double f);
 void jerry_print_bool(int8_t b);
 void jerry_print_string(JerryStr* s);
+void jerry_print_string_range(JerryStr* s, int64_t start, int64_t end);
 void jerry_print_array(JerryArray* arr);
 void jerry_println(void);
 JerryStr* jerry_read_file(JerryStr* path);
