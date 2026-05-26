@@ -1,5 +1,5 @@
 .PHONY: build-compiler build-test-runner build-create build-sweep build-get build-lsp build-main \
-        test install install-runtime install-stdlib check-deps \
+        test install install-runtime install-stdlib check-deps sync-grammar \
         run-hello run-logging run-files run-fibonacci run-arrays run-classes run-closures run-strings \
         ir-hello ir-fibonacci ir-arrays ir-classes ir-strings \
         clean bootstrap
@@ -224,6 +224,33 @@ ir-classes:
 ir-strings:
 	$(call require,$(JERRY),$(JERRY_HINT))
 	$(JERRY) ir examples/strings.jer
+
+# ── Tree-sitter / Zed sync ────────────────────────────────────────────────────
+#
+# After editing tree-sitter-jerry/grammar.js or jerry-zed/languages/jerry/highlights.scm,
+# run `make sync-grammar` to regenerate the parser, rebuild the wasm, copy it
+# into the sibling jerry-zed repo, and update the grammar commit pin.
+#
+# Requires: tree-sitter CLI  (npm install -g tree-sitter-cli)
+# Assumes:  ../jerry-zed exists as a sibling directory.
+
+ZED_REPO      ?= ../jerry-zed
+ZED_GRAMMAR   ?= $(ZED_REPO)/grammars/jerry.wasm
+ZED_EXT_TOML  ?= $(ZED_REPO)/extension.toml
+TS_DIR         = tree-sitter-jerry
+
+sync-grammar:
+	@command -v tree-sitter >/dev/null 2>&1 || { \
+	  echo 'Error: tree-sitter CLI not found.  Install with: npm install -g tree-sitter-cli'; exit 1; }
+	@test -d $(ZED_REPO) || { \
+	  echo 'Error: $(ZED_REPO) not found.  Clone jerry-zed as a sibling directory.'; exit 1; }
+	cd $(TS_DIR) && tree-sitter generate
+	cd $(TS_DIR) && tree-sitter build --wasm
+	cp $(TS_DIR)/tree-sitter-jerry.wasm $(ZED_GRAMMAR)
+	@NEW_COMMIT=$$(git rev-parse HEAD) && \
+	  sed -i '' "s/^commit = .*/commit = \"$$NEW_COMMIT\"/" $(ZED_EXT_TOML) && \
+	  echo "Updated $(ZED_EXT_TOML) → commit = $$NEW_COMMIT"
+	@echo "Done. Commit and push both jerry-lang and jerry-zed."
 
 # ── Cleanup ────────────────────────────────────────────────────────────────────
 

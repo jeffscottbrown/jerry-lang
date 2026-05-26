@@ -55,6 +55,7 @@ module.exports = grammar({
 
     _top_level_item: $ => choice(
       $.include_declaration,
+      $.enum_declaration,
       $.extern_function_declaration,
       $.function_declaration,
       $.class_declaration,
@@ -71,6 +72,27 @@ module.exports = grammar({
         field('path', $.string_literal),
       ),
     ),
+
+    // -------------------------------------------------------------------------
+    // Enums
+    // -------------------------------------------------------------------------
+
+    // enum Direction { North, South, East, West }
+    enum_declaration: $ => seq(
+      'enum',
+      field('name', $.identifier),
+      '{',
+      optional($.enum_variant_list),
+      '}',
+    ),
+
+    enum_variant_list: $ => seq(
+      $.enum_variant,
+      repeat(seq(',', $.enum_variant)),
+      optional(','),
+    ),
+
+    enum_variant: $ => field('name', $.identifier),
 
     // -------------------------------------------------------------------------
     // Functions
