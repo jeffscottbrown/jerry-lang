@@ -2,7 +2,7 @@
         test install install-runtime install-stdlib check-deps \
         run-hello run-logging run-files run-fibonacci run-arrays run-classes run-closures run-strings \
         ir-hello ir-fibonacci ir-arrays ir-classes ir-strings \
-        clean
+        clean bootstrap
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +19,10 @@ JERRY_COMPILER_SEED ?= jerry-compiler
 # jerry binary used to run programs and tests. Override for a local build:
 #   make test JERRY=./bin/jerry-native
 JERRY ?= jerry
+
+# jerry-compiler used when running tests.  Always the locally-built binary,
+# which may support language features not yet in the installed seed.
+JERRY_COMPILER ?= bin/jerry-compiler
 
 # Version embedded in the jerry dispatcher binary.
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
@@ -60,81 +64,110 @@ check-deps:
 
 # ── Runtime / stdlib installation ─────────────────────────────────────────────
 
-install-runtime:
+STDLIB_SENTINEL = $(STDLIB_DIR)/.installed
+RUNTIME_SRCS    = runtime/src/runtime.c runtime/src/runtime.h
+
+# Real file rules — Make can track these and skip work when up to date.
+$(RUNTIME_A): $(RUNTIME_SRCS)
 	$(call require,clang,$(CLANG_HINT))
 	$(call require,ar,$(AR_HINT))
 	mkdir -p $(PREFIX)/lib
 	clang -O2 -c runtime/src/runtime.c -Iruntime/src -o /tmp/jerry_runtime.o
 	ar rcs $(RUNTIME_A) /tmp/jerry_runtime.o
 	rm /tmp/jerry_runtime.o
+
+$(STDLIB_SENTINEL): $(wildcard stdlib/*.jer)
+	mkdir -p $(STDLIB_DIR)
+	cp stdlib/*.jer $(STDLIB_DIR)/
+	touch $(STDLIB_SENTINEL)
+
+# Phony aliases for manual use.
+install-runtime: $(RUNTIME_A)
 	@echo "Installed: $(RUNTIME_A)"
 	@echo "To use it: export JERRY_RUNTIME=$(RUNTIME_A)"
 
-install-stdlib:
-	mkdir -p $(STDLIB_DIR)
-	cp stdlib/*.jer $(STDLIB_DIR)/
+install-stdlib: $(STDLIB_SENTINEL)
 	@echo "Installed: $(STDLIB_DIR)/"
 	@echo "To use it: export JERRY_STDLIB=$(STDLIB_DIR)"
 
 # ── Build Jerry tools (all require a seed jerry-compiler) ─────────────────────
 
-_check_seed:
-	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+SELF_HOST_SRCS = $(wildcard self-host/*.jer)
 
-build-compiler: install-runtime install-stdlib _check_seed
+bin/jerry-compiler: $(SELF_HOST_SRCS) $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) self-host/ -o bin/jerry-compiler
 	@echo "Built: bin/jerry-compiler"
 
-build-test-runner: install-runtime install-stdlib _check_seed
+build-compiler: bin/jerry-compiler
+
+build-test-runner: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-test/ -o bin/jerry-test
 	@echo "Built: bin/jerry-test"
 
-build-create: install-runtime install-stdlib _check_seed
+build-create: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-create/ -o bin/jerry-create
 	@echo "Built: bin/jerry-create"
 
-build-sweep: install-runtime install-stdlib _check_seed
+build-sweep: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-sweep/ -o bin/jerry-sweep
 	@echo "Built: bin/jerry-sweep"
 
-build-get: install-runtime install-stdlib _check_seed
+build-get: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-get/ -o bin/jerry-get
 	@echo "Built: bin/jerry-get"
 
-build-lsp: install-runtime install-stdlib _check_seed
+build-lsp: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-lsp/ -o bin/jerry-lsp
 	@echo "Built: bin/jerry-lsp"
 
 # Embeds VERSION into version.jer before compiling, then restores the dev default.
-build-main: install-runtime install-stdlib _check_seed
+build-main: $(RUNTIME_A) $(STDLIB_SENTINEL)
+	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
+	@mkdir -p bin
 	@echo "fn jerry_version(): string { return \"$(VERSION)\"; }" > cmd/jerry-main/version.jer
 	JERRY_RUNTIME=$(RUNTIME_A) JERRY_STDLIB=$(STDLIB_DIR) \
 		$(JERRY_COMPILER_SEED) cmd/jerry-main/ -o bin/jerry-native
 	@echo 'fn jerry_version(): string { return "dev"; }' > cmd/jerry-main/version.jer
 	@echo "Built: bin/jerry-native"
 
-# install copies the locally-built jerry-native to PREFIX/bin.
-install: build-main
+# install copies the locally-built binaries to PREFIX/bin.
+install: build-main bin/jerry-compiler
 	$(call require,$(JERRY_COMPILER_SEED),$(SEED_HINT))
 	mkdir -p $(PREFIX)/bin
-	cp bin/jerry-native $(PREFIX)/bin/jerry
+	cp bin/jerry-native   $(PREFIX)/bin/jerry
+	cp bin/jerry-compiler $(PREFIX)/bin/jerry-compiler
 	@echo "Installed: $(PREFIX)/bin/jerry"
+	@echo "Installed: $(PREFIX)/bin/jerry-compiler"
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
-test:
+test: bin/jerry-compiler
 	$(call require,$(JERRY),$(JERRY_HINT))
 	cc -O2 -c tests/extern_test.c -o /tmp/jerry_extern_test.o
 	ar rcs /tmp/libextern_test.a /tmp/jerry_extern_test.o
-	$(JERRY) test tests/ -lextern_test -L/tmp
+	JERRY_COMPILER=$(JERRY_COMPILER) JERRY_STDLIB=$(STDLIB_DIR) JERRY_RUNTIME=$(RUNTIME_A) \
+		$(JERRY) test tests/ -lextern_test -L/tmp
 	rm -f /tmp/jerry_extern_test.o /tmp/libextern_test.a
-	$(JERRY) test cmd/jerry-lsp/
+	JERRY_COMPILER=$(JERRY_COMPILER) JERRY_STDLIB=$(STDLIB_DIR) JERRY_RUNTIME=$(RUNTIME_A) \
+		$(JERRY) test cmd/jerry-lsp/
 
 # ── Run examples ──────────────────────────────────────────────────────────────
 
