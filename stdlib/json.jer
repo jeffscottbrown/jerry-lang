@@ -15,13 +15,15 @@
 
 // ── Kind constants ─────────────────────────────────────────────────────────────
 
-let JSON_NULL:   int = 0;
-let JSON_BOOL:   int = 1;
-let JSON_INT:    int = 2;
-let JSON_FLOAT:  int = 3;
-let JSON_STRING: int = 4;
-let JSON_ARRAY:  int = 5;
-let JSON_OBJECT: int = 6;
+enum JsonKind {
+    Null,
+    Bool,
+    Int,
+    Float,
+    String,
+    Array,
+    Object
+}
 
 // ── JsonValue node ─────────────────────────────────────────────────────────────
 //
@@ -30,17 +32,17 @@ let JSON_OBJECT: int = 6;
 // so unset pointer fields are null.
 
 class JsonValue {
-    kind:      int;      // JSON_NULL … JSON_OBJECT
+    kind:      JsonKind;
     bool_val:  bool;
     int_val:   int;
     float_val: float;
     str_val:   string;
-    arr_val:   JsonValue[];   // JSON_ARRAY elements
-    obj_keys:  string[];      // JSON_OBJECT keys   (parallel arrays)
-    obj_vals:  JsonValue[];   // JSON_OBJECT values (parallel arrays)
+    arr_val:   JsonValue[];   // JsonKind.Array elements
+    obj_keys:  string[];      // JsonKind.Object keys   (parallel arrays)
+    obj_vals:  JsonValue[];   // JsonKind.Object values (parallel arrays)
 
     fn new() {
-        this.kind = JSON_NULL;
+        this.kind = JsonKind.Null;
     }
 }
 
@@ -48,41 +50,41 @@ class JsonValue {
 
 fn json_null_val(): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_NULL;
+    v.kind = JsonKind.Null;
     return v;
 }
 
 fn json_bool_val(b: bool): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_BOOL;
+    v.kind = JsonKind.Bool;
     v.bool_val = b;
     return v;
 }
 
 fn json_int_val(n: int): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_INT;
+    v.kind = JsonKind.Int;
     v.int_val = n;
     return v;
 }
 
 fn json_float_val(f: float): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_FLOAT;
+    v.kind = JsonKind.Float;
     v.float_val = f;
     return v;
 }
 
 fn json_string_val(s: string): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_STRING;
+    v.kind = JsonKind.String;
     v.str_val = s;
     return v;
 }
 
 fn json_new_object(): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_OBJECT;
+    v.kind = JsonKind.Object;
     let keys: string[]    = [];
     let vals: JsonValue[] = [];
     v.obj_keys = keys;
@@ -92,7 +94,7 @@ fn json_new_object(): JsonValue {
 
 fn json_new_array(): JsonValue {
     let v: JsonValue = new JsonValue();
-    v.kind = JSON_ARRAY;
+    v.kind = JsonKind.Array;
     let arr: JsonValue[] = [];
     v.arr_val = arr;
     return v;
@@ -297,7 +299,7 @@ fn json_parse(s: string): JsonValue {
 // ── Object accessors ───────────────────────────────────────────────────────────
 
 fn json_has_key(v: JsonValue, key: string): bool {
-    if v == null || v.kind != JSON_OBJECT { return false; }
+    if v == null || v.kind != JsonKind.Object { return false; }
     let i: int = 0;
     while i < len(v.obj_keys) {
         if v.obj_keys[i] == key { return true; }
@@ -307,7 +309,7 @@ fn json_has_key(v: JsonValue, key: string): bool {
 }
 
 fn json_get_val(v: JsonValue, key: string): JsonValue {
-    if v == null || v.kind != JSON_OBJECT { return null; }
+    if v == null || v.kind != JsonKind.Object { return null; }
     let i: int = 0;
     while i < len(v.obj_keys) {
         if v.obj_keys[i] == key { return v.obj_vals[i]; }
@@ -318,38 +320,38 @@ fn json_get_val(v: JsonValue, key: string): JsonValue {
 
 fn json_get_string(v: JsonValue, key: string): string {
     let val: JsonValue = json_get_val(v, key);
-    if val == null || val.kind != JSON_STRING { return ""; }
+    if val == null || val.kind != JsonKind.String { return ""; }
     return val.str_val;
 }
 
 fn json_get_int(v: JsonValue, key: string): int {
     let val: JsonValue = json_get_val(v, key);
-    if val == null || val.kind != JSON_INT { return 0; }
+    if val == null || val.kind != JsonKind.Int { return 0; }
     return val.int_val;
 }
 
 fn json_get_bool(v: JsonValue, key: string): bool {
     let val: JsonValue = json_get_val(v, key);
-    if val == null || val.kind != JSON_BOOL { return false; }
+    if val == null || val.kind != JsonKind.Bool { return false; }
     return val.bool_val;
 }
 
 fn json_get_object(v: JsonValue, key: string): JsonValue {
     let val: JsonValue = json_get_val(v, key);
-    if val == null || val.kind != JSON_OBJECT { return null; }
+    if val == null || val.kind != JsonKind.Object { return null; }
     return val;
 }
 
 fn json_get_array(v: JsonValue, key: string): JsonValue {
     let val: JsonValue = json_get_val(v, key);
-    if val == null || val.kind != JSON_ARRAY { return null; }
+    if val == null || val.kind != JsonKind.Array { return null; }
     return val;
 }
 
 // ── Object setters ─────────────────────────────────────────────────────────────
 
 fn json_set_val(v: JsonValue, key: string, val: JsonValue) {
-    if v == null || v.kind != JSON_OBJECT { return; }
+    if v == null || v.kind != JsonKind.Object { return; }
     let i: int = 0;
     while i < len(v.obj_keys) {
         if v.obj_keys[i] == key {
@@ -389,17 +391,17 @@ fn json_set_null(v: JsonValue, key: string) {
 // ── Array helpers ──────────────────────────────────────────────────────────────
 
 fn json_array_push_string(arr: JsonValue, val: string) {
-    if arr == null || arr.kind != JSON_ARRAY { return; }
+    if arr == null || arr.kind != JsonKind.Array { return; }
     push(arr.arr_val, json_string_val(val));
 }
 
 fn json_array_push_int(arr: JsonValue, val: int) {
-    if arr == null || arr.kind != JSON_ARRAY { return; }
+    if arr == null || arr.kind != JsonKind.Array { return; }
     push(arr.arr_val, json_int_val(val));
 }
 
 fn json_array_push_object(arr: JsonValue, val: JsonValue) {
-    if arr == null || arr.kind != JSON_ARRAY { return; }
+    if arr == null || arr.kind != JsonKind.Array { return; }
     push(arr.arr_val, val);
 }
 
@@ -428,15 +430,15 @@ fn json_escape_string(s: string): string {
 
 fn json_stringify(v: JsonValue): string {
     if v == null { return "null"; }
-    if v.kind == JSON_NULL   { return "null"; }
-    if v.kind == JSON_BOOL   {
+    if v.kind == JsonKind.Null   { return "null"; }
+    if v.kind == JsonKind.Bool   {
         if v.bool_val { return "true"; }
         return "false";
     }
-    if v.kind == JSON_INT    { return int_to_string(v.int_val); }
-    if v.kind == JSON_FLOAT  { return float_to_string(v.float_val); }
-    if v.kind == JSON_STRING { return "\"" + json_escape_string(v.str_val) + "\""; }
-    if v.kind == JSON_ARRAY {
+    if v.kind == JsonKind.Int    { return int_to_string(v.int_val); }
+    if v.kind == JsonKind.Float  { return float_to_string(v.float_val); }
+    if v.kind == JsonKind.String { return "\"" + json_escape_string(v.str_val) + "\""; }
+    if v.kind == JsonKind.Array {
         let result: string = "[";
         let i: int = 0;
         while i < len(v.arr_val) {
@@ -446,7 +448,7 @@ fn json_stringify(v: JsonValue): string {
         }
         return result + "]";
     }
-    if v.kind == JSON_OBJECT {
+    if v.kind == JsonKind.Object {
         let result: string = "{";
         let i: int = 0;
         while i < len(v.obj_keys) {

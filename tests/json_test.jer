@@ -6,54 +6,54 @@ include @json
 
 fn test_parse_null() {
     let v: JsonValue = json_parse("null");
-    assert_eq_int(v.kind, JSON_NULL, "null kind");
+    assert_true(v.kind == JsonKind.Null, "null kind");
 }
 
 fn test_parse_true() {
     let v: JsonValue = json_parse("true");
-    assert_eq_int(v.kind, JSON_BOOL, "true kind");
+    assert_true(v.kind == JsonKind.Bool, "true kind");
     assert_eq_bool(v.bool_val, true, "true value");
 }
 
 fn test_parse_false() {
     let v: JsonValue = json_parse("false");
-    assert_eq_int(v.kind, JSON_BOOL, "false kind");
+    assert_true(v.kind == JsonKind.Bool, "false kind");
     assert_eq_bool(v.bool_val, false, "false value");
 }
 
 fn test_parse_int() {
     let v: JsonValue = json_parse("42");
-    assert_eq_int(v.kind, JSON_INT, "int kind");
+    assert_true(v.kind == JsonKind.Int, "int kind");
     assert_eq_int(v.int_val, 42, "int value");
 }
 
 fn test_parse_negative_int() {
     let v: JsonValue = json_parse("-7");
-    assert_eq_int(v.kind, JSON_INT, "neg int kind");
+    assert_true(v.kind == JsonKind.Int, "neg int kind");
     assert_eq_int(v.int_val, -7, "neg int value");
 }
 
 fn test_parse_zero() {
     let v: JsonValue = json_parse("0");
-    assert_eq_int(v.kind, JSON_INT, "zero kind");
+    assert_true(v.kind == JsonKind.Int, "zero kind");
     assert_eq_int(v.int_val, 0, "zero value");
 }
 
 fn test_parse_string() {
     let v: JsonValue = json_parse("\"hello\"");
-    assert_eq_int(v.kind, JSON_STRING, "string kind");
+    assert_true(v.kind == JsonKind.String, "string kind");
     assert_eq_string(v.str_val, "hello", "string value");
 }
 
 fn test_parse_empty_string() {
     let v: JsonValue = json_parse("\"\"");
-    assert_eq_int(v.kind, JSON_STRING, "empty string kind");
+    assert_true(v.kind == JsonKind.String, "empty string kind");
     assert_eq_string(v.str_val, "", "empty string value");
 }
 
 fn test_parse_string_with_escapes() {
     let v: JsonValue = json_parse("\"hello\\nworld\"");
-    assert_eq_int(v.kind, JSON_STRING, "escape kind");
+    assert_true(v.kind == JsonKind.String, "escape kind");
     assert_eq_int(char_at(v.str_val, 5), 10, "newline char");
     assert_eq_string(string_slice(v.str_val, 0, 5), "hello", "before newline");
     assert_eq_string(string_slice(v.str_val, 6, 11), "world", "after newline");
@@ -73,13 +73,13 @@ fn test_parse_string_with_backslash() {
 
 fn test_parse_empty_object() {
     let v: JsonValue = json_parse("{}");
-    assert_eq_int(v.kind, JSON_OBJECT, "empty object kind");
+    assert_true(v.kind == JsonKind.Object, "empty object kind");
     assert_eq_int(len(v.obj_keys), 0, "empty object no keys");
 }
 
 fn test_parse_object_string_value() {
     let v: JsonValue = json_parse("{\"name\": \"jerry\"}");
-    assert_eq_int(v.kind, JSON_OBJECT, "object kind");
+    assert_true(v.kind == JsonKind.Object, "object kind");
     assert_eq_string(json_get_string(v, "name"), "jerry", "string field");
 }
 
@@ -96,7 +96,7 @@ fn test_parse_object_bool_value() {
 fn test_parse_object_null_value() {
     let v: JsonValue = json_parse("{\"x\": null}");
     let xv: JsonValue = json_get_val(v, "x");
-    assert_eq_int(xv.kind, JSON_NULL, "null field");
+    assert_true(xv.kind == JsonKind.Null, "null field");
 }
 
 fn test_parse_object_multiple_fields() {
@@ -122,13 +122,13 @@ fn test_parse_has_key() {
 
 fn test_parse_empty_array() {
     let v: JsonValue = json_parse("[]");
-    assert_eq_int(v.kind, JSON_ARRAY, "empty array kind");
+    assert_true(v.kind == JsonKind.Array, "empty array kind");
     assert_eq_int(len(v.arr_val), 0, "empty array length");
 }
 
 fn test_parse_int_array() {
     let v: JsonValue = json_parse("[1, 2, 3]");
-    assert_eq_int(v.kind, JSON_ARRAY, "array kind");
+    assert_true(v.kind == JsonKind.Array, "array kind");
     assert_eq_int(len(v.arr_val), 3, "array length");
     assert_eq_int(v.arr_val[0].int_val, 1, "elem 0");
     assert_eq_int(v.arr_val[1].int_val, 2, "elem 1");
@@ -143,10 +143,10 @@ fn test_parse_string_array() {
 
 fn test_parse_mixed_array() {
     let v: JsonValue = json_parse("[1, \"two\", true, null]");
-    assert_eq_int(v.arr_val[0].kind, JSON_INT,    "mixed[0] int");
-    assert_eq_int(v.arr_val[1].kind, JSON_STRING, "mixed[1] string");
-    assert_eq_int(v.arr_val[2].kind, JSON_BOOL,   "mixed[2] bool");
-    assert_eq_int(v.arr_val[3].kind, JSON_NULL,   "mixed[3] null");
+    assert_true(v.arr_val[0].kind == JsonKind.Int,    "mixed[0] int");
+    assert_true(v.arr_val[1].kind == JsonKind.String, "mixed[1] string");
+    assert_true(v.arr_val[2].kind == JsonKind.Bool,   "mixed[2] bool");
+    assert_true(v.arr_val[3].kind == JsonKind.Null,   "mixed[3] null");
 }
 
 // ── json_parse: whitespace ────────────────────────────────────────────────────
